@@ -39,6 +39,7 @@ dependencies = [
     "litellm~=1.49.2",
     "openai~=1.51.2",
     "langchain~=0.2.16"
+    "aiohttp~=3.10.4"
 ]
 
 [project.optional-dependencies]
