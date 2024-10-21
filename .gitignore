@@ -5,6 +5,8 @@ __pycache__/
 references
 node_modules
 sample_tests
+.mydata*
+*/.mydata
 
 # Python
 *.py[cod]
