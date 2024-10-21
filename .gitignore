@@ -142,3 +142,7 @@ Desktop.ini
 # Project-specific
 *.json
 model_costs.yaml
+
+# Ensure these are not ignored
+!agentneo/ui/dist/
+!agentneo/configs/model_costs.json

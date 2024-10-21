@@ -7,10 +7,6 @@ assignees: ''
 
 ---
 
-Certainly! Here's an updated issue template tailored for the **AgentNeo** project:
-
----
-
 # Bug Report
 
 **Describe the Bug**

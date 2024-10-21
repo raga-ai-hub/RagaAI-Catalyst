@@ -1,10 +1,13 @@
-# AgentNeo
+# AgentNeo &nbsp; ![GitHub release (latest by date)](https://img.shields.io/github/v/release/raga-ai-hub/agentneo) ![GitHub license](https://img.shields.io/github/license/raga-ai-hub/agentneo) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/agentneo) ![Issues](https://img.shields.io/github/issues/raga-ai-hub/agentneo)
+
 
 **Empower Your AI Applications with Unparalleled Observability and Optimization**
 
 AgentNeo is an advanced, open-source **Agentic AI Application Observability, Monitoring, and Evaluation Framework**. Designed to elevate your AI development experience, AgentNeo provides deep insights into your AI agents, Large Language Model (LLM) calls, and tool interactions. By leveraging AgentNeo, you can build more efficient, cost-effective, and high-quality AI-driven solutions.
 
-![AgentNeo Dashboard](docs/assets/dashboard.png)
+![AgentNeo Overview](docs/assets/overview1.png)
+
+## ⚡ Why AgentNeo?
 
 Whether you're a seasoned AI developer or just starting out, AgentNeo offers robust logging, visualization, and evaluation capabilities to help you debug and optimize your applications with ease.
 
@@ -24,8 +27,6 @@ Whether you're a seasoned AI developer or just starting out, AgentNeo offers rob
 ## 🛠 Requirements
 
 - **Python**: Version 3.8 or higher
-- **Node.js**: Version 14 or higher
-- **npm**: Version 6 or higher (or **yarn** 1.22+ as an alternative)
 
 ## 📦 Installation
 
@@ -35,28 +36,6 @@ Install AgentNeo effortlessly using pip:
 pip install agentneo
 ```
 
-### Install Node.js and npm (or yarn)
-
-The dashboard component requires Node.js and npm/yarn. Follow these steps to install them:
-
-- **Node.js and npm**: Visit [nodejs.org](https://nodejs.org/) and download the installer for your operating system.
-- **yarn (optional)**: If you prefer yarn over npm, install it globally after Node.js:
-
-  ```bash
-  npm install -g yarn
-  ```
-
-### Verify the Installations
-
-Ensure that Node.js and npm/yarn are correctly installed:
-
-```bash
-node --version
-npm --version  # or yarn --version
-```
-
-**Note**: AgentNeo will attempt to install the necessary React dependencies automatically when you launch the dashboard for the first time.
-
 ## 🌟 Quick Start Guide
 
 Get up and running with AgentNeo in just a few steps!
@@ -64,7 +43,7 @@ Get up and running with AgentNeo in just a few steps!
 ### 1. Import the Necessary Components
 
 ```python
-from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard
+from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard, Execution
 ```
 
 ### 2. Create a Session and Project
@@ -77,7 +56,7 @@ neo_session.create_project(project_name="my_project")
 ### 3. Initialize the Tracer
 
 ```python
-tracer = Tracer(session=neo_session, log_file_path="trace.json")
+tracer = Tracer(session=neo_session)
 tracer.start()
 ```
 
@@ -102,7 +81,22 @@ def my_agent_function():
     pass
 ```
 
-### 5. Stop Tracing and Launch the Dashboard
+### 5. Evaluate your AI Agent's performance
+
+```python
+exe = Execution(session=neo_session, trace_id=1)
+
+# run a single metric
+exe.execute(metric_list=['metric_name'])
+```
+
+```python
+# get your evaluated metrics results
+metric_results = exe.get_results()
+print(metric_results)
+```
+
+### 6. Stop Tracing and Launch the Dashboard
 
 ```python
 tracer.stop()
@@ -111,6 +105,8 @@ launch_dashboard(port=3000)
 ```
 
 Access the interactive dashboard by visiting `http://localhost:3000` in your web browser.
+
+![AgentNeo Evaluation](docs/assets/evaluation1.png)
 
 ## 🔧 Advanced Usage
 
@@ -130,6 +126,23 @@ Manage multiple projects with ease.
   neo_session.connect_project(project_name="existing_project")
   ```
 
+### Metrics Evaluation
+#### Supported Metrics
+1. Goal Decomposition Efficiency ([goal_decomposition_efficiency](https://docs.raga.ai/agentneo/metric-library/goal-decomposition-efficiency))
+2. Goal Fulfillment Rate (goal_fulfillment_rate)
+3. Tool Correctness Metric (tool_correctness_metric)
+4. Tool Call Success Rate Metric (tool_call_success_rate_metric)
+
+- **Run multiple metrics together**
+```python
+exe.execute(metric_list=['metric_name1', 'metric_name2', ..])
+```
+
+- **Use your own config and metadata related to the metric**
+```python
+exe.execute(metric_list=['metric_name'], config={}, metadata={})
+```
+
 ### Execution Graph Visualization
 
 AgentNeo generates an execution graph that visualizes the flow of your AI application, including LLM calls, tool usage, and agent interactions. Explore this graph in the interactive dashboard to gain deeper insights.
@@ -145,14 +158,15 @@ The AgentNeo dashboard offers a comprehensive view of your AI application's perf
 - **Execution Graph Visualization**
 - **Timeline of Events**
 
+
+![AgentNeo Analysis](docs/assets/analysis1.png)
+
+
 ### Launching the Dashboard
 
 ```python
-from agentneo import launch_dashboard
-launch_dashboard(port=3000)
+neo_session.launch_dashboard(port=3000)
 ```
-
-**Note**: The first time you launch the dashboard, AgentNeo will install necessary React dependencies. This may take a few moments.
 
 ## 🛣️ Roadmap
 
@@ -162,14 +176,17 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 |-------------------------------------------|-----------------|
 | **Local Data Storage Improvements**       | ✅ Completed    |
 | **Support for Additional LLMs**           | ✅ Completed    |
-| **Integration with AutoGen**              | 🔄 In Progress  |
-| **Integration with CrewAI**               | 🔄 In Progress  |
-| **Integration with Langraph**             | 🔄 In Progress  |
+| **Integration with AutoGen**              |  ✅ Completed   |
+| **Integration with CrewAI**               | ✅ Completed   |
+| **Integration with Langraph**             | ✅ Completed |
+| **Tracing User Interactions**             | ✅ Completed   |
+| **Tracing Network Calls**             | ✅ Completed   |
 | **Comprehensive Logging Enhancements**    | ✅ Completed    |
 | **Custom Agent Orchestration Support**    | ✅ Completed    |
 | **Advanced Error Detection Tools**        | 🔄 In Progress  |
 | **Multi-Agent Framework Visualization**   | ✅ Completed    |
 | **Performance Bottleneck Identification** | ✅ Completed    |
+| **Evaluation Metrics for Agentic Application** | ✅ Completed  |
 | **Code Execution Sandbox**                | 🔜 Coming Soon  |
 | **Prompt Caching for Latency Reduction**  | 📝 Planned      |
 | **Real-Time Guardrails Implementation**   | 📝 Planned      |
@@ -187,24 +204,16 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 - 📝 **Planned**
 
 
-## 💡 Troubleshooting
-
-Encountering issues? Here are some common solutions:
-
-1. **Node.js and npm Accessibility**: Ensure Node.js and npm are installed and accessible from the command line.
-2. **Permission Issues**: If you face permission errors during dependency installation, try running your script with administrator/root privileges.
-3. **Check Error Messages**: Review the console output for any error messages related to Node.js, npm, or dependency installations.
-
 ## 📚 Documentation
 
-Dive deeper into AgentNeo's capabilities by visiting our TODO
+For more details, explore the full [AgentNeo Documentation](https://docs.raga.ai/agentneo)
 
 ## 🤝 Contributing
 
 We warmly welcome contributions from the community! Whether it's reporting bugs, suggesting new features, or improving documentation, your input is invaluable.
 
 - **GitHub Repository**: [raga-ai-hub/agentneo](https://github.com/raga-ai-hub/agentneo)
-- **Contribution Guidelines**: Check out our contribution guidelines(TODO) on GitHub to get started.
+- **Contribution Guidelines**: Check out our [Contribution Guidelines](https://github.com/raga-ai-hub/AgentNeo/blob/main/CONTRIBUTING.md) on GitHub to get started.
 
 Join us in making AgentNeo even better!
 

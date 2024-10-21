@@ -2,3 +2,5 @@ py-cpuinfo
 openai
 litellm
 sqlalchemy
+GPUtil
+psutil

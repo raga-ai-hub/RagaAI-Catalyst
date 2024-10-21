@@ -1,6 +1,8 @@
 include agentneo/configs/model_costs.json
-recursive-include agentneo/ui *
+recursive-exclude agentneo/ui *
+recursive-include agentneo/ui/dist *
 recursive-exclude agentneo/ui/node_modules *
 recursive-exclude agentneo/ui/__pycache__ *
 global-exclude *.pyc
 exclude agentneo/ui/public/trace_data.db
+exclude agentneo/ui/dist/trace_data.db

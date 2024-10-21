@@ -3,7 +3,8 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from .data.data_models import Base, ProjectInfoModel
-from .tracer import Tracer
+from .tracing import Tracer
+from .server.dashboard import launch_dashboard as _launch_dashboard
 
 
 class AgentNeo:
@@ -21,12 +22,22 @@ class AgentNeo:
 
     @staticmethod
     def get_db_path():
-        # Save the database in the 'ui/public' folder of the package
-        package_dir = os.path.dirname(os.path.abspath(__file__))
-        public_dir = os.path.join(package_dir, "ui", "public")
         db_filename = "trace_data.db"
-        db_path = os.path.join(public_dir, db_filename)
-        return f"sqlite:///{db_path}"
+
+        # First, try the local directory
+        local_db_path = os.path.join(os.getcwd(), "agentneo", "ui", "dist", db_filename)
+        if os.path.exists(os.path.dirname(local_db_path)):
+            return f"sqlite:///{local_db_path}"
+
+        # If local directory doesn't exist, use the package directory
+        package_dir = os.path.dirname(os.path.abspath(__file__))
+        public_dir = os.path.join(package_dir, "ui", "dist")
+        package_db_path = os.path.join(public_dir, db_filename)
+
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(package_db_path), exist_ok=True)
+
+        return f"sqlite:///{package_db_path}"
 
     def create_project(self, project_name: str):
         with self.Session() as session:
@@ -79,3 +90,12 @@ class AgentNeo:
             {"id": p.id, "name": p.project_name, "start_time": p.start_time}
             for p in projects
         ]
+
+    @staticmethod
+    def launch_dashboard(port=3000):
+        """
+        Launches the AgentNeo dashboard.
+
+        :param port: The port to run the dashboard on (default is 3000)
+        """
+        _launch_dashboard(port)

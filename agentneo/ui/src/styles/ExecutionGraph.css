@@ -1,0 +1,142 @@
+.react-flow__node-custom {
+    font-size: 10px;
+    width: 180px;
+    background: #f5f5f5;
+    color: #222;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 15%), 0 2px 4px -1px rgb(0 0 0 / 8%);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.react-flow__node-custom:hover {
+    box-shadow: 0 8px 15px -3px rgb(0 0 0 / 20%), 0 4px 6px -2px rgb(0 0 0 / 10%);
+    transform: translateY(-2px);
+}
+
+.react-flow__node-custom .react-flow__handle {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #778899;
+}
+
+.react-flow__edge-path {
+    stroke: #333;
+    stroke-width: 1.5;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+    stroke: #555;
+    stroke-width: 2;
+}
+
+.react-flow__edge-text {
+    font-size: 10px;
+}
+
+.custom-node {
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #333;
+    border-width: 2px;
+    border-style: solid;
+    width: 220px;
+    text-align: left;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.custom-node:hover {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.node-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.node-detail {
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.custom-node.agent {
+    background-color: #E6F3FF;
+    border-color: #2196F3;
+}
+
+.custom-node.llm {
+    background-color: #E8F5E9;
+    border-color: #4CAF50;
+}
+
+.custom-node.tool {
+    background-color: #FFF3E0;
+    border-color: #FF9800;
+}
+
+.custom-node.user_interaction {
+    background-color: #F3E5F5;
+    border-color: #9C27B0;
+}
+
+.custom-node.error {
+    background-color: #FFEBEE;
+    border-color: #F44336;
+}
+
+.react-flow__minimap {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.react-flow__controls {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.react-flow__controls-button {
+    background-color: white;
+    border: none;
+    box-shadow: none;
+}
+
+.react-flow__controls-button:hover {
+    background-color: #f0f0f0;
+}
+
+.node-chat {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.chat-message {
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border-radius: 8px;
+}
+
+.chat-message.input {
+    background-color: #E3F2FD;
+    align-self: flex-start;
+}
+
+.chat-message.output {
+    background-color: #F1F8E9;
+    align-self: flex-end;
+}
+
+.chat-timestamp {
+    font-size: 10px;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+.chat-content {
+    font-size: 12px;
+}

@@ -8,6 +8,8 @@ from .data_models import (
     SystemInfoModel,
     ErrorModel,
     TraceModel,
+    UserInteractionModel,
+    MetricModel,
 )
 
 __all__ = [
@@ -23,4 +25,6 @@ __all__ = [
     "LLMCall",
     "ToolCall",
     "AgentCall",
+    "UserInteractionModel",
+    "MetricModel",
 ]
