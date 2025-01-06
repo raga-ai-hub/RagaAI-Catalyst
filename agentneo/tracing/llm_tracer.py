@@ -126,7 +126,7 @@ class LLMTracerMixin:
             token_usage["reasoning"] = getattr(usage, "reasoning_tokens", 0)
 
         # Default cost values if the model or default is not found
-        default_cost = {"input_cost_per_token": 0.0, "output_cost_per_token": 0.0, "reasoning": 0.0}
+        default_cost = {"input_cost_per_token": 0.0, "output_cost_per_token": 0.0, "reasoning_cost_per_token": 0.0}
 
         # Try to get the model-specific cost, fall back to default, then to default_cost
         model_cost = self.model_costs.get(
