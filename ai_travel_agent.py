@@ -20,7 +20,7 @@ project_name = "ai_travel_agent_demo22"
 try:
     neo_session.create_project(project_name=project_name)
     print("Project created successfully")
-except:
+except SomeSpecificException:  # Replace with the specific exception type
     neo_session.connect_project(project_name=project_name)
     print("Project connected successfully")
 
@@ -219,5 +219,3 @@ if __name__ == "__main__":
 
     # Launch dashboard
     launch_dashboard(port=3000)
-
-
