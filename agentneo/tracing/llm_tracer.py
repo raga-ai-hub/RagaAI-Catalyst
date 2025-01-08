@@ -22,6 +22,25 @@ class LLMTracerMixin:
         # Use wrapt to register post-import hooks
         wrapt.register_post_import_hook(self.patch_openai_methods, "openai")
         wrapt.register_post_import_hook(self.patch_litellm_methods, "litellm")
+        wrapt.register_post_import_hook(self.patch_groq_methods, "groq")
+
+    def patch_groq_methods(self, module):
+        if hasattr(module, "Groq"):
+            client_class = getattr(module, "Groq")
+            self.wrap_groq_client_methods(client_class)
+        if hasattr(module, "AsyncGroq"):
+            async_client_class = getattr(module, "AsyncGroq")
+            self.wrap_groq_client_methods(async_client_class)
+
+    def wrap_groq_client_methods(self, client_class):
+        original_init = client_class.__init__
+
+        @functools.wraps(original_init)
+        def patched_init(client_self, *args, **kwargs):
+            original_init(client_self, *args, **kwargs)
+            self.wrap_method(client_self.chat.completions, "create")
+            
+        setattr(client_class, "__init__", patched_init)
 
     def patch_openai_methods(self, module):
         if hasattr(module, "OpenAI"):
@@ -85,6 +104,7 @@ class LLMTracerMixin:
                 model = (
                     os.path.join("groq", model_name) if result.x_groq else model_name
                 )
+                model = model.replace(os.sep, '/')   
             except:
                 model = model_name
 
