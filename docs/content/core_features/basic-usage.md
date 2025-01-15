@@ -60,6 +60,20 @@ tracer.stop()
 launch_dashboard(port=3000)
 ```
 
+### Theme Configuration
+The dashboard now supports theme customization! Access theme settings via the dropdown menu:
+
+1. Theme Options
+
+- Light: ☀️ Light theme
+- Dark: 🌙 Dark theme for reduced eye strain
+- System: 💻 Default - automatically matches your system preferences
+
+2. Theme Persistence
+
+- Your theme preference is automatically saved in browser localStorage
+- Settings persist across browser sessions
+
 ### Viewing Data
 1. Open `http://localhost:3000`
 2. Navigate through different views:
