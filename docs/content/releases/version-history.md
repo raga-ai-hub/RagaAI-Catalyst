@@ -2,6 +2,11 @@
 
 ## Latest Release
 
+### 1.3.0 (Soon)
+### Major Features
+- Added support for dark theme in the dashboard.
+- Users can now switch between light and dark themes for a customized experience.
+
 ### 1.2.0 (Current)
 **Release Date:** October 28, 2024
 

@@ -178,3 +178,44 @@ def extract_llm_output(result):
         tool_call=parsed_tool_call,
     )
     return llm_data
+
+def extract_anthropic_output(result):
+    model_name = getattr(result, "model", None)
+    output_response = result.content[0].text if result.content else ""
+    arguments = {}
+    name = ""
+    for tool in getattr(result, "content", []):
+        if getattr(tool, "type", None) == "tool_use":
+            arguments = getattr(tool, "input", {})
+            name = getattr(tool, "name", "")
+    tool_calls={"arguments": arguments, "name": name}
+    
+
+    token_usage = {
+        "input_tokens": getattr(result.usage, "input_tokens", 0),
+        "output_tokens": getattr(result.usage, "output_tokens", 0),
+        "reasoning_tokens": getattr(result.usage, "reasoning_tokens", 0),
+    }
+
+    model_costs = load_model_costs()
+    model_config = model_costs.get(model_name, {})
+    input_cost_per_token = model_config.get("input_cost_per_token", 0.0)
+    output_cost_per_token = model_config.get("output_cost_per_token", 0.0)
+    reasoning_cost_per_token = model_config.get("reasoning_cost_per_token", 0.0)
+
+    cost = calculate_cost(
+        token_usage,
+        input_cost_per_token=input_cost_per_token,
+        output_cost_per_token=output_cost_per_token,
+        reasoning_cost_per_token=reasoning_cost_per_token,
+    )
+
+    return LLMCall(
+        name="",
+        model_name=model_name,
+        input_prompt="",  
+        output_response=output_response,
+        token_usage=token_usage,
+        cost=cost,
+        tool_call=tool_calls,
+    )
