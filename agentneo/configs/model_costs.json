@@ -1027,6 +1027,16 @@
         "mode": "completion"
 
     },
+    "models/gemini-1.5-flash-002": {
+        "max_tokens": 1000000,
+        "max_input_tokens": 1000000,
+        "max_output_tokens": 8000,
+        "input_cost_per_token": 0.0000001,
+        "output_cost_per_token": 0.0000001,
+        "litellm_provider": "google",
+        "mode": "chat"
+    },
+
     "claude-instant-1": {
         "max_tokens": 8191,
         "max_input_tokens": 100000,
