@@ -38,6 +38,39 @@ def process_data(data):
 result = process_data(raw_data)
 ```
 
+### Pinecone DB Tracing
+```python
+@tracer.trace_pinecone_upsert
+def upsert_data(data):
+    # Upsert data into Pinecone index
+    pass
+
+@tracer.trace_pinecone_create_query_vector
+def create_query_vector(query_text):
+    # Create a query vector for Pinecone
+    pass
+
+@tracer.trace_pinecone_similarity_search
+def similarity_search(query_vector):
+    # Perform a similarity search in Pinecone
+    pass
+
+# Usage
+data = [
+    {"id": "vec1", "text": "Example text 1"},
+    {"id": "vec2", "text": "Example text 2"},
+    # More data...
+]
+
+upsert_data(data)
+
+query_text = "Example query"
+query_vector = create_query_vector(query_text)
+
+results = similarity_search(query_vector)
+print(results)
+```
+
 ### Agent Tracing
 ```python
 @tracer.trace_agent("task_agent")
