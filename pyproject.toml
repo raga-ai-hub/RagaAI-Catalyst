@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentneo"
-version = "1.2.1"
+version = "1.2.2"
 description = "A powerful tracing library for monitoring and analyzing AI agents, LLM calls, and tool interactions."
 authors = [
     { name = "Rehan Asif", email = "rehan.asif@raga.ai" },
