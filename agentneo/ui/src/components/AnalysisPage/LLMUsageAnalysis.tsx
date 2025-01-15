@@ -5,12 +5,16 @@ import { Loader2 } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useProject } from '@/contexts/ProjectContext';
-import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
+import { fetchTraces, fetchAnalysisTrace, isWithinDateRange } from '@/utils/api';
 
 interface ColorConfig {
   gradient: string[];
   stroke: string;
   text: string;
+}
+interface LLMUsageAnalysis {
+  startDate?: Date;
+  endDate?: Date;
 }
 
 interface ColorConfigs {
@@ -77,7 +81,12 @@ interface Summary {
   totalCalls: number;
 }
 
-const LLMUsageAnalysis: React.FC = () => {
+interface ErrorAnalysisProps {
+  startDate?: Date;
+  endDate?: Date;
+}
+
+const ErrorAnalysis: React.FC<ErrorAnalysisProps> = ({ startDate, endDate }) => {
   const { selectedProject, selectedTraceId } = useProject();
   const [tokenData, setTokenData] = useState<any[]>([]);
   const [costData, setCostData] = useState<any[]>([]);
@@ -167,25 +176,27 @@ const LLMUsageAnalysis: React.FC = () => {
 
       if (selectedTraceId) {
         const traceData = await fetchAnalysisTrace(selectedTraceId);
-        
-        traceData.llm_calls.forEach((call: LLMCall) => {
-          const { tokens, cost } = processLLMCall(call, llmTokenUsage, llmCostUsage);
-          totalTokens += tokens;
-          totalCost += cost;
-          totalCalls++;
-        });
-      } else {
-        const traces = await fetchTraces(selectedProject);
-        
-        for (const trace of traces) {
-          const traceData = await fetchAnalysisTrace(trace.id);
-          
+        if (isWithinDateRange(traceData.start_time, startDate, endDate)) {
           traceData.llm_calls.forEach((call: LLMCall) => {
             const { tokens, cost } = processLLMCall(call, llmTokenUsage, llmCostUsage);
             totalTokens += tokens;
             totalCost += cost;
             totalCalls++;
           });
+        }
+      } else {
+        const traces = await fetchTraces(selectedProject);
+        
+        for (const trace of traces) {
+          const traceData = await fetchAnalysisTrace(trace.id);
+          if (isWithinDateRange(traceData.start_time, startDate, endDate)) {
+            traceData.llm_calls.forEach((call: LLMCall) => {
+              const { tokens, cost } = processLLMCall(call, llmTokenUsage, llmCostUsage);
+              totalTokens += tokens;
+              totalCost += cost;
+              totalCalls++;
+            });
+          }
         }
       }
 
@@ -220,7 +231,7 @@ const LLMUsageAnalysis: React.FC = () => {
     if (selectedProject) {
       fetchData();
     }
-  }, [selectedProject, selectedTraceId]);
+  }, [selectedProject, selectedTraceId, startDate, endDate]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -388,4 +399,5 @@ const LLMUsageAnalysis: React.FC = () => {
   );
 };
 
-export default LLMUsageAnalysis;
+export type { ErrorAnalysisProps };
+export default ErrorAnalysis;

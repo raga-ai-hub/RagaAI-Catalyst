@@ -78,3 +78,20 @@ export const fetchAnalysisTrace = async (traceId: string): Promise<any> => {
     if (!response.ok) throw new Error('Failed to fetch analysis trace');
     return response.json();
 };
+
+export const isWithinDateRange = (dateStr: string, startDate?: Date, endDate?: Date): boolean => {
+  if (!startDate && !endDate) return true;
+  if (!dateStr) return false;
+  
+  const itemDate = new Date(dateStr);
+  const startDateTime = startDate ? new Date(startDate) : null;
+  const endDateTime = endDate ? new Date(endDate) : null;
+
+  if (startDateTime) startDateTime.setHours(0, 0, 0, 0);
+  if (endDateTime) endDateTime.setHours(23, 59, 59, 999);
+
+  const isAfterStart = startDateTime ? itemDate >= startDateTime : true;
+  const isBeforeEnd = endDateTime ? itemDate <= endDateTime : true;
+
+  return isAfterStart && isBeforeEnd;
+};

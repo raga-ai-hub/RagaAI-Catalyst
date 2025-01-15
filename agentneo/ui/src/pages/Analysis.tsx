@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PerformanceMetrics from '../components/AnalysisPage/PerformanceMetrics';
 import LLMUsageAnalysis from '../components/AnalysisPage/LLMUsageAnalysis';
 import ToolPerformanceAnalysis from '../components/AnalysisPage/ToolPerformanceAnalysis';
-import ErrorAnalysis from '../components/AnalysisPage/ErrorAnalysis';
 import TimeAnalysis from '../components/AnalysisPage/TimeAnalysis';
+import ErrorAnalysisComponent from '../components/AnalysisPage/ErrorAnalysis';
 import TracePerformanceComparison from '../components/AnalysisPage/TracePerformanceComparison';
 import TopPerformanceCriteria from '../components/AnalysisPage/TopPerformanceCriteria';
 import Sidebar from '../components/Sidebar';
@@ -11,8 +11,20 @@ import { useSidebar } from '../contexts/SidebarContext';
 import { useProject } from '../contexts/ProjectContext';
 import { PieChart } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import DateTimePicker from '../components/DateTimePicker';
+import { DateRangeComponentProps } from '../types/common';
 
-const Analysis: React.FC = () => {
+interface DateRangeProps {
+  startDate?: Date;
+  endDate?: Date;
+}
+
+interface ComponentProps {
+  startDate?: Date;
+  endDate?: Date;
+}
+
+const ErrorAnalysis: React.FC = () => {
   const { isCollapsed } = useSidebar();
   const {
     selectedProject,
@@ -22,6 +34,8 @@ const Analysis: React.FC = () => {
     projects,
     traces
   } = useProject();
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
@@ -68,6 +82,14 @@ const Analysis: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <DateTimePicker
+                date={startDate}
+                setDate={setStartDate}
+              />
+              <DateTimePicker
+                date={endDate}
+                setDate={setEndDate}
+              />
             </div>
           </div>
         </div>
@@ -80,16 +102,16 @@ const Analysis: React.FC = () => {
                 <>
                   {/* Performance Metrics Section */}
                   <div className="w-full">
-                    <PerformanceMetrics />
+                    <PerformanceMetrics startDate={startDate} endDate={endDate} />
                   </div>
 
                   {/* LLM Usage and Tool Performance Grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="h-full">
-                      <LLMUsageAnalysis />
+                      <LLMUsageAnalysis startDate={startDate} endDate={endDate} />
                     </div>
                     <div className="h-full">
-                      <ToolPerformanceAnalysis />
+                      <ToolPerformanceAnalysis startDate={startDate} endDate={endDate} />
                     </div>
                   </div>
 
@@ -98,17 +120,18 @@ const Analysis: React.FC = () => {
                     <div className="h-full">
                       <ErrorAnalysis />
                     </div>
+                    
                     <div className="h-full">
-                      <TimeAnalysis />
+                      <TimeAnalysis startDate={startDate} endDate={endDate} />
                     </div>
                   </div>
 
                   {/* Full Width Sections */}
                   <div className="w-full">
-                    <TracePerformanceComparison />
+                    <TracePerformanceComparison startDate={startDate} endDate={endDate} />
                   </div>
                   <div className="w-full">
-                    <TopPerformanceCriteria />
+                    <TopPerformanceCriteria startDate={startDate} endDate={endDate} />
                   </div>
                 </>
               ) : (
@@ -126,4 +149,4 @@ const Analysis: React.FC = () => {
   );
 };
 
-export default Analysis;
+export default ErrorAnalysis;

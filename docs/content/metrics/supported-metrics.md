@@ -51,6 +51,18 @@ metadata = {
 
 ### 4. Tool Call Success Rate
 Measures the reliability of tool executions.
+# Supported Metrics
+
+## Core Metrics
+
+### 5. Learning Adaptability Rate
+Evaluates how well an agent adapts to changes in tools and workflows.
+
+**Description:**
+The Learning Adaptability Rate metric measures the agent's ability to adjust its strategies and tool usage in response to changes in its environment or task requirements. A high score indicates that the agent can effectively adapt to new tools or workflows, maintaining consistent performance.
+
+
+
 
 ```python
 exe.evaluate(metric_list=['tool_call_success_rate'])
@@ -64,6 +76,7 @@ exe.evaluate(
         'goal_decomposition_efficiency',
         'goal_fulfillment_rate',
         'tool_call_correctness_rate',
+        'learning_adaptability_rate'
         'tool_call_success_rate'
     ]
 )

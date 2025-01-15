@@ -28,7 +28,12 @@ interface Trace {
   }>;
 }
 
-const ToolPerformanceAnalysis: React.FC = () => {
+interface ToolPerformanceAnalysisProps {
+  startDate?: Date;
+  endDate?: Date;
+}
+
+const ToolPerformanceAnalysis: React.FC<ToolPerformanceAnalysisProps> = ({ startDate, endDate }) => {
   const { selectedProject, selectedTraceId } = useProject();
   const [toolData, setToolData] = useState<ToolMetrics[]>([]);
   const [summary, setSummary] = useState<Summary>({ totalToolCalls: 0, totalNetworkCalls: 0 });
@@ -67,6 +72,19 @@ const ToolPerformanceAnalysis: React.FC = () => {
     return value.toFixed(3);
   };
 
+  const isWithinDateRange = (date: string) => {
+    if (!startDate && !endDate) return true;
+    
+    const itemDate = new Date(date);
+    const startOfDay = startDate ? new Date(startDate.setHours(0, 0, 0, 0)) : null;
+    const endOfDay = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null;
+
+    const isAfterStart = startOfDay ? itemDate >= startOfDay : true;
+    const isBeforeEnd = endOfDay ? itemDate <= endOfDay : true;
+
+    return isAfterStart && isBeforeEnd;
+  };
+
   const fetchData = async () => {
     if (!selectedProject) return;
 
@@ -80,28 +98,7 @@ const ToolPerformanceAnalysis: React.FC = () => {
 
       if (selectedTraceId) {
         const traceData = await fetchAnalysisTrace(selectedTraceId);
-
-        for (const toolCall of traceData.tool_calls) {
-          if (!toolMetrics[toolCall.name]) {
-            toolMetrics[toolCall.name] = {
-              name: toolCall.name,
-              avgResponseTime: 0,
-              count: 0,
-            };
-          }
-
-          toolMetrics[toolCall.name].avgResponseTime += toolCall.duration;
-          toolMetrics[toolCall.name].count += 1;
-          totalToolCalls += 1;
-          // Fix: Count the length of network_calls array
-          totalNetworkCalls += toolCall.network_calls?.length || 0;
-        }
-      } else {
-        const traces = await fetchTraces(selectedProject);
-        
-        for (const trace of traces) {
-          const traceData = await fetchAnalysisTrace(trace.id);
-
+        if (isWithinDateRange(traceData.start_time)) {
           for (const toolCall of traceData.tool_calls) {
             if (!toolMetrics[toolCall.name]) {
               toolMetrics[toolCall.name] = {
@@ -116,6 +113,29 @@ const ToolPerformanceAnalysis: React.FC = () => {
             totalToolCalls += 1;
             // Fix: Count the length of network_calls array
             totalNetworkCalls += toolCall.network_calls?.length || 0;
+          }
+        }
+      } else {
+        const traces = await fetchTraces(selectedProject);
+        
+        for (const trace of traces) {
+          const traceData = await fetchAnalysisTrace(trace.id);
+          if (isWithinDateRange(traceData.start_time)) {
+            for (const toolCall of traceData.tool_calls) {
+              if (!toolMetrics[toolCall.name]) {
+                toolMetrics[toolCall.name] = {
+                  name: toolCall.name,
+                  avgResponseTime: 0,
+                  count: 0,
+                };
+              }
+
+              toolMetrics[toolCall.name].avgResponseTime += toolCall.duration;
+              toolMetrics[toolCall.name].count += 1;
+              totalToolCalls += 1;
+              // Fix: Count the length of network_calls array
+              totalNetworkCalls += toolCall.network_calls?.length || 0;
+            }
           }
         }
       }

@@ -37,7 +37,10 @@ interface CostObject {
   output: number;
   reasoning: number;
 }
-
+interface PerformanceMetricsProps {
+  startDate?: Date;
+  endDate?: Date;
+}
 interface MetricsData {
   current: {
     successRate: number;
@@ -53,7 +56,7 @@ interface MetricsData {
   };
 }
 
-const PerformanceMetrics: React.FC = () => {
+const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ startDate, endDate }) => {
   const { selectedProject, selectedTraceId } = useProject();
   const [metrics, setMetrics] = useState<MetricsData>({
     current: {

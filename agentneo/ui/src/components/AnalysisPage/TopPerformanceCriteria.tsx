@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, CheckCircle2, DollarSign, Cpu } from 'lucide-react';
+import { DateRangeComponentProps } from '@/types/common';
 
 interface CriteriaItem {
   icon: React.ReactNode;
@@ -41,13 +42,11 @@ const criteria: CriteriaItem[] = [
   }
 ];
 
-const TopPerformanceCriteria: React.FC = () => {
+const TopPerformanceCriteria: React.FC<DateRangeComponentProps> = ({ startDate, endDate }) => {
   return (
     <Card className="shadow-lg">
-      <CardHeader className="border-b">
-        <CardTitle className="text-2xl font-bold text-gray-800">
-          Top Performance Criteria
-        </CardTitle>
+      <CardHeader>
+        <CardTitle>Top Performance Criteria</CardTitle>
       </CardHeader>
       <CardContent className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
