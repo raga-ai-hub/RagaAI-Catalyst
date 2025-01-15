@@ -15,7 +15,6 @@ import { useProject } from '@/contexts/ProjectContext';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
-import { DateRangeComponentProps } from '@/types/common';
 
 interface TraceData {
   id: string;
@@ -95,7 +94,7 @@ const METRICS = [
   }
 ];
 
-const TracePerformanceComparison: React.FC<DateRangeComponentProps> = ({ startDate, endDate }) => {
+const TracePerformanceComparison: React.FC = () => {
   const { selectedProject } = useProject();
   const [traces, setTraces] = useState<TraceData[]>([]);
   const [selectedTraces, setSelectedTraces] = useState<string[]>([]);

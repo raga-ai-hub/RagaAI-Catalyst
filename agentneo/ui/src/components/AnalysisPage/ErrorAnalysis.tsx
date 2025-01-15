@@ -3,31 +3,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
-import { fetchTraces, fetchAnalysisTrace, isWithinDateRange } from '@/utils/api';
+import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
 
 interface ErrorData {
   error_type: string;
   count: number;
 }
-interface ErrorAnalysis {
-  startDate?: Date;
-  endDate?: Date;
-}
-
 
 const ERROR_COLORS = {
   gradient: ['#ef4444', '#f87171'],
   stroke: '#dc2626'
 };
 
-const Analysis: React.FC = () => {
+const ErrorAnalysis: React.FC = () => {
   const { selectedProject, selectedTraceId } = useProject();
   const [errorData, setErrorData] = useState<ErrorData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  
+
   const fetchData = async () => {
     if (!selectedProject) return;
 
@@ -39,27 +32,25 @@ const Analysis: React.FC = () => {
 
       if (selectedTraceId) {
         const traceData = await fetchAnalysisTrace(selectedTraceId);
-        if (isWithinDateRange(traceData.start_time, startDate, endDate)) {
+
+        traceData.errors.forEach((error: any) => {
+          if (!errorCounts[error.error_type]) {
+            errorCounts[error.error_type] = 0;
+          }
+          errorCounts[error.error_type]++;
+        });
+      } else {
+        const traces = await fetchTraces(selectedProject);
+
+        for (const trace of traces) {
+          const traceData = await fetchAnalysisTrace(trace.id);
+
           traceData.errors.forEach((error: any) => {
             if (!errorCounts[error.error_type]) {
               errorCounts[error.error_type] = 0;
             }
             errorCounts[error.error_type]++;
           });
-        }
-      } else {
-        const traces = await fetchTraces(selectedProject);
-
-        for (const trace of traces) {
-          const traceData = await fetchAnalysisTrace(trace.id);
-          if (isWithinDateRange(traceData.start_time, startDate, endDate)) {
-            traceData.errors.forEach((error: any) => {
-              if (!errorCounts[error.error_type]) {
-                errorCounts[error.error_type] = 0;
-              }
-              errorCounts[error.error_type]++;
-            });
-          }
         }
       }
 
@@ -190,4 +181,4 @@ const Analysis: React.FC = () => {
   );
 };
 
-export default Analysis;
+export default ErrorAnalysis;

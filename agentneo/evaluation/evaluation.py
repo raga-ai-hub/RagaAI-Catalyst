@@ -20,7 +20,6 @@ from .metrics import (
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
-    execute_learning_adaptability_rate_metric,
 )
 
 from datetime import datetime
@@ -69,11 +68,6 @@ class Evaluation:
             )
         elif metric == 'tool_call_success_rate':
             return execute_tool_call_success_rate(
-                trace_json=self.trace_data,
-                config=config,
-            )
-        elif metric=='learning_adaptability_rate':
-            return execute_learning_adaptability_rate_metric(
                 trace_json=self.trace_data,
                 config=config,
             )

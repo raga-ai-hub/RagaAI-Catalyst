@@ -11,10 +11,6 @@ interface TimeData {
   duration: string;
   percentage: string;
 }
-interface TimeAnalysis {
-  startDate?: Date;
-  endDate?: Date;
-}
 
 interface ColorConfig {
   gradient: string[];
@@ -39,12 +35,7 @@ const COLORS: ColorConfigs = {
   }
 };
 
-interface TimeAnalysisProps {
-  startDate?: Date;
-  endDate?: Date;
-}
-
-const TimeAnalysis: React.FC<TimeAnalysisProps> = ({ startDate, endDate }) => {
+const TimeAnalysis: React.FC = () => {
   const { selectedProject, selectedTraceId } = useProject();
   const [timeData, setTimeData] = useState<TimeData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -194,7 +185,6 @@ const TimeAnalysis: React.FC<TimeAnalysisProps> = ({ startDate, endDate }) => {
     </Card>
   );
 };
-
 
 interface CustomizedContentProps {
   root?: any;
