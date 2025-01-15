@@ -22,24 +22,6 @@ class LLMTracerMixin:
         # Use wrapt to register post-import hooks
         wrapt.register_post_import_hook(self.patch_openai_methods, "openai")
         wrapt.register_post_import_hook(self.patch_litellm_methods, "litellm")
-        wrapt.register_post_import_hook(self.patch_google_methods, "google.generativeai")  
-
-
-    def patch_google_methods(self, module):
-
-        if hasattr(module, "GenerativeModel"):
-            self.wrap_google_client_methods(module.GenerativeModel)
-
-    def wrap_google_client_methods(self, generative_model_class):
-        original_generate_content = generative_model_class.generate_content
-
-        @functools.wraps(original_generate_content)
-        def patched_generate_content(self, *args, **kwargs):
-            print("Google GenAI: Calling generate_content")
-            # Call the original 'generate_content' method
-            return original_generate_content(self, *args, **kwargs)
-
-        setattr(generative_model_class, "generate_content", patched_generate_content)
         wrapt.register_post_import_hook(self.patch_groq_methods, "groq")
 
     def patch_groq_methods(self, module):
@@ -95,12 +77,7 @@ class LLMTracerMixin:
                 self.wrap_method(client_self.chat.completions, "acreate")
 
         setattr(client_class, "__init__", patched_init)
-    
-    def patch_google_llm_methods(self, module):
-        # Wrap methods in google_llm
-        self.wrap_method(module, "generate_text")  
-        self.wrap_method(module, "async_generate")  
-    
+
     def patch_litellm_methods(self, module):
         # Wrap methods in litellm
         self.wrap_method(module, "completion")
