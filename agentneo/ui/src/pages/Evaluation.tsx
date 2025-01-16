@@ -34,6 +34,9 @@ const metricNames = [
   'goal_fulfillment_rate',
   'tool_call_correctness_rate',
   'tool_call_success_rate',
+  'context_retention_rate',
+  'response_latency',
+  'error_detection_rate',
   'custom_evaluation_metric'
 ];
 
@@ -94,6 +97,9 @@ const Evaluation: React.FC = () => {
                 goal_fulfillment_rate: null,
                 tool_call_correctness_rate: null,
                 tool_call_success_rate: null,
+                context_retention_rate: null,
+                response_latency: null,
+                error_detection_rate: null,
                 custom_evaluation_metric: null
               };
 
@@ -216,44 +222,19 @@ const Evaluation: React.FC = () => {
     setSortConfig({ key, direction })
   }
 
-  const metricsData = useMemo(() => {
-    return metricNames.map(metric => {
-      const metricKey = metric.toLowerCase().replace(/ /g, '_')
-      let scores
-
-      if (selectedTraceId === 'all') {
-        // Calculate metrics across all traces
-        scores = filteredData
-          .filter(item => item[metricKey])
-          .map(item => item[metricKey].score || 0)
-      } else {
-        // Calculate metrics for selected trace only
-        scores = filteredData
-          .filter(
-            item =>
-              item.trace_id.toString() === selectedTraceId && item[metricKey]
-          )
-          .map(item => item[metricKey].score || 0)
-      }
-
-      // If no scores available, return zeros
-      if (scores.length === 0) {
-        return {
-          name: metric,
-          min: 0,
-          max: 0,
-          avg: 0
-        }
-      }
-
-      return {
-        name: metric,
-        min: Math.min(...scores),
-        max: Math.max(...scores),
-        avg: scores.reduce((a, b) => a + b, 0) / scores.length
-      }
-    })
-  }, [filteredData, selectedTraceId])
+  const chartData = useMemo(() => {
+    return filteredData.map(item => ({
+      trace_id: item.trace_id,
+      goal_decomposition_efficiency: item.goal_decomposition_efficiency?.score || 0,
+      goal_fulfillment_rate: item.goal_fulfillment_rate?.score || 0,
+      tool_call_correctness_rate: item.tool_call_correctness_rate?.score || 0,
+      tool_call_success_rate: item.tool_call_success_rate?.score || 0,
+      context_retention_rate: item.context_retention_rate?.score || 0,
+      response_latency: item.response_latency?.score || 0,
+      error_detection_rate: item.error_detection_rate?.score || 0,
+      custom_evaluation_metric: item.custom_evaluation_metric?.score || 0
+    }))
+  }, [filteredData])
 
   const handleTraceSelect = async (traceId: string) => {
     setSelectedTraceId(traceId)
@@ -359,82 +340,38 @@ const Evaluation: React.FC = () => {
                 >
                   <CardHeader>
                     <CardTitle style={{ color: themeStyles.text }}>
-                      Metrics Distribution
+                      Evaluation Metrics Over Time
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className='h-[400px]'>
-                    <ResponsiveContainer width='100%' height='100%'>
-                      <LineChart
-                        data={metricsData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid
-                          strokeDasharray='3 3'
-                          stroke={themeStyles.chart.grid}
-                        />
-                        <XAxis
-                          dataKey='name'
-                          interval={0}
-                          tick={({ x, y, payload, index }) => {
-                            const totalLabels = metricsData.length
-                            let textAnchor: 'start' | 'middle' | 'end'
-                            let xOffset: number
-
-                            if (index === 0) {
-                              textAnchor = 'start'
-                              xOffset = 0
-                            } else if (index === totalLabels - 1) {
-                              textAnchor = 'end'
-                              xOffset = 0
-                            } else {
-                              textAnchor = 'middle'
-                              xOffset = 0
-                            }
-
-                            return (
-                              <g transform={`translate(${x},${y})`}>
-                                <text
-                                  x={xOffset}
-                                  y={0}
-                                  dy={16}
-                                  textAnchor={textAnchor}
-                                  fill={themeStyles.muted}
-                                  style={{ fontSize: '12px' }}
-                                >
-                                  {payload.value}
-                                </text>
-                              </g>
-                            )
-                          }}
-                          height={60}
-                          stroke={themeStyles.muted}
-                        />
-                        <YAxis stroke={themeStyles.muted} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: themeStyles.background,
-                            border: `1px solid ${themeStyles.border}`,
-                            color: themeStyles.text
-                          }}
-                        />
-                        <Legend />
-                        <Line
-                          type='monotone'
-                          dataKey='min'
-                          stroke={themeStyles.chart.line1}
-                        />
-                        <Line
-                          type='monotone'
-                          dataKey='max'
-                          stroke={themeStyles.chart.line2}
-                        />
-                        <Line
-                          type='monotone'
-                          dataKey='avg'
-                          stroke={themeStyles.chart.line3}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <CardContent>
+                    <div style={{ width: '100%', height: 400 }}>
+                      <ResponsiveContainer>
+                        <LineChart data={chartData}>
+                          <CartesianGrid
+                            strokeDasharray='3 3'
+                            stroke={themeStyles.chart.grid}
+                          />
+                          <XAxis dataKey='trace_id' stroke={themeStyles.text} />
+                          <YAxis stroke={themeStyles.text} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: themeStyles.background,
+                              borderColor: themeStyles.border
+                            }}
+                          />
+                          <Legend />
+                          {metricNames.map((metric, index) => (
+                            <Line
+                              key={metric}
+                              type='monotone'
+                              dataKey={metric}
+                              stroke={`hsl(${(index * 360) / metricNames.length}, 70%, 50%)`}
+                              dot={false}
+                            />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </CardContent>
                 </Card>
 
