@@ -18,12 +18,12 @@ from .metrics import (
     execute_tool_call_correctness_rate,
     execute_tool_call_success_rate,
     execute_custom_evaluation_metric,
+    execute_response_latency_metric,
+    execute_error_detection_rate_metric,
+    execute_context_retention_metric,
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
-    execute_response_latency_metric,
-    execute_error_detection_rate_metric,
-    execute_context_retention_metric
 )
 
 from datetime import datetime
@@ -84,10 +84,12 @@ class Evaluation:
             return execute_response_latency_metric(
                 trace_json=self.trace_data,
                 config=config,
+            )
         elif metric == 'error_detection_rate':
             return execute_error_detection_rate_metric(
                 trace_json=self.trace_data,
                 config=config
+            )
         elif metric == "custom_evaluation_metric":
             return execute_custom_evaluation_metric(
                 trace_json=self.trace_data,
@@ -245,3 +247,15 @@ class Evaluation:
         elif isinstance(field, (list, dict)):
             return field
         return field
+
+    def get_supported_metrics(self):
+        return [
+            'goal_decomposition_efficiency',
+            'goal_fulfillment_rate',
+            'tool_call_correctness_rate',
+            'tool_call_success_rate',
+            'context_retention_rate',
+            'response_latency',
+            'error_detection_rate',
+            'custom_evaluation_metric'
+        ]
