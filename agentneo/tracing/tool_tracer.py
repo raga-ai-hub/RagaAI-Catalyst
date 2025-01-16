@@ -180,7 +180,187 @@ class ToolTracerMixin:
         serialized_args = {f"arg_{i}": _serialize(arg) for i, arg in enumerate(args)}
         serialized_kwargs = {k: _serialize(v) for k, v in kwargs.items()}
         return {**serialized_args, **serialized_kwargs}
+        
+    def _serialize_result(self, result):
+        """
+        Helper method to serialize function result for tracing.
+        """
+        try:
+            return self._safe_serialize(result)
+        except Exception:
+            return str(result)
 
+    def _safe_serialize(self, obj):
+        """
+        Safely serialize an object to JSON-serializable format.
+        """
+        if isinstance(obj, (dict, list, tuple, str, int, float, bool, type(None))):
+            return obj
+        else:
+            return str(obj)
+
+    # Decorators for tracing Pinecone operations
+    def trace_pinecone_upsert(self, func):
+        """
+        Decorator to trace Pinecone upsert operations, capturing database interactions,
+        query results, and performance metrics.
+        """
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = datetime.now()
+            start_memory = psutil.Process().memory_info().rss
+            agent_id = self.current_agent_id.get()
+
+            self.network_tracer.activate_patches()
+
+            try:
+                result = func(*args, **kwargs)
+
+                end_time = datetime.now()
+                end_memory = psutil.Process().memory_info().rss
+
+                memory_used = end_memory - start_memory
+
+                serialized_params = self._serialize_params(args, kwargs)
+                serialized_output = self._serialize_result(result)
+
+                tool_call = ToolCallModel(
+                    project_id=self.project_id,
+                    trace_id=self.trace_id,
+                    agent_id=agent_id,
+                    name="Pinecone Upsert",
+                    input_parameters=json.dumps(serialized_params),
+                    output=json.dumps(serialized_output),
+                    start_time=start_time,
+                    end_time=end_time,
+                    duration=(end_time - start_time).total_seconds(),
+                    memory_used=memory_used,
+                    network_calls=self.network_tracer.network_calls,
+                )
+
+                with self.Session() as session:
+                    session.add(tool_call)
+                    session.commit()
+
+                return result
+            except Exception as e:
+                self._log_error(e, "Pinecone Upsert", func.__name__)
+                raise
+            finally:
+                self.network_tracer.deactivate_patches()
+
+        return wrapper
+
+    def trace_pinecone_create_query_vector(self, func):
+        """
+        Decorator to trace the creation of query vectors for Pinecone.
+        """
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = datetime.now()
+            start_memory = psutil.Process().memory_info().rss
+            agent_id = self.current_agent_id.get()
+
+            self.network_tracer.activate_patches()
+
+            try:
+                result = func(*args, **kwargs)
+
+                end_time = datetime.now()
+                end_memory = psutil.Process().memory_info().rss
+
+                memory_used = end_memory - start_memory
+
+                serialized_params = self._serialize_params(args, kwargs)
+                serialized_output = self._serialize_result(result)
+
+                tool_call = ToolCallModel(
+                    project_id=self.project_id,
+                    trace_id=self.trace_id,
+                    agent_id=agent_id,
+                    name="Pinecone Create Query Vector",
+                    input_parameters=json.dumps(serialized_params),
+                    output=json.dumps(serialized_output),
+                    start_time=start_time,
+                    end_time=end_time,
+                    duration=(end_time - start_time).total_seconds(),
+                    memory_used=memory_used,
+                    network_calls=self.network_tracer.network_calls,
+                )
+
+                with self.Session() as session:
+                    session.add(tool_call)
+                    session.commit()
+
+                return result
+            except Exception as e:
+                self._log_error(e, "Pinecone Create Query Vector", func.__name__)
+                raise
+            finally:
+                self.network_tracer.deactivate_patches()
+
+        return wrapper
+
+    def trace_pinecone_similarity_search(self, func):
+        """
+        Decorator to trace Pinecone similarity search operations, capturing database interactions,
+        query results, and performance metrics.
+        """
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = datetime.now()
+            start_memory = psutil.Process().memory_info().rss
+            agent_id = self.current_agent_id.get()
+
+            self.network_tracer.activate_patches()
+
+            try:
+                result = func(*args, **kwargs)
+
+                end_time = datetime.now()
+                end_memory = psutil.Process().memory_info().rss
+
+                memory_used = end_memory - start_memory
+
+                serialized_params = self._serialize_params(args, kwargs)
+                serialized_output = self._serialize_result(result)
+
+                tool_call = ToolCallModel(
+                    project_id=self.project_id,
+                    trace_id=self.trace_id,
+                    agent_id=agent_id,
+                    name="Pinecone Similarity Search",
+                    input_parameters=json.dumps(serialized_params),
+                    output=json.dumps(serialized_output),
+                    start_time=start_time,
+                    end_time=end_time,
+                    duration=(end_time - start_time).total_seconds(),
+                    memory_used=memory_used,
+                    network_calls=self.network_tracer.network_calls,
+                )
+
+                with self.Session() as session:
+                    session.add(tool_call)
+                    session.commit()
+
+                return result
+            except Exception as e:
+                self._log_error(e, "Pinecone Similarity Search", func.__name__)
+                raise
+            finally:
+                self.network_tracer.deactivate_patches()
+
+        return wrapper
+
+    def _log_error(self, exception, component_name, operation_name):
+        """
+        Helper method to log errors during tracing.
+        """
+        # Implement your logging logic here
+        print(f"Error in {component_name} '{operation_name}': {exception}")
+        
+        
+        
     def wrap_langchain_tool(self, tool_input, tool_name=None, **tool_kwargs):
         try:
             from langchain.tools import Tool as LangChainTool

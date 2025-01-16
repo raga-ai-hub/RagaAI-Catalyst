@@ -77,9 +77,29 @@ export default {
       },
       spacing: {
         'sidebar-expanded': '16rem',
-        'sidebar-collapsed': '6rem', // Increased from 5rem to 6rem
+        'sidebar-collapsed': '6rem',
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function({ addBase }) {
+      addBase({
+        ':root': {
+          '--input-background': 'hsl(var(--background))',
+          '--input-text': 'hsl(var(--foreground))',
+        },
+        'input:not([type="submit"]):not([type="button"]):not([type="radio"]):not([type="checkbox"]), textarea, select': {
+          backgroundColor: 'hsl(var(--background))',
+          color: 'hsl(var(--foreground))',
+          borderColor: 'hsl(var(--input))',
+        },
+        'input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, textarea:-webkit-autofill, textarea:-webkit-autofill:hover, textarea:-webkit-autofill:focus, select:-webkit-autofill, select:-webkit-autofill:hover, select:-webkit-autofill:focus': {
+          '-webkit-text-fill-color': 'hsl(var(--foreground))',
+          '-webkit-box-shadow': '0 0 0px 1000px hsl(var(--background)) inset',
+          'transition': 'background-color 5000s ease-in-out 0s',
+        },
+      });
+    },
+  ],
 } satisfies Config;

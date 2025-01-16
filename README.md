@@ -135,6 +135,8 @@ Manage multiple projects with ease.
 3. Tool Call Correctness Rate (tool_call_correctness_rate)
 4. Tool Call Success Rate (tool_call_success_rate)
 5. Response Latency (response_latency)
+6. Error Detection Rate (error_detection_rate)
+7. Context Retention Rate (context_retention_rate)
 
 - **Run multiple metrics together**
 ```python
