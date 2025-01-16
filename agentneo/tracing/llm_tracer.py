@@ -10,6 +10,12 @@ from .user_interaction_tracer import UserInteractionTracer
 from ..utils.trace_utils import calculate_cost, load_model_costs, convert_usage_to_dict
 from ..utils.llm_utils import extract_llm_output, extract_anthropic_output
 from ..data import LLMCallModel
+from ..utils.llm_guard import (
+    create_input_scanners,
+    create_output_scanners,
+    scan_prompt_content,
+    scan_output_content,
+)
 
 
 class LLMTracerMixin:
@@ -17,6 +23,16 @@ class LLMTracerMixin:
         super().__init__(*args, **kwargs)
         self.patches = []
         self.model_costs = load_model_costs()
+        self.input_scanners = {}
+        self.output_scanners = {}
+        self.use_guard = False
+    
+    def setup_guard(self,config = None, use_guard = False):
+        """Initialize guard scanners with configuration"""
+        if use_guard:
+            self.use_guard = True
+            self.input_scanners = create_input_scanners(config)
+            self.output_scanners = create_output_scanners(config)
 
     def instrument_llm_calls(self):
         # Use wrapt to register post-import hooks
@@ -89,7 +105,33 @@ class LLMTracerMixin:
         llm_call_name = self.current_llm_call_name.get() or original_func.__name__
 
         try:
+            prompt = self._extract_input(args, kwargs)
+            
+            try:
+                unscanned_prompt = self._extract_input_from_messages(prompt)
+
+                if self.use_guard and self.input_scanners:
+                        scanned_prompt = scan_prompt_content(
+                            self.input_scanners, unscanned_prompt
+                        )
+                        prompt[0]['content'] = scanned_prompt
+                        kwargs = self._update_prompt_in_kwargs(kwargs, scanned_prompt)
+            except Exception as e:
+                print(f"Error during input scanning: {str(e)}")
+
             result = original_func(*args, **kwargs)
+
+            if self.use_guard and self.output_scanners:
+                try:
+                    output_text = self._extract_output_text(result)
+                    sanitized_output = scan_output_content(
+                        self.output_scanners,
+                        scanned_prompt,
+                        output_text
+                    )
+                    result = self._update_result_output(result, sanitized_output)
+                except Exception as e:
+                    print(f"Error during output scanning: {str(e)}")
 
             end_time = datetime.now()
             end_memory = psutil.Process().memory_info().rss
@@ -110,7 +152,7 @@ class LLMTracerMixin:
                 result,
                 llm_call_name,
                 model,
-                self._extract_input(sanitized_args, sanitized_kwargs),
+                prompt,
                 start_time,
                 end_time,
                 memory_used,
@@ -224,6 +266,32 @@ class LLMTracerMixin:
             return kwargs["messages"]
         else:
             return args[0] if args else ""
+
+    def _extract_input_from_messages(self, messages):
+        user_messages = [msg["content"] for msg in messages if msg["role"] == "user"]
+        return " ".join(user_messages)
+    
+    def _update_prompt(self, prompt, scanned_prompt):
+        pass
+
+    def _extract_output_text(self, result):
+        if hasattr(result, 'choices') and result.choices:
+            return result.choices[0].message.content
+        return str(result)
+
+    def _update_result_output(self, result, sanitized_output):
+        if hasattr(result, 'choices') and result.choices:
+            result.choices[0].message.content = sanitized_output
+        return result
+
+    def _update_prompt_in_kwargs(self, kwargs, sanitized_prompt):
+        if 'messages' in kwargs:
+            for msg in kwargs['messages']:
+                if msg['role'] == 'user':
+                    msg['content'] = sanitized_prompt
+        elif 'prompt' in kwargs:
+            kwargs['prompt'] = sanitized_prompt
+        return kwargs
 
     def _sanitize_api_keys(self, data):
         # Implement sanitization logic to remove API keys from data
