@@ -89,25 +89,27 @@ class LLMTracerMixin:
         try:
             prompt = self._extract_input(args, kwargs)
 
-            # If guard is enabled, scan the prompt 
             if self.use_guard and self.input_scanners:
                     scanned_prompt = scan_prompt_content(
                         self.input_scanners, prompt
                     )
+                    prompt= scanned_prompt
                     kwargs = self._update_prompt_in_kwargs(kwargs, scanned_prompt)
 
 
             result = original_func(*args, **kwargs)
 
-            # If guard is enabled, scan the output
             if self.use_guard and self.output_scanners:
-                output_text = self._extract_output_text(result)
-                sanitized_output = scan_output_content(
-                    self.output_scanners, 
-                    scanned_prompt,
-                    output_text
-                )
-                result = self._update_result_output(result, sanitized_output)
+                try:
+                    output_text = self._extract_output_text(result)
+                    sanitized_output = scan_output_content(
+                        self.output_scanners,
+                        scanned_prompt,
+                        output_text
+                    )
+                    result = self._update_result_output(result, sanitized_output)
+                except Exception as e:
+                    print(f"Error during output scanning: {str(e)}")
 
             end_time = datetime.now()
             end_memory = psutil.Process().memory_info().rss

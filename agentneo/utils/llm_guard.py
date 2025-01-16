@@ -36,7 +36,15 @@ def create_input_scanners(scanner_configs: Dict[str, Dict[str, Any]]) -> List[An
     }
 
     scanners = []
-    if "input_scanners" not in scanner_configs:
+    if  scanner_configs is None or "input_scanners" not in scanner_configs:
+        default_scanners = ["Anonymize", "Secrets","PromptInjection"]
+        for scanner_name in default_scanners:
+            try:
+                scanner = scanner_map[scanner_name]({})
+                if scanner is not None:
+                    scanners.append(scanner)
+            except Exception as e:
+                raise ValueError(f"Failed to create default scanner {scanner_name}: {str(e)}")
         return scanners
     for scanner_name, config in scanner_configs["input_scanners"].items():
         if scanner_name in scanner_map:
@@ -57,7 +65,7 @@ def create_output_scanners(scanner_configs: Dict[str, Dict[str, Any]]) -> List[A
     }
 
     scanners = []
-    if "output_scanners" not in scanner_configs:
+    if scanner_configs is None or "output_scanners" not in scanner_configs:
         return scanners
     for scanner_name, config in scanner_configs["output_scanners"].items():
         if scanner_name in scanner_map:
