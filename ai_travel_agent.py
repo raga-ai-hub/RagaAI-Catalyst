@@ -15,7 +15,7 @@ from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard
 
 neo_session = AgentNeo(session_name="ai_travel_agent_session22")
 
-project_name = "ai_travel_agent_demo22"
+project_name = "ai_travel_agent_demo"
 
 try:
     neo_session.create_project(project_name=project_name)
@@ -211,7 +211,10 @@ if __name__ == "__main__":
     exe.evaluate(metric_list=['goal_decomposition_efficiency', 
                          'goal_fulfillment_rate', 
                          'tool_call_correctness_rate', 
-                         'tool_call_success_rate'])
+                         'tool_call_success_rate'],
+                         max_workers=2,
+                         max_evaluations_per_thread=2
+                         )
     # print the performance result
     # metric_results = exe.get_results()
     # print(metric_results)

@@ -25,6 +25,8 @@ exe.evaluate(
     metric_list=['metric_name'],
     config=config,
     metadata=metadata
+    max_workers = 4,
+    max_evaluations_per_thread=2
 )
 ```
 

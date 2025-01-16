@@ -18,7 +18,7 @@ from agentneo import Evaluation
 exe = Evaluation(session=neo_session, trace_id=tracer.trace_id)
 
 # Run evaluation
-exe.evaluate(metric_list=['goal_decomposition_efficiency'])
+exe.evaluate(metric_list=['goal_decomposition_efficiency'], max_workers = 4 ,max_evaluations_per_thread=2 )
 
 # Get results
 results = exe.get_results()
