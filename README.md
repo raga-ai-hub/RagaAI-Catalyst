@@ -23,7 +23,6 @@ Whether you're a seasoned AI developer or just starting out, AgentNeo offers rob
 - **Project Management**: Manage multiple projects seamlessly within the framework.
 - **Execution Graph Visualization**: Gain insights into your application's flow with detailed execution graphs.
 - **Evaluation Tools**: Assess and improve your AI agent's performance with built-in evaluation tools.
-- **Dashboard Chat Assistant**: Inquire about any project or task to receive precise information.
 
 ## 🛠 Requirements
 
@@ -181,13 +180,9 @@ The AgentNeo dashboard offers a comprehensive view of your AI application's perf
 - **Tool and Agent Interaction Metrics**
 - **Execution Graph Visualization**
 - **Timeline of Events**
-- **Assistant for Answering Queries**
 
 
 ![AgentNeo Analysis](docs/assets/analytics.png)
-
-
-![AgentNeo Dashboard Chat Assistant](docs/assets/Assistant.png)
 
 
 ### Launching the Dashboard
