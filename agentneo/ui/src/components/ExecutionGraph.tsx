@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react'
 import ReactFlow, {
   Background,
   Controls,
@@ -7,101 +7,112 @@ import ReactFlow, {
   useEdgesState,
   Panel,
   Node,
-  Edge,
-} from 'reactflow';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
-import { fetchTraceDetails } from '../utils/api';
-import 'reactflow/dist/style.css';
-import '../styles/ExecutionGraph.css';
-import { CustomNode, nodeTypes, nodeStylesByType } from './ExecutionGraphNodes';
-import { Legend } from './ExecutionGraphLegend';
-import { getLayoutedElements } from './ExecutionGraphLayout';
-import { useProject } from '../contexts/ProjectContext';
+  Edge
+} from 'reactflow'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Search, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
+import { fetchTraceDetails } from '../utils/api'
+import 'reactflow/dist/style.css'
+import '../styles/ExecutionGraph.css'
+import { CustomNode, nodeTypes, nodeStylesByType } from './ExecutionGraphNodes'
+import { Legend } from './ExecutionGraphLegend'
+import { getLayoutedElements } from './ExecutionGraphLayout'
+import { useProject } from '../contexts/ProjectContext'
+import { useTheme } from '@/theme/ThemeProvider'
 
 interface GraphData {
-  nodes: Node[];
-  edges: Edge[];
+  nodes: Node[]
+  edges: Edge[]
 }
 
 const calculateTotalCounts = (traceData: any) => {
-  let llmCount = traceData.llm_calls?.length || 0;
-  let toolCount = traceData.tool_calls?.length || 0;
-  let interactionCount = traceData.user_interactions?.length || 0;
-  let errorCount = traceData.errors?.length || 0;
+  let llmCount = traceData.llm_calls?.length || 0
+  let toolCount = traceData.tool_calls?.length || 0
+  let interactionCount = traceData.user_interactions?.length || 0
+  let errorCount = traceData.errors?.length || 0
 
   // Add counts from agent calls
   traceData.agent_calls?.forEach((agent: any) => {
-    llmCount += agent.llm_calls?.length || 0;
-    toolCount += agent.tool_calls?.length || 0;
-    interactionCount += agent.user_interactions?.length || 0;
-    errorCount += agent.errors?.length || 0;
-  });
+    llmCount += agent.llm_calls?.length || 0
+    toolCount += agent.tool_calls?.length || 0
+    interactionCount += agent.user_interactions?.length || 0
+    errorCount += agent.errors?.length || 0
+  })
 
   return {
     llmCount,
     toolCount,
     interactionCount,
     errorCount
-  };
-};
-
+  }
+}
 
 const formatDuration = (startTime: string, endTime: string) => {
-  const start = new Date(startTime).getTime();
-  const end = new Date(endTime).getTime();
-  const durationMs = end - start;
-  
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+  const durationMs = end - start
+
   if (durationMs < 1000) {
-    return `${durationMs}ms`;
+    return `${durationMs}ms`
   } else if (durationMs < 60000) {
-    return `${(durationMs / 1000).toFixed(2)}s`;
+    return `${(durationMs / 1000).toFixed(2)}s`
   } else {
-    return `${(durationMs / 60000).toFixed(2)}min`;
+    return `${(durationMs / 60000).toFixed(2)}min`
   }
-};
+}
 
 const getTotalCounts = (traceData: any) => {
-  let llmCount = traceData.llm_calls?.length || 0;
-  let toolCount = traceData.tool_calls?.length || 0;
-  let interactionCount = traceData.user_interactions?.length || 0;
-  let errorCount = traceData.errors?.length || 0;
+  let llmCount = traceData.llm_calls?.length || 0
+  let toolCount = traceData.tool_calls?.length || 0
+  let interactionCount = traceData.user_interactions?.length || 0
+  let errorCount = traceData.errors?.length || 0
 
   // Add counts from agent calls
   traceData.agent_calls?.forEach((agent: any) => {
-    llmCount += agent.llm_calls?.length || 0;
-    toolCount += agent.tool_calls?.length || 0;
-    interactionCount += agent.user_interactions?.length || 0;
-    errorCount += agent.errors?.length || 0;
-  });
+    llmCount += agent.llm_calls?.length || 0
+    toolCount += agent.tool_calls?.length || 0
+    interactionCount += agent.user_interactions?.length || 0
+    errorCount += agent.errors?.length || 0
+  })
 
-  return { llmCount, toolCount, interactionCount, errorCount };
-};
+  return { llmCount, toolCount, interactionCount, errorCount }
+}
 
-
-const HORIZONTAL_SPACING = 180;
-const NODE_WIDTH = 160;
-const NODE_HEIGHT = 80;
-const TIME_PADDING = 50;
+const HORIZONTAL_SPACING = 180
+const NODE_WIDTH = 160
+const NODE_HEIGHT = 80
+const TIME_PADDING = 50
 
 const ExecutionGraph = () => {
-  const { selectedProject, selectedTraceId } = useProject();
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  const { selectedProject, selectedTraceId } = useProject()
+  const [nodes, setNodes, onNodesChange] = useNodesState([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [reactFlowInstance, setReactFlowInstance] = useState(null)
+  const { theme } = useTheme()
+
+  const themeColors = {
+    background:
+      theme === 'dark' ? 'hsl(var(--background))' : 'hsl(var(--background))',
+    minimapMask: theme === 'dark' ? 'hsl(var(--muted))' : 'hsl(var(--muted))',
+    gridColor:
+      theme === 'dark'
+        ? 'hsl(var(--muted-foreground))'
+        : 'hsl(var(--muted-foreground))',
+    border: theme === 'dark' ? 'hsl(var(--border))' : 'hsl(var(--border))'
+  }
 
   const createTimeBasedGraphData = (traceData: any): GraphData => {
-    const nodes: Node[] = [];
-    const edges: Edge[] = [];
-    let nodeId = 0;
-  
+    const nodes: Node[] = []
+    const edges: Edge[] = []
+    let nodeId = 0
+
     const getAllNodes = (traceData: any) => {
-      const allNodes = [];
-      const counts = calculateTotalCounts(traceData);
-      
+      const allNodes = []
+      const counts = calculateTotalCounts(traceData)
+
       // Update trace node
       allNodes.push({
         type: 'trace',
@@ -125,8 +136,8 @@ const ExecutionGraph = () => {
           }
         },
         parentId: null
-      });
-  
+      })
+
       // Process errors at trace level
       traceData.errors?.forEach((error: any) => {
         if (!error.agent_id && !error.tool_call_id && !error.llm_call_id) {
@@ -142,10 +153,10 @@ const ExecutionGraph = () => {
               metadata: error
             },
             parentId: `trace-${traceData.id}`
-          });
+          })
         }
-      });
-  
+      })
+
       // Add agents and their children
       traceData.agent_calls?.forEach((agent: any) => {
         allNodes.push({
@@ -162,8 +173,8 @@ const ExecutionGraph = () => {
             metadata: agent
           },
           parentId: `trace-${traceData.id}`
-        });
-  
+        })
+
         // Add LLM calls
         agent.llm_calls?.forEach((llm: any) => {
           allNodes.push({
@@ -180,9 +191,9 @@ const ExecutionGraph = () => {
               metadata: llm
             },
             parentId: `agent-${agent.id}`
-          });
-        });
-  
+          })
+        })
+
         // Add tool calls
         agent.tool_calls?.forEach((tool: any) => {
           allNodes.push({
@@ -199,9 +210,9 @@ const ExecutionGraph = () => {
               metadata: tool
             },
             parentId: `agent-${agent.id}`
-          });
-        });
-  
+          })
+        })
+
         // Add user interactions
         agent.user_interactions?.forEach((interaction: any) => {
           allNodes.push({
@@ -216,9 +227,9 @@ const ExecutionGraph = () => {
               metadata: interaction
             },
             parentId: `agent-${agent.id}`
-          });
-        });
-  
+          })
+        })
+
         // Add agent-level errors
         agent.errors?.forEach((error: any) => {
           allNodes.push({
@@ -233,39 +244,45 @@ const ExecutionGraph = () => {
               metadata: error
             },
             parentId: `agent-${agent.id}`
-          });
-        });
-      });
-  
-      return allNodes;
-    };
+          })
+        })
+      })
 
-    const allNodes = getAllNodes(traceData);
-    const minTime = Math.min(...allNodes.map(n => n.startTime));
-    const maxTime = Math.max(...allNodes.map(n => n.endTime));
-    const timeRange = maxTime - minTime;
+      return allNodes
+    }
+
+    const allNodes = getAllNodes(traceData)
+    const minTime = Math.min(...allNodes.map(n => n.startTime))
+    const maxTime = Math.max(...allNodes.map(n => n.endTime))
+    const timeRange = maxTime - minTime
 
     const getYPosition = (startTime: number) => {
-      return ((startTime - minTime) / timeRange) * (1000 - TIME_PADDING * 2) + TIME_PADDING;
-    };
+      return (
+        ((startTime - minTime) / timeRange) * (1000 - TIME_PADDING * 2) +
+        TIME_PADDING
+      )
+    }
 
     allNodes.forEach(node => {
-      const xPos = node.parentId ? HORIZONTAL_SPACING * (node.type === 'llm' || node.type === 'tool' ? 2 : 1) : 0;
-      const yPos = getYPosition(node.startTime);
+      const xPos = node.parentId
+        ? HORIZONTAL_SPACING *
+          (node.type === 'llm' || node.type === 'tool' ? 2 : 1)
+        : 0
+      const yPos = getYPosition(node.startTime)
 
       nodes.push({
         id: node.id,
         type: 'custom',
         data: {
           ...node.data,
-          label: `${node.data.type}: ${node.data.name}`,
+          label: `${node.data.type}: ${node.data.name}`
         },
         position: { x: xPos, y: yPos },
         style: {
           width: NODE_WIDTH,
-          height: NODE_HEIGHT,
-        },
-      });
+          height: NODE_HEIGHT
+        }
+      })
 
       if (node.parentId) {
         edges.push({
@@ -273,82 +290,86 @@ const ExecutionGraph = () => {
           source: node.parentId,
           target: node.id,
           type: 'smoothstep',
-          animated: true,
-        });
+          animated: true
+        })
       }
-    });
+    })
 
-    return { nodes, edges };
-  };
+    return { nodes, edges }
+  }
 
   useEffect(() => {
     const loadGraphData = async () => {
       if (selectedTraceId) {
         try {
-          const traceData = await fetchTraceDetails(selectedTraceId);
-          const { nodes: graphNodes, edges: graphEdges } = createTimeBasedGraphData(traceData);
-          setNodes(graphNodes);
-          setEdges(graphEdges);
+          const traceData = await fetchTraceDetails(selectedTraceId)
+          const { nodes: graphNodes, edges: graphEdges } =
+            createTimeBasedGraphData(traceData)
+          setNodes(graphNodes)
+          setEdges(graphEdges)
         } catch (error) {
-          console.error('Error loading graph data:', error);
+          console.error('Error loading graph data:', error)
         }
       }
-    };
+    }
 
-    loadGraphData();
-  }, [selectedTraceId, setNodes, setEdges]);
+    loadGraphData()
+  }, [selectedTraceId, setNodes, setEdges])
 
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
     () => getLayoutedElements(nodes, edges, 'TB'),
     [nodes, edges]
-  );
+  )
 
   const filteredNodes = useMemo(() => {
-    if (!searchTerm) return layoutedNodes;
+    if (!searchTerm) return layoutedNodes
     return layoutedNodes.filter(node =>
       node.data.label.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [layoutedNodes, searchTerm]);
+    )
+  }, [layoutedNodes, searchTerm])
 
-  const onInit = useCallback((instance) => {
-    setReactFlowInstance(instance);
-    instance.fitView({ padding: 0.2 });
-  }, []);
+  const onInit = useCallback(instance => {
+    setReactFlowInstance(instance)
+    instance.fitView({ padding: 0.2 })
+  }, [])
 
   const handleSearch = () => {
     if (searchTerm && reactFlowInstance) {
       const matchingNode = filteredNodes.find(node =>
         node.data.label.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      )
       if (matchingNode) {
-        reactFlowInstance.fitView({ padding: 0.2, nodes: [matchingNode] });
+        reactFlowInstance.fitView({ padding: 0.2, nodes: [matchingNode] })
       }
     }
-  };
+  }
 
-  const handleZoomIn = () => reactFlowInstance?.zoomIn();
-  const handleZoomOut = () => reactFlowInstance?.zoomOut();
-  const handleFitView = () => reactFlowInstance?.fitView({ padding: 0.2 });
+  const handleZoomIn = () => reactFlowInstance?.zoomIn()
+  const handleZoomOut = () => reactFlowInstance?.zoomOut()
+  const handleFitView = () => reactFlowInstance?.fitView({ padding: 0.2 })
 
   return (
-    <Card className="mt-8">
+    <Card className='mt-8'>
       <CardHeader>
-        <CardTitle className="text-2xl font-bold">Execution Graph</CardTitle>
+        <CardTitle className='text-2xl font-bold'>Execution Graph</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 flex items-center space-x-2">
+        <div className='mb-4 flex items-center space-x-2'>
           <Input
-            type="text"
-            placeholder="Search nodes..."
+            type='text'
+            placeholder='Search nodes...'
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
+            onChange={e => setSearchTerm(e.target.value)}
+            className='max-w-sm'
           />
-          <Button variant="outline" size="icon" onClick={handleSearch}>
-            <Search className="h-4 w-4" />
+          <Button variant='outline' size='icon' onClick={handleSearch}>
+            <Search className='h-4 w-4' />
           </Button>
         </div>
-        <div style={{ height: '70vh' }} className="border rounded-lg overflow-hidden shadow-lg">
+        <div
+          style={{ height: '70vh' }}
+          className='border rounded-lg overflow-hidden shadow-lg'
+        >
           <ReactFlow
             nodes={filteredNodes}
             edges={layoutedEdges}
@@ -357,33 +378,38 @@ const ExecutionGraph = () => {
             nodeTypes={nodeTypes}
             onInit={onInit}
             fitView
-            attributionPosition="bottom-left"
+            attributionPosition='bottom-left'
             minZoom={0.1}
             maxZoom={1.5}
             defaultEdgeOptions={{
               type: 'smoothstep',
-              style: { strokeWidth: 2 },
+              style: { strokeWidth: 2 }
             }}
           >
-            <Background color="#e0e7ff" gap={16} />
-            <Controls showInteractive={false} />
-            <MiniMap
-              nodeColor={(node) => {
-                const type = (node.data?.type || 'default') as keyof typeof nodeStylesByType;
-                return nodeStylesByType[type]?.backgroundColor || nodeStylesByType.agent.backgroundColor;
-              }}
-              maskColor="#f0f0f080"
+            <Background color='#fee2e2' gap={16} />
+            <Controls
+              showInteractive={false}
+              className='bg-background border border-border [&>button]:bg-background [&>button]:border-border [&>button]:text-foreground [&>button:hover]:bg-accent [&>button:hover]:text-accent-foreground [&_svg]:fill-foreground [&_svg]:stroke-foreground [&_svg_path]:fill-foreground [&_svg_path]:stroke-foreground'
             />
-            <Panel position="top-right" className="bg-white p-2 rounded shadow-md">
-              <div className="flex space-x-2">
-                <Button variant="outline" size="icon" onClick={handleZoomIn}>
-                  <ZoomIn className="h-4 w-4" />
+            <MiniMap
+              maskColor={themeColors.minimapMask}
+              style={{
+                backgroundColor: themeColors.background,
+                border: `1px solid ${themeColors.border}`
+              }}
+              className='bg-background'
+            />
+
+            <Panel position='top-right' className='p-2 rounded shadow-md'>
+              <div className='flex space-x-2'>
+                <Button variant='outline' size='icon' onClick={handleZoomIn}>
+                  <ZoomIn className='h-4 w-4' />
                 </Button>
-                <Button variant="outline" size="icon" onClick={handleZoomOut}>
-                  <ZoomOut className="h-4 w-4" />
+                <Button variant='outline' size='icon' onClick={handleZoomOut}>
+                  <ZoomOut className='h-4 w-4' />
                 </Button>
-                <Button variant="outline" size="icon" onClick={handleFitView}>
-                  <Maximize2 className="h-4 w-4" />
+                <Button variant='outline' size='icon' onClick={handleFitView}>
+                  <Maximize2 className='h-4 w-4' />
                 </Button>
               </div>
             </Panel>
@@ -392,7 +418,7 @@ const ExecutionGraph = () => {
         </div>
       </CardContent>
     </Card>
-  );
-};
+  )
+}
 
-export default ExecutionGraph;
+export default ExecutionGraph

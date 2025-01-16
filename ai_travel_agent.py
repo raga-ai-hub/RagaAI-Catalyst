@@ -208,13 +208,70 @@ if __name__ == "__main__":
 
     # Evaluate the performance
     exe = Evaluation(session=neo_session, trace_id=tracer.trace_id)
-    exe.evaluate(metric_list=['goal_decomposition_efficiency', 
-                         'goal_fulfillment_rate', 
-                         'tool_call_correctness_rate', 
-                         'tool_call_success_rate'])
+    # exe.evaluate(metric_list=['goal_decomposition_efficiency', 
+    #                      'goal_fulfillment_rate', 
+    #                      'tool_call_correctness_rate', 
+    #                      'tool_call_success_rate'])
     # print the performance result
-    # metric_results = exe.get_results()
-    # print(metric_results)
+
+
+    CUSTOM_RUBRIC = {
+    "criteria": {
+        "problem_solving": {
+            "description": "How effectively does the AI solve the user's problem?",
+            "weight": 0.45
+        },
+        "clarity": {
+            "description": "How clear and understandable are the AI's responses?",
+            "weight": 0.45
+        },
+        "useful":{
+            "description":"Is the response from AI useful to the user",
+            "weight":0.1
+        }
+    },
+    "scoring_guidelines": {
+        "0.0-0.5":"Poor performance, significant improvements needed",
+        "0.5-1.0": "Excellent performance, meets or exceeds expectations"
+        }
+    }
+    
+    # Example 1: Complete criteria with weights
+    prompt1 = """
+    Evaluate the conversation based on:
+    1. Technical accuracy (40%) - How accurate is the technical information
+    2. Response time (30%) - How quickly does the AI respond
+    3. Completeness (30%) - How thorough are the responses
+    
+    Use very strict scoring criteria where excellent means perfect execution.
+    """
+    
+    # Example 2: Criteria without weights
+    prompt2 = """
+    Please evaluate based on:
+    - Code quality - How well-structured is the code
+    - Documentation - How well is the code documented
+    - Error handling - How robust is the error handling
+    """
+    
+    # Example 3: Minimal prompt
+    prompt3 = """
+    Evaluate based on user satisfaction and response accuracy
+    """
+
+    # exe.evaluate(metric_list=['custom_evaluation_metric',])
+
+    # exe.evaluate(metric_list=['custom_evaluation_metric',],
+    #              custom_criteria=CUSTOM_RUBRIC)
+    
+    exe.evaluate(metric_list=['custom_evaluation_metric',],
+                 custom_criteria=prompt1)
+    
+    # exe.evaluate(metric_list=['custom_evaluation_metric',],
+    #              custom_criteria=prompt3)
+
+    metric_results = exe.get_results()
+    print(metric_results)
     
 
     # Launch dashboard

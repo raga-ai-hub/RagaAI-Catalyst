@@ -10,6 +10,7 @@ AgentNeo follows a modular architecture designed for flexibility and extensibili
 
 ### 1. Tracer Module
 - Decorators for instrumentation
+- Decorators for vector db (Pinecone)
 - Event collection
 - Metric computation
 - Data buffering
@@ -41,6 +42,7 @@ AgentNeo follows a modular architecture designed for flexibility and extensibili
 
 2. **Trace Collection**
    - Capture function calls
+   - Capture vector database interaction (pinecone)
    - Record timestamps
    - Collect metrics
 

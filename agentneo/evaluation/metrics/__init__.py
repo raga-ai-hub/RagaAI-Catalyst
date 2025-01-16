@@ -6,7 +6,8 @@ from .tool_usage_efficiency import execute_tool_usage_efficiency_metric
 from .goal_decomposition_efficiency import execute_goal_decomposition_efficiency_metric
 from .plan_adaptibility import execute_plan_adaptibility_metric
 from .error_detection_rate import execute_error_detection_rate_metric
-
+from .context_retention_rate import execute_context_retention_metric
+from .custom_evaluation_metric import execute_custom_evaluation_metric
 
 __all__ = [
     "execute_goal_fulfillment_metric",
@@ -17,4 +18,6 @@ __all__ = [
     "execute_goal_decomposition_efficiency_metric",
     "execute_plan_adaptibility_metric",
     "execute_error_detection_rate_metric",
+    "execute_context_retention_metric"
+    "execute_custom_evaluation_metric"
 ]

@@ -17,10 +17,12 @@ from .metrics import (
     execute_goal_fulfillment_metric,
     execute_tool_call_correctness_rate,
     execute_tool_call_success_rate,
+    execute_custom_evaluation_metric,
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
     execute_error_detection_rate_metric,
+    execute_context_retention_metric
 )
 
 from datetime import datetime
@@ -38,10 +40,10 @@ class Evaluation:
 
         self.trace_data = self.get_trace_data()
 
-    def evaluate(self, metric_list=[], config={}, metadata={}):
+    def evaluate(self, metric_list=[], config={}, metadata={}, custom_criteria={}, context={}):
         for metric in metric_list:
             start_time = datetime.now()   
-            result = self._execute_metric(metric, config, metadata)   
+            result = self._execute_metric(metric, config, metadata, custom_criteria, context)   
             end_time = datetime.now()
             duration = (end_time - start_time).total_seconds()
 
@@ -50,7 +52,7 @@ class Evaluation:
         self.session.commit()
         self.session.close()
 
-    def _execute_metric(self, metric, config, metadata):
+    def _execute_metric(self, metric, config, metadata, custom_criteria, context):
         if metric == 'goal_decomposition_efficiency':
             return execute_goal_decomposition_efficiency_metric(
                 trace_json=self.trace_data,
@@ -67,6 +69,11 @@ class Evaluation:
                 trace_json=self.trace_data,
                 config=config,
             )
+        elif metric == 'context_retention_rate':
+            return execute_context_retention_metric(
+                trace_json=self.trace_data,
+                config=config,
+            )
         elif metric == 'tool_call_success_rate':
             return execute_tool_call_success_rate(
                 trace_json=self.trace_data,
@@ -76,6 +83,12 @@ class Evaluation:
             return execute_error_detection_rate_metric(
                 trace_json=self.trace_data,
                 config=config
+        elif metric == "custom_evaluation_metric":
+            return execute_custom_evaluation_metric(
+                trace_json=self.trace_data,
+                config=config,
+                custom_criteria=custom_criteria,
+                context=context
             )
         else:
             raise ValueError("provided metric name is not supported.")
