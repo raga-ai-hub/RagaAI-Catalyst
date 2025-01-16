@@ -56,6 +56,11 @@ Measures the reliability of tool executions.
 exe.evaluate(metric_list=['tool_call_success_rate'])
 ```
 
+### 5. Error Detection Rate
+Measures the system's ability to detect and identify errors during execution.
+
+```python
+exe.evaluate(metric_list=['error_detection_rate'])
 ### 5. Context Retention Rate
 Measures the Context Retention during calls.
 
@@ -152,6 +157,7 @@ exe.evaluate(
         'goal_fulfillment_rate',
         'tool_call_correctness_rate',
         'tool_call_success_rate',
+        'error_detection_rate
         'context_retention_rate'
     ]
 )
