@@ -21,6 +21,7 @@ from .metrics import (
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
+    execute_context_retention_metric
 )
 
 from datetime import datetime
@@ -64,6 +65,11 @@ class Evaluation:
             )
         elif metric == 'tool_call_correctness_rate':
             return execute_tool_call_correctness_rate(
+                trace_json=self.trace_data,
+                config=config,
+            )
+        elif metric == 'context_retention_rate':
+            return execute_context_retention_metric(
                 trace_json=self.trace_data,
                 config=config,
             )

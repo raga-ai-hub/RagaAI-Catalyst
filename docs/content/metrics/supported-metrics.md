@@ -56,7 +56,20 @@ Measures the reliability of tool executions.
 exe.evaluate(metric_list=['tool_call_success_rate'])
 ```
 
-### 5. Custom User Defined Metrics
+### 5. Context Retention Rate
+Measures the Context Retention during calls.
+
+```python
+exe.evaluate(metric_list=['context_retention_rate'])
+```
+
+**Configuration Options:**
+```python
+config = {
+    "model": "gpt-4o-mini",
+}
+
+### 6. Custom User Defined Metrics
 Enables users to define there own personlized metrics system
 
 ##### Default metrics
@@ -138,7 +151,8 @@ exe.evaluate(
         'goal_decomposition_efficiency',
         'goal_fulfillment_rate',
         'tool_call_correctness_rate',
-        'tool_call_success_rate'
+        'tool_call_success_rate',
+        'context_retention_rate'
     ]
 )
 ```
