@@ -20,6 +20,10 @@ from .metrics import (
     execute_goal_fulfillment_metric,
     execute_tool_call_correctness_rate,
     execute_tool_call_success_rate,
+    execute_custom_evaluation_metric,
+    execute_response_latency_metric,
+    execute_error_detection_rate_metric,
+    execute_context_retention_metric,
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
@@ -38,14 +42,23 @@ class Evaluation:
 
         self.trace_data = self.get_trace_data()
 
+# <<<<<<< Parallel_Evaluation
     @staticmethod
     def chunk_metrics(metrics, chunk_size):
         """Yield successive chunks of the metrics list."""
         for i in range(0, len(metrics), chunk_size):
             yield metrics[i:i + chunk_size]
+# =======
+#     def evaluate(self, metric_list=[], config={}, metadata={}, custom_criteria={}, context={}):
+#         for metric in metric_list:
+#             start_time = datetime.now()   
+#             result = self._execute_metric(metric, config, metadata, custom_criteria, context)   
+#             end_time = datetime.now()
+#             duration = (end_time - start_time).total_seconds()
+# >>>>>>> v1.2
 
 
-    def evaluate(self, metric_list=[], config={}, metadata={}, max_workers=None, max_evaluations_per_thread=None):
+    def evaluate(self, metric_list=[], config={}, metadata={}, , custom_criteria={}, context={}, max_workers=None, max_evaluations_per_thread=None):
         """
         Evaluate a list of metrics in parallel with progress tracking.
         
@@ -83,7 +96,7 @@ class Evaluation:
         
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_chunk = {
-                executor.submit(self._process_metric_chunk, chunk, config, metadata): chunk
+                executor.submit(self._process_metric_chunk, chunk, config, metadata, custom_criteria, context): chunk
                 for chunk in metric_chunks
             }
             
@@ -101,27 +114,28 @@ class Evaluation:
         self.session.commit()
         self.session.close()
 
+# <<<<<<< Parallel_Evaluation
 
 
-    def _process_metric_chunk(self, chunk, config, metadata):
+    def _process_metric_chunk(self, chunk, config, metadata, custom_criteria, context):
         """
         Process a chunk of metrics.
         """
         results = []
         for metric in chunk:
-            result = self._execute_and_save_metric(metric, config, metadata)
+            result = self._execute_and_save_metric(metric, config, metadata, custom_criteria, context)
             if result:
                 results.append(result)
         return results
 
 
-    def _execute_and_save_metric(self, metric, config, metadata):
+    def _execute_and_save_metric(self, metric, config, metadata, custom_criteria, context):
         """
         Execute a metric and save its result.
         """
         start_time = datetime.now()
         try:
-            result = self._execute_metric(metric, config, metadata)
+            result = self._execute_metric(metric, config, metadata, custom_criteria, context)
         except ValueError as e:
             print(f"Error executing metric {metric}: {e}")
             return None
@@ -135,7 +149,10 @@ class Evaluation:
             self._save_metric_result(metric, result, start_time, end_time, duration)
         return result
 
-    def _execute_metric(self, metric, config, metadata):
+#     def _execute_metric(self, metric, config, metadata):
+# =======
+    def _execute_metric(self, metric, config, metadata, custom_criteria, context):
+# >>>>>>> v1.2
         if metric == 'goal_decomposition_efficiency':
             return execute_goal_decomposition_efficiency_metric(
                 trace_json=self.trace_data,
@@ -152,10 +169,32 @@ class Evaluation:
                 trace_json=self.trace_data,
                 config=config,
             )
+        elif metric == 'context_retention_rate':
+            return execute_context_retention_metric(
+                trace_json=self.trace_data,
+                config=config,
+            )
         elif metric == 'tool_call_success_rate':
             return execute_tool_call_success_rate(
                 trace_json=self.trace_data,
                 config=config,
+            )
+        elif metric == 'response_latency':
+            return execute_response_latency_metric(
+                trace_json=self.trace_data,
+                config=config,
+            )
+        elif metric == 'error_detection_rate':
+            return execute_error_detection_rate_metric(
+                trace_json=self.trace_data,
+                config=config
+            )
+        elif metric == "custom_evaluation_metric":
+            return execute_custom_evaluation_metric(
+                trace_json=self.trace_data,
+                config=config,
+                custom_criteria=custom_criteria,
+                context=context
             )
         else:
             raise ValueError("provided metric name is not supported.")
@@ -299,4 +338,20 @@ class Evaluation:
                     return field
         elif isinstance(field, (list, dict)):
             return field
+# <<<<<<< Parallel_Evaluation
+#         return field
+# =======
         return field
+
+    def get_supported_metrics(self):
+        return [
+            'goal_decomposition_efficiency',
+            'goal_fulfillment_rate',
+            'tool_call_correctness_rate',
+            'tool_call_success_rate',
+            'context_retention_rate',
+            'response_latency',
+            'error_detection_rate',
+            'custom_evaluation_metric'
+        ]
+# >>>>>>> v1.2

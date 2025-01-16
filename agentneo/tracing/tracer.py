@@ -14,9 +14,13 @@ class Tracer(LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, BaseTracer):
         self,
         session,
         auto_instrument_llm: bool = True,
+        use_guard: bool = False,
+        llm_guard_config: Optional[Dict] = None,
     ):
         super().__init__(session)
         self.auto_instrument_llm = auto_instrument_llm
+        self.use_guard = use_guard
+        self.llm_guard_config = llm_guard_config
         self.tools: Dict[str, Tool] = {}
         self.call_depth = contextvars.ContextVar("call_depth", default=0)
         self.network_tracer = NetworkTracer()
@@ -26,6 +30,10 @@ class Tracer(LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, BaseTracer):
         # Start base tracer
         super().start()
         self.is_active = True
+
+        if self.use_guard:
+            self.setup_guard(self.llm_guard_config,self.use_guard)
+
         # Instrument calls from mixins
         if self.auto_instrument_llm:
             self.instrument_llm_calls()

@@ -4,3 +4,4 @@ litellm
 sqlalchemy
 GPUtil
 psutil
+pinecone

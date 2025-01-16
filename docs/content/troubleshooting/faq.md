@@ -58,3 +58,12 @@ A: You can specify a custom port when launching the dashboard:
 ```python
 neo_session.launch_dashboard(port=8080)
 ```
+
+### Q: How do I enable the dark theme?
+A: The dark theme can be enabled through the settings menu by selecting the Dark Theme option or by using the System Theme setting that switches automatically based on your system preferences.
+
+### Q: Can I switch back to the light theme?
+A: Yes, you can toggle between the Light and Dark themes at any time in the settings. Simply select Light Theme from the options.
+
+### Q: Does the dark theme affect all parts of the application?
+A: Yes, the dark theme applies to the entire UI, including navigation, background, and text, to ensure a consistent experience in low-light environments.
