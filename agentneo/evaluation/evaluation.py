@@ -21,6 +21,7 @@ from .metrics import (
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
+    execute_response_latency_metric,
     execute_error_detection_rate_metric,
     execute_context_retention_metric
 )
@@ -79,6 +80,10 @@ class Evaluation:
                 trace_json=self.trace_data,
                 config=config,
             )
+        elif metric == 'response_latency':
+            return execute_response_latency_metric(
+                trace_json=self.trace_data,
+                config=config,
         elif metric == 'error_detection_rate':
             return execute_error_detection_rate_metric(
                 trace_json=self.trace_data,

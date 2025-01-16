@@ -56,12 +56,21 @@ Measures the reliability of tool executions.
 exe.evaluate(metric_list=['tool_call_success_rate'])
 ```
 
-### 5. Error Detection Rate
+### 5. Response Latency
+Measures the time taken to complete LLM and tool calls.
+
+```python
+exe.evaluate(metric_list=['response_latency'])
+```
+
+### 6. Error Detection Rate
 Measures the system's ability to detect and identify errors during execution.
 
 ```python
 exe.evaluate(metric_list=['error_detection_rate'])
-### 5. Context Retention Rate
+```
+
+### 7. Context Retention Rate
 Measures the Context Retention during calls.
 
 ```python
@@ -73,8 +82,9 @@ exe.evaluate(metric_list=['context_retention_rate'])
 config = {
     "model": "gpt-4o-mini",
 }
+```
 
-### 6. Custom User Defined Metrics
+### 8. Custom User Defined Metrics
 Enables users to define there own personlized metrics system
 
 ##### Default metrics
@@ -157,6 +167,7 @@ exe.evaluate(
         'goal_fulfillment_rate',
         'tool_call_correctness_rate',
         'tool_call_success_rate',
+        'response_latency'
         'error_detection_rate
         'context_retention_rate'
     ]
