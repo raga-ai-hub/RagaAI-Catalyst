@@ -1,4 +1,5 @@
 import os
+import warnings
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -6,8 +7,28 @@ from .data.data_models import Base, ProjectInfoModel
 from .utils import get_db_path
 
 
+def _deprecation_notice():
+    """Display a detailed deprecation warning message."""
+    warnings.warn(
+        "\nAgentNeo is deprecated and will be removed in a future version.\n"
+        "Please migrate to RagaAI Catalyst which offers enhanced features and improved performance.\n"
+        "You can install it using: pip install ragaai-catalyst\n"
+        "For migration guide and documentation, visit: https://docs.raga.ai/ragaai-catalyst\n",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+
 class AgentNeo:
+    """
+    @deprecated: This class is deprecated. Please use Tracer Catalyst instead.
+    Install with: pip install tracer-catalyst
+    """
+    
     def __init__(self, session_name: str = None):
+        # Show deprecation warning on initialization
+        _deprecation_notice()
+        
         self.session_name = (
             session_name or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
