@@ -88,14 +88,18 @@ class LLMTracerMixin:
 
         try:
             prompt = self._extract_input(args, kwargs)
+            
+            try:
+                unscanned_prompt = self._extract_input_from_messages(prompt)
 
-            if self.use_guard and self.input_scanners:
-                    scanned_prompt = scan_prompt_content(
-                        self.input_scanners, prompt
-                    )
-                    prompt= scanned_prompt
-                    kwargs = self._update_prompt_in_kwargs(kwargs, scanned_prompt)
-
+                if self.use_guard and self.input_scanners:
+                        scanned_prompt = scan_prompt_content(
+                            self.input_scanners, unscanned_prompt
+                        )
+                        prompt= scanned_prompt
+                        kwargs = self._update_prompt_in_kwargs(kwargs, scanned_prompt)
+            except Exception as e:
+                print(f"Error during input scanning: {str(e)}")
 
             result = original_func(*args, **kwargs)
 
@@ -238,11 +242,13 @@ class LLMTracerMixin:
         if "prompt" in kwargs:
             return kwargs["prompt"]
         elif "messages" in kwargs:
-            messages = kwargs["messages"]
-            user_messages = [msg["content"] for msg in messages if msg["role"] == "user"]
-            return " ".join(user_messages)
+            return kwargs["messages"]
         else:
             return args[0] if args else ""
+
+    def _extract_input_from_messages(self, messages):
+        user_messages = [msg["content"] for msg in messages if msg["role"] == "user"]
+        return " ".join(user_messages)
 
     def _extract_output_text(self, result):
         if hasattr(result, 'choices') and result.choices:
