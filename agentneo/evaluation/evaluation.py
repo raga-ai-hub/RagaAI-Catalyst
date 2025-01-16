@@ -42,23 +42,14 @@ class Evaluation:
 
         self.trace_data = self.get_trace_data()
 
-# <<<<<<< Parallel_Evaluation
     @staticmethod
     def chunk_metrics(metrics, chunk_size):
         """Yield successive chunks of the metrics list."""
         for i in range(0, len(metrics), chunk_size):
             yield metrics[i:i + chunk_size]
-# =======
-#     def evaluate(self, metric_list=[], config={}, metadata={}, custom_criteria={}, context={}):
-#         for metric in metric_list:
-#             start_time = datetime.now()   
-#             result = self._execute_metric(metric, config, metadata, custom_criteria, context)   
-#             end_time = datetime.now()
-#             duration = (end_time - start_time).total_seconds()
-# >>>>>>> v1.2
 
 
-    def evaluate(self, metric_list=[], config={}, metadata={}, , custom_criteria={}, context={}, max_workers=None, max_evaluations_per_thread=None):
+    def evaluate(self, metric_list=[], config={}, metadata={}, custom_criteria={}, context={}, max_workers=None, max_evaluations_per_thread=None):
         """
         Evaluate a list of metrics in parallel with progress tracking.
         
@@ -114,7 +105,6 @@ class Evaluation:
         self.session.commit()
         self.session.close()
 
-# <<<<<<< Parallel_Evaluation
 
 
     def _process_metric_chunk(self, chunk, config, metadata, custom_criteria, context):
@@ -149,10 +139,7 @@ class Evaluation:
             self._save_metric_result(metric, result, start_time, end_time, duration)
         return result
 
-#     def _execute_metric(self, metric, config, metadata):
-# =======
     def _execute_metric(self, metric, config, metadata, custom_criteria, context):
-# >>>>>>> v1.2
         if metric == 'goal_decomposition_efficiency':
             return execute_goal_decomposition_efficiency_metric(
                 trace_json=self.trace_data,
@@ -338,9 +325,6 @@ class Evaluation:
                     return field
         elif isinstance(field, (list, dict)):
             return field
-# <<<<<<< Parallel_Evaluation
-#         return field
-# =======
         return field
 
     def get_supported_metrics(self):
@@ -354,4 +338,3 @@ class Evaluation:
             'error_detection_rate',
             'custom_evaluation_metric'
         ]
-# >>>>>>> v1.2
