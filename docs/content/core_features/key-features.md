@@ -97,3 +97,8 @@ def similarity_search(query_vector, top_k=3):
 - Tool usage effectiveness
 - Response quality metrics
 - Cost optimization insights
+
+## Dashboard Chat Assistant
+An interactive chatbot integrated directly into the dashboard interface that helps users explore and understand their trace data
+
+![Dashboard Chat Assistant](../../assets/Chat_Assistant.png)

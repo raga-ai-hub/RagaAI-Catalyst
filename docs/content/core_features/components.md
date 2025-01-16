@@ -44,6 +44,7 @@ Interactive web interface for visualization and analysis.
 - Interactive graphs
 - Performance metrics
 - Detailed Trace views
+- Dashboard Chat Assistant 
 - Theme customization - Light/Dark modes (New)
 
 ### Access
