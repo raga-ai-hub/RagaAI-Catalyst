@@ -38,9 +38,9 @@ def calculate_cost(
     output_cost_per_token=0.0,
     reasoning_cost_per_token=0.0,
 ):
-    input_tokens = token_usage.get("prompt_tokens", 0)
-    output_tokens = token_usage.get("completion_tokens", 0)
-    reasoning_tokens = token_usage.get("reasoning_tokens", 0)
+    input_tokens = token_usage.get("prompt_tokens", token_usage.get("input_tokens", 0))
+    output_tokens = token_usage.get("completion_tokens", token_usage.get("output_tokens", 0))
+    reasoning_tokens = token_usage.get("reasoning_tokens", token_usage.get("reasoning_tokens", 0))
 
     input_cost = input_tokens * input_cost_per_token
     output_cost = output_tokens * output_cost_per_token

@@ -48,6 +48,30 @@ def execute_trade_strategy(market_conditions):
     return trade_decision
 ```
 
+### Pinecone DB Tracing
+Track Pinecone DB operations:
+- Data upsertion
+- Query vector creation
+- Similarity search performance
+
+```python
+@tracer.trace_pinecone_upsert
+def upsert_data(data):
+    # Upsert data into Pinecone index
+    pass
+
+@tracer.trace_pinecone_create_query_vector
+def create_query_vector(query_text):
+    # Create a query vector for Pinecone
+    pass
+
+@tracer.trace_pinecone_similarity_search
+def similarity_search(query_vector, top_k=3):
+    # Perform a similarity search in Pinecone
+    pass
+```
+
+
 ## Monitoring Features
 
 ### Real-time Dashboard
