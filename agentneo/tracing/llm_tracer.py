@@ -96,7 +96,7 @@ class LLMTracerMixin:
                         scanned_prompt = scan_prompt_content(
                             self.input_scanners, unscanned_prompt
                         )
-                        prompt= scanned_prompt
+                        prompt[0]['content'] = scanned_prompt
                         kwargs = self._update_prompt_in_kwargs(kwargs, scanned_prompt)
             except Exception as e:
                 print(f"Error during input scanning: {str(e)}")
@@ -249,6 +249,9 @@ class LLMTracerMixin:
     def _extract_input_from_messages(self, messages):
         user_messages = [msg["content"] for msg in messages if msg["role"] == "user"]
         return " ".join(user_messages)
+    
+    def _update_prompt(self, prompt, scanned_prompt):
+        pass
 
     def _extract_output_text(self, result):
         if hasattr(result, 'choices') and result.choices:
