@@ -1,253 +1,386 @@
-# AgentNeo &nbsp; ![GitHub release (latest by date)](https://img.shields.io/github/v/release/raga-ai-hub/agentneo) ![GitHub stars](https://img.shields.io/github/stars/raga-ai-hub/agentneo?style=social)  ![Issues](https://img.shields.io/github/issues/raga-ai-hub/agentneo) ![GitHub license](https://img.shields.io/github/license/raga-ai-hub/agentneo) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/agentneo)
+# RagaAI Catalyst&nbsp; ![GitHub release (latest by date)](https://img.shields.io/github/v/release/raga-ai-hub/ragaai-catalyst) ![GitHub stars](https://img.shields.io/github/stars/raga-ai-hub/ragaai-catalyst?style=social)  ![Issues](https://img.shields.io/github/issues/raga-ai-hub/ragaai-catalyst) 
 
-> **📢 Exciting News!** AgentNeo has evolved into RagaAI Catalyst, bringing enhanced features and improved performance.  
-> Ready to upgrade? `pip install ragaai-catalyst`  
-> Learn more about the improvements at: https://github.com/raga-ai-hub/ragaai-catalyst
+RagaAI Catalyst is a comprehensive platform designed to enhance the management and optimization of LLM projects. It offers a wide range of features, including project management, dataset management, evaluation management, trace management, prompt management, synthetic data generation, and guardrail management. These functionalities enable you to efficiently evaluate, and safeguard your LLM applications.
 
+## Table of Contents
 
-**Empower Your AI Applications with Unparalleled Observability and Optimization**
+- [RagaAI Catalyst](#ragaai-catalyst)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Usage](#usage)
+    - [Project Management](#project-management)
+    - [Dataset Management](#dataset-management)
+    - [Evaluation Management](#evaluation)
+    - [Trace Management](#trace-management)
+    - [Prompt Management](#prompt-management)
+    - [Synthetic Data Generation](#synthetic-data-generation)
+    - [Guardrail Management](#guardrail-management)
+    - [Agentic Tracing](#agentic-tracing)
 
-AgentNeo is an advanced, open-source **Agentic AI Application Observability, Monitoring, and Evaluation Framework**. Designed to elevate your AI development experience, AgentNeo provides deep insights into your AI agents, Large Language Model (LLM) calls, and tool interactions. By leveraging AgentNeo, you can build more efficient, cost-effective, and high-quality AI-driven solutions.
+## Installation
 
-![AgentNeo](docs/assets/architecture.svg)
-
-## ⚡ Why AgentNeo?
-
-Whether you're a seasoned AI developer or just starting out, AgentNeo offers robust logging, visualization, and evaluation capabilities to help you debug and optimize your applications with ease.
-
-## 🚀 Key Features
-
-- **Trace LLM Calls**: Monitor and analyze LLM calls from various providers like OpenAI and LiteLLM.
-- **Trace Agents and Tools**: Instrument and monitor your agents and tools to gain deeper insights into their behavior.
-- **Monitor Interactions**: Keep track of tool and agent interactions to understand system behavior.
-- **Detailed Metrics**: Collect comprehensive metrics on token usage, costs, and execution time.
-- **Flexible Data Storage**: Store trace data in SQLite databases and JSON log files for easy access and analysis.
-- **Simple Instrumentation**: Utilize easy-to-use decorators to instrument your code without hassle.
-- **Interactive Dashboard**: Visualize trace data and execution graphs in a user-friendly dashboard.
-- **Project Management**: Manage multiple projects seamlessly within the framework.
-- **Execution Graph Visualization**: Gain insights into your application's flow with detailed execution graphs.
-- **Evaluation Tools**: Assess and improve your AI agent's performance with built-in evaluation tools.
-
-## 🛠 Requirements
-
-- **Python**: Version 3.9 or higher
-
-## 📦 Installation
-
-Install AgentNeo effortlessly using pip:
+To install RagaAI Catalyst, you can use pip:
 
 ```bash
-pip install agentneo
+pip install ragaai-catalyst
 ```
 
-![AgentNeo Overview](docs/assets/overview.png)
+## Configuration
 
-## 🌟 Quick Start Guide
-
-Get up and running with AgentNeo in just a few steps!
-
-### 1. Import the Necessary Components
+Before using RagaAI Catalyst, you need to set up your credentials. You can do this by setting environment variables or passing them directly to the `RagaAICatalyst` class:
 
 ```python
-from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard
+from ragaai_catalyst import RagaAICatalyst
+
+catalyst = RagaAICatalyst(
+    access_key="YOUR_ACCESS_KEY",
+    secret_key="YOUR_SECRET_KEY",
+    base_url="BASE_URL"
+)
 ```
+**Note**: Authetication to RagaAICatalyst is necessary to perform any operations below 
 
-### 2. Create a Session and Project
 
-```python
-neo_session = AgentNeo(session_name="my_session")
-neo_session.create_project(project_name="my_project")
-```
-
-### 3. Initialize the Tracer
-
-```python
-tracer = Tracer(session=neo_session)
-tracer.start()
-```
-
-### 4. Instrument Your Code
-
-Wrap your functions with AgentNeo's decorators to start tracing:
-
-```python
-@tracer.trace_llm("my_llm_call")
-async def my_llm_function():
-    # Your LLM call here
-    pass
-
-@tracer.trace_tool("my_tool")
-def my_tool_function():
-    # Your tool logic here
-    pass
-
-@tracer.trace_agent("my_agent")
-def my_agent_function():
-    # Your agent logic here
-    pass
-```
-
-### 5. Evaluate your AI Agent's performance
-
-```python
-exe = Evaluation(session=neo_session, trace_id=tracer.trace_id)
-
-# run a single metric
-exe.evaluate(metric_list=['metric_name'])
-```
-
-```python
-# get your evaluated metrics results
-metric_results = exe.get_results()
-print(metric_results)
-```
-
-### 6. Stop Tracing and Launch the Dashboard
-
-```python
-tracer.stop()
-
-launch_dashboard(port=3000)
-```
-
-Access the interactive dashboard by visiting `http://localhost:3000` in your web browser.
-
-![Trace History Page](docs/assets/trace_history.png)
-
-## 🔧 Advanced Usage
+## Usage
 
 ### Project Management
 
-Manage multiple projects with ease.
-
-- **List All Projects**
-
-  ```python
-  projects = neo_session.list_projects()
-  ```
-
-- **Connect to an Existing Project**
-
-  ```python
-  neo_session.connect_project(project_name="existing_project")
-  ```
-
-### Metrics Evaluation
-#### Supported Metrics
-1. Goal Decomposition Efficiency ([goal_decomposition_efficiency](https://docs.raga.ai/agentneo/metric-library/goal-decomposition-efficiency))
-2. Goal Fulfillment Rate (goal_fulfillment_rate)
-3. Tool Call Correctness Rate (tool_call_correctness_rate)
-4. Tool Call Success Rate (tool_call_success_rate)
-5. Response Latency (response_latency)
-6. Error Detection Rate (error_detection_rate)
-7. Context Retention Rate (context_retention_rate)
-
-- **Run multiple metrics together**
-```python
-exe.evaluate(metric_list=['metric_name1', 'metric_name2', ..])
-```
-
-- **Use your own config and metadata related to the metric**
-```python
-exe.evaluate(metric_list=['metric_name'], config={}, metadata={})
-
-## sample config and metadata
-# config = {"model": "gpt-4o-mini"}
-# metadata = {
-#     "tools": [
-#       {
-#         "name": "flight_price_estimator_tool",
-#         "description": "flight_price_estimator_tool"
-#       },
-#       {
-#         "name": "currency_converter_tool",
-#         "description": "currency_converter_tool"
-#       },
-#     ]
-#   }
-```
-
-![AgentNeo Evaluation](docs/assets/evaluation.png)
-
-
-### Execution Graph Visualization
-
-AgentNeo generates an execution graph that visualizes the flow of your AI application, including LLM calls, tool usage, and agent interactions. Explore this graph in the interactive dashboard to gain deeper insights.
-
-## 📊 Dashboard Overview
-
-The AgentNeo dashboard offers a comprehensive view of your AI application's performance:
-
-- **Project Overview**
-- **System Information**
-- **LLM Call Statistics**
-- **Tool and Agent Interaction Metrics**
-- **Execution Graph Visualization**
-- **Timeline of Events**
-
-
-![AgentNeo Analysis](docs/assets/analytics.png)
-
-
-### Launching the Dashboard
+Create and manage projects using RagaAI Catalyst:
 
 ```python
-neo_session.launch_dashboard(port=3000)
+# Create a project
+project = catalyst.create_project(
+    project_name="Test-RAG-App-1",
+    usecase="Chatbot"
+)
+
+# Get project usecases
+catalyst.project_use_cases()
+
+# List projects
+projects = catalyst.list_projects()
+print(projects)
 ```
 
-## 🛣️ Roadmap
+### Dataset Management
+Manage datasets efficiently for your projects:
 
-We are committed to continuously improving AgentNeo. Here's a glimpse of what's on the horizon:
+```py
+from ragaai_catalyst import Dataset
 
-| Feature                                   | Status          |
-|-------------------------------------------|-----------------|
-| **Local Data Storage Improvements**       | ✅ Completed    |
-| **Support for Additional LLMs**           | ✅ Completed    |
-| **Integration with AutoGen**              |  ✅ Completed   |
-| **Integration with CrewAI**               | ✅ Completed   |
-| **Integration with Langraph**             | ✅ Completed |
-| **Tracing User Interactions**             | ✅ Completed   |
-| **Tracing Network Calls**             | ✅ Completed   |
-| **Comprehensive Logging Enhancements**    | ✅ Completed    |
-| **Custom Agent Orchestration Support**    | ✅ Completed    |
-| **Advanced Error Detection Tools**        | 🔄 In Progress  |
-| **Multi-Agent Framework Visualization**   | ✅ Completed    |
-| **Performance Bottleneck Identification** | ✅ Completed    |
-| **Evaluation Metrics for Agentic Application** | ✅ Completed  |
-| **Code Execution Sandbox**                | 🔜 Coming Soon  |
-| **Prompt Caching for Latency Reduction**  | 📝 Planned      |
-| **Real-Time Guardrails Implementation**   | 📝 Planned      |
-| **Open-Source Agentic Apps Integration**  | 📝 Planned      |
-| **Security Checks and Jailbreak Detection** | 📝 Planned    |
-| **Regression Testing Capabilities**       | 📝 Planned      |
-| **Agent Battleground for A/B Testing**    | 📝 Planned      |
-| **IDE Plugins Development**               | 📝 Planned      |
-| **VLM(Vision Language Model) Evaluation**       | 📝 Planned      |
-| **Voice Agents Evaluation**               | 📝 Planned      |
+# Initialize Dataset management for a specific project
+dataset_manager = Dataset(project_name="project_name")
 
-### Legend
+# List existing datasets
+datasets = dataset_manager.list_datasets()
+print("Existing Datasets:", datasets)
 
-- ✅ **Completed**
-- 🔄 **In Progress**
-- 🔜 **Coming Soon**
-- 📝 **Planned**
+# Create a dataset from CSV
+dataset_manager.create_from_csv(
+    csv_path='path/to/your.csv',
+    dataset_name='MyDataset',
+    schema_mapping={'column1': 'schema_element1', 'column2': 'schema_element2'}
+)
+
+# Get project schema mapping
+dataset_manager.get_schema_mapping()
+
+```
+
+For more detailed information on Dataset Management, including CSV schema handling and advanced usage, please refer to the [Dataset Management documentation](docs/dataset_management.md).
 
 
-## 📚 Documentation
+### Evaluation
 
-For more details, explore the full [AgentNeo Documentation](https://agentneo.raga.ai)
+Create and manage metric evaluation of your RAG application:
 
-##  Demo Video
+```python
+from ragaai_catalyst import Evaluation
 
-For reference, Watch a demo video [AgentNeo Demo Video](https://youtu.be/iDV3_Lwv8EY)
+# Create an experiment
+evaluation = Evaluation(
+    project_name="Test-RAG-App-1",
+    dataset_name="MyDataset",
+)
 
-## 🤝 Contributing
+# Get list of available metrics
+evaluation.list_metrics()
 
-We warmly welcome contributions from the community! Whether it's reporting bugs, suggesting new features, or improving documentation, your input is invaluable.
+# Add metrics to the experiment
 
-- **GitHub Repository**: [raga-ai-hub/agentneo](https://github.com/raga-ai-hub/agentneo)
-- **Contribution Guidelines**: Check out our [Contribution Guidelines](https://github.com/raga-ai-hub/AgentNeo/blob/main/CONTRIBUTING.md) on GitHub to get started.
+schema_mapping={
+    'Query': 'prompt',
+    'response': 'response',
+    'Context': 'context',
+    'expectedResponse': 'expected_response'
+}
 
-Join us in making AgentNeo even better!
+# Add single metric
+evaluation.add_metrics(
+    metrics=[
+      {"name": "Faithfulness", "config": {"model": "gpt-4o-mini", "provider": "openai", "threshold": {"gte": 0.232323}}, "column_name": "Faithfulness_v1", "schema_mapping": schema_mapping},
+    
+    ]
+)
 
+# Add multiple metrics
+evaluation.add_metrics(
+    metrics=[
+        {"name": "Faithfulness", "config": {"model": "gpt-4o-mini", "provider": "openai", "threshold": {"gte": 0.323}}, "column_name": "Faithfulness_gte", "schema_mapping": schema_mapping},
+        {"name": "Hallucination", "config": {"model": "gpt-4o-mini", "provider": "openai", "threshold": {"lte": 0.323}}, "column_name": "Hallucination_lte", "schema_mapping": schema_mapping},
+        {"name": "Hallucination", "config": {"model": "gpt-4o-mini", "provider": "openai", "threshold": {"eq": 0.323}}, "column_name": "Hallucination_eq", "schema_mapping": schema_mapping},
+    ]
+)
+
+# Get the status of the experiment
+status = evaluation.get_status()
+print("Experiment Status:", status)
+
+# Get the results of the experiment
+results = evaluation.get_results()
+print("Experiment Results:", results)
+```
+
+
+
+### Trace Management
+
+Record and analyze traces of your RAG application:
+
+```python
+from ragaai_catalyst import Tracer
+
+# Start a trace recording
+tracer = Tracer(
+    project_name="Test-RAG-App-1",
+    dataset_name="tracer_dataset_name",
+    metadata={"key1": "value1", "key2": "value2"},
+    tracer_type="langchain",
+    pipeline={
+        "llm_model": "gpt-4o-mini",
+        "vector_store": "faiss",
+        "embed_model": "text-embedding-ada-002",
+    }
+).start()
+
+# Your code here
+
+
+# Stop the trace recording
+tracer.stop()
+
+# Get upload status
+tracer.get_upload_status()
+```
+
+
+### Prompt Management
+
+Manage and use prompts efficiently in your projects:
+
+```py
+from ragaai_catalyst import PromptManager
+
+# Initialize PromptManager
+prompt_manager = PromptManager(project_name="Test-RAG-App-1")
+
+# List available prompts
+prompts = prompt_manager.list_prompts()
+print("Available prompts:", prompts)
+
+# Get default prompt by prompt_name
+prompt_name = "your_prompt_name"
+prompt = prompt_manager.get_prompt(prompt_name)
+
+# Get specific version of prompt by prompt_name and version
+prompt_name = "your_prompt_name"
+version = "v1"
+prompt = prompt_manager.get_prompt(prompt_name,version)
+
+# Get variables in a prompt
+variable = prompt.get_variables()
+print("variable:",variable)
+
+# Get prompt content
+prompt_content = prompt.get_prompt_content()
+print("prompt_content:", prompt_content)
+
+# Compile the prompt with variables
+compiled_prompt = prompt.compile(query="What's the weather?", context="sunny", llm_response="It's sunny today")
+print("Compiled prompt:", compiled_prompt)
+
+# implement compiled_prompt with openai
+import openai
+def get_openai_response(prompt):
+    client = openai.OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=prompt
+    )
+    return response.choices[0].message.content
+openai_response = get_openai_response(compiled_prompt)
+print("openai_response:", openai_response)
+
+# implement compiled_prompt with litellm
+import litellm
+def get_litellm_response(prompt):
+    response = litellm.completion(
+        model="gpt-4o-mini",
+        messages=prompt
+    )
+    return response.choices[0].message.content
+litellm_response = get_litellm_response(compiled_prompt)
+print("litellm_response:", litellm_response)
+
+```
+For more detailed information on Prompt Management, please refer to the [Prompt Management documentation](docs/prompt_management.md).
+
+
+### Synthetic Data Generation
+
+```py
+from ragaai_catalyst import SyntheticDataGeneration
+
+# Initialize Synthetic Data Generation
+sdg = SyntheticDataGeneration()
+
+# Process your file
+text = sdg.process_document(input_data="file_path")
+
+# Generate results
+result = sdg.generate_qna(text, question_type ='complex',model_config={"provider":"openai","model":"openai/gpt-3.5-turbo"},n=5)
+
+print(result.head())
+
+# Get supported Q&A types
+sdg.get_supported_qna()
+
+# Get supported providers
+sdg.get_supported_providers()
+```
+
+
+
+### Guardrail Management
+
+```py
+from ragaai_catalyst import GuardrailsManager
+
+# Initialize Guardrails Manager
+gdm = GuardrailsManager(project_name=project_name)
+
+# Get list of Guardrails available
+guardrails_list = gdm.list_guardrails()
+print('guardrails_list:', guardrails_list)
+
+# Get list of fail condition for guardrails
+fail_conditions = gdm.list_fail_condition()
+print('fail_conditions;', fail_conditions)
+
+#Get list of deployment ids
+deployment_list = gdm.list_deployment_ids()
+print('deployment_list:', deployment_list)
+
+# Get specific deployment id with guardrails information
+deployment_id_detail = gdm.get_deployment(17)
+print('deployment_id_detail:', deployment_id_detail)
+
+# Add guardrails to a deployment id
+guardrails_config = {"guardrailFailConditions": ["FAIL"],
+                     "deploymentFailCondition": "ALL_FAIL",
+                     "alternateResponse": "Your alternate response"}
+
+guardrails = [
+    {
+      "displayName": "Response_Evaluator",
+      "name": "Response Evaluator",
+      "config":{
+          "mappings": [{
+                        "schemaName": "Text",
+                        "variableName": "Response"
+                    }],
+          "params": {
+                    "isActive": {"value": False},
+                    "isHighRisk": {"value": True},
+                    "threshold": {"eq": 0},
+                    "competitors": {"value": ["Google","Amazon"]}
+                }
+      }
+    },
+    {
+      "displayName": "Regex_Check",
+      "name": "Regex Check",
+      "config":{
+          "mappings": [{
+                        "schemaName": "Text",
+                        "variableName": "Response"
+                    }],
+          "params":{
+              "isActive": {"value": False},
+              "isHighRisk": {"value": True},
+              "threshold": {"lt1": 1}
+          }
+      }
+    }
+]
+
+gdm.add_guardrails(deployment_id, guardrails, guardrails_config)
+
+
+# Import GuardExecutor
+from ragaai_catalyst import GuardExecutor
+
+# Initialise GuardExecutor with required params and Evaluate
+executor = GuardExecutor(deployment_id,gdm,field_map={'context':'document'})
+
+
+message={'role':'user',
+         'content':'What is the capital of France'
+        }
+prompt_params={'document':' France'}
+
+model_params = {'temperature':.7,'model':'gpt-4o-mini'}
+llm_caller = 'litellm'
+
+executor([message],prompt_params,model_params,llm_caller)
+
+```
+
+### Agentic Tracing
+
+The Agentic Tracing module provides comprehensive monitoring and analysis capabilities for AI agent systems. It helps track various aspects of agent behavior including:
+
+- LLM interactions and token usage
+- Tool utilization and execution patterns
+- Network activities and API calls
+- User interactions and feedback
+- Agent decision-making processes
+
+The module includes utilities for cost tracking, performance monitoring, and debugging agent behavior. This helps in understanding and optimizing AI agent performance while maintaining transparency in agent operations.
+
+```python
+from ragaai_catalyst import AgenticTracer
+
+# Initialize tracer
+tracer = AgenticTracer(
+    project_name="project_name",
+    dataset_name="dataset_name",
+    tracer_type="agentic",
+)
+
+# Define tracers
+@tracer.trace_agents("agent_name")
+# Agent Definition
+
+@tracer.trace_llm("llm_name")
+# LLM Definition
+
+@tracer.trace_tool("tool_name")
+# Tool Definition
+
+# Perform tracing
+with tracer:
+    # Agent execution code
+    pass
 

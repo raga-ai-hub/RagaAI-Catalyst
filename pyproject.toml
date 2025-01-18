@@ -1,69 +1,91 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentneo"
-version = "1.2.3"
-description = "A powerful tracing library for monitoring and analyzing AI agents, LLM calls, and tool interactions."
-authors = [
-    { name = "Rehan Asif", email = "rehan.asif@raga.ai" },
-    { name = "Kiran Scaria", email = "kiran.scaria@raga.ai" },
-    { name = "Vijay Chaurasiya", email = "vijay.chaurasiya@raga.ai" }
-]
-license = { text = "GNU General Public License v3 (GPLv3)" }
+name = "ragaai_catalyst"
+description = "RAGA AI CATALYST"
 readme = "README.md"
-requires-python = ">=3.9"
-
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-    "Operating System :: OS Independent",
+requires-python = ">=3.9,<3.13"
+# license = {file = "LICENSE"}
+version = "2.1.3"
+authors = [
+    {name = "Kiran Scaria", email = "kiran.scaria@raga.ai"},
+    {name = "Kedar Gaikwad", email = "kedar.gaikwad@raga.ai"},
+    {name = "Dushyant Mahajan", email = "dushyant.mahajan@raga.ai"},
+    {name = "Siddhartha Kosti", email = "siddhartha.kosti@raga.ai"},
+    {name = "Ritika Goel", email = "ritika.goel@raga.ai"},
+    {name = "Vijay Chaurasia", email="vijay.chaurasia@raga.ai"}
 ]
+
 dependencies = [
-    "sqlalchemy~=2.0.35",
+    "aiohttp>=3.10.2", # Ref: https://github.com/raga-ai-hub/ragaai-catalyst/security/dependabot/1
+    "opentelemetry-api==1.25.0",
+    "opentelemetry-sdk==1.25.0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.25.0",
+    "opentelemetry-instrumentation==0.46b0",
+    "opentelemetry-instrumentation-fastapi==0.46b0",
+    "opentelemetry-instrumentation-asgi==0.46b0",
+    "opentelemetry-semantic-conventions==0.46b0",
+    "opentelemetry-util-http==0.46b0",
+    "opentelemetry-instrumentation-langchain~=0.24.0",
+    "opentelemetry-instrumentation-openai~=0.24.0",
+    "langchain-core>=0.2.11",
+    "langchain>=0.2.11",
+    "openai>=1.57.0",
+    "pandas",
+    "groq>=0.11.0",
+    "PyPDF2>=3.0.1",
+    "google-generativeai>=0.8.2",
+    "Markdown>=3.7",  
+    "litellm==1.51.1",  
+    "tenacity==8.3.0",
+    "tqdm>=4.66.5",
+    "llama-index>=0.10.0,<0.11.0",
+    "pyopenssl>=24.2.1",
     "psutil~=6.0.0",
     "py-cpuinfo~=9.0.0",
     "requests~=2.32.3",
     "GPUtil~=1.4.0",
-    "wrapt~=1.16",
-    "Flask~=3.0.2",
-    "waitress~=2.1.2",
-    "Flask-Cors~=4.0.1",
-    "setuptools>=67",
-    "litellm~=1.49.2",
-    "openai~=1.51.2",
-    "langchain~=0.2.16",
-    "flask_caching~=2.3.0",
-    "aiohttp~=3.10.4"
+    "astor>=0.8.1",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "black", "isort"]
-
-[project.urls]
-"Homepage" = "https://github.com/raga-ai-hub/agentneo"
-"Bug Tracker" = "https://github.com/raga-ai-hub/agentneo/issues"
-
-[tool.setuptools.packages.find]
-include = ["agentneo*"]
+dev = ["pytest", "pytest-cov", "black", "isort", "mypy", "flake8"]
 
 [tool.setuptools]
-include-package-data = true
+packages = ["ragaai_catalyst"]
 
-[tool.setuptools.package-data]
-agentneo = ["configs/model_costs.json"]
+# [tool.setuptools_scm]
+# write_to = "ragaai_catalyst/_version.py"
 
 [tool.black]
 line-length = 88
 target-version = ['py310']
+include = '\.pyi?$'
 
 [tool.isort]
 profile = "black"
-line_length = 88
+multi_line_output = 3
+
+[tool.mypy]
+ignore_missing_imports = true
+strict = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=ragaai_catalyst"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["ragaai_catalyst"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass",
+    "except ImportError:",
+]
