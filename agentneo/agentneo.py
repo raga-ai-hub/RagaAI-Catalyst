@@ -8,27 +8,25 @@ from .utils import get_db_path
 
 
 def _deprecation_notice():
-    """Display a detailed deprecation warning message."""
     warnings.warn(
-        "\nAgentNeo is deprecated and will be removed in a future version.\n"
-        "Please migrate to RagaAI Catalyst which offers enhanced features and improved performance.\n"
-        "You can install it using: pip install ragaai-catalyst\n"
-        "For migration guide and documentation, visit: https://docs.raga.ai/ragaai-catalyst\n",
+        "\nExciting news! We've created something even better for you!\n"
+        "AgentNeo has evolved into RagaAI Catalyst, bringing you enhanced features and improved performance.\n"
+        "Ready to upgrade? Simply run: pip install ragaai-catalyst\n"
+        "Learn more about the improvements at: https://github.com/raga-ai-hub/ragaai-catalyst\n",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
 
 
 class AgentNeo:
     """
-    @deprecated: This class is deprecated. Please use Tracer Catalyst instead.
-    Install with: pip install tracer-catalyst
+    @deprecated: This class is deprecated. Please use RagaAI Catalyst instead.
+    Install with: pip install ragaai-catalyst
     """
-    
+
     def __init__(self, session_name: str = None):
-        # Show deprecation warning on initialization
         _deprecation_notice()
-        
+
         self.session_name = (
             session_name or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
