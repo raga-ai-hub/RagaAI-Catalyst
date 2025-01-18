@@ -55,6 +55,9 @@ Welcome to AgentNeo! This documentation will help you understand and utilize Age
   - Goal Decomposition Efficiency
   - Goal Fulfillment Rate
   - Tool Call Metrics
+  - Response Latency
+  - Error Detection Rate
+  - Context Retention Rate
 - [Configuration](metrics/configuration.md)
   - Metric Settings
   - Custom Configurations
