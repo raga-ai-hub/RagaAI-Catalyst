@@ -1,5 +1,9 @@
 # AgentNeo &nbsp; ![GitHub release (latest by date)](https://img.shields.io/github/v/release/raga-ai-hub/agentneo) ![GitHub stars](https://img.shields.io/github/stars/raga-ai-hub/agentneo?style=social)  ![Issues](https://img.shields.io/github/issues/raga-ai-hub/agentneo) ![GitHub license](https://img.shields.io/github/license/raga-ai-hub/agentneo) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/agentneo)
 
+> **📢 Exciting News!** AgentNeo has evolved into RagaAI Catalyst, bringing enhanced features and improved performance.  
+> Ready to upgrade? `pip install ragaai-catalyst`  
+> Learn more about the improvements at: https://github.com/raga-ai-hub/ragaai-catalyst
+
 
 **Empower Your AI Applications with Unparalleled Observability and Optimization**
 
