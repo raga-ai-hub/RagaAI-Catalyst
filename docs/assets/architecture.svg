@@ -1,0 +1,240 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <!-- Gradients -->
+        <linearGradient id="bg-gradient" x1="0" y1="0" x2="1200" y2="900">
+            <stop offset="0%" stop-color="#f8fafc"/>
+            <stop offset="100%" stop-color="#f1f5f9"/>
+        </linearGradient>
+        
+        <linearGradient id="user-app-gradient">
+            <stop offset="0%" stop-color="#f1f5f9"/>
+            <stop offset="100%" stop-color="#e2e8f0"/>
+        </linearGradient>
+        
+        <linearGradient id="tracer-gradient">
+            <stop offset="0%" stop-color="#dbeafe"/>
+            <stop offset="100%" stop-color="#bfdbfe"/>
+        </linearGradient>
+        
+        <linearGradient id="db-gradient">
+            <stop offset="0%" stop-color="#f5f3ff"/>
+            <stop offset="100%" stop-color="#ddd6fe"/>
+        </linearGradient>
+        
+        <linearGradient id="server-gradient">
+            <stop offset="0%" stop-color="#dcfce7"/>
+            <stop offset="100%" stop-color="#bbf7d0"/>
+        </linearGradient>
+        
+        <linearGradient id="dashboard-gradient">
+            <stop offset="0%" stop-color="#fef9c3"/>
+            <stop offset="100%" stop-color="#fde68a"/>
+        </linearGradient>
+
+        <linearGradient id="eval-gradient">
+            <stop offset="0%" stop-color="#fee2e2"/>
+            <stop offset="100%" stop-color="#fecaca"/>
+        </linearGradient>
+
+        <linearGradient id="integration-gradient">
+            <stop offset="0%" stop-color="#f3e8ff"/>
+            <stop offset="100%" stop-color="#e9d5ff"/>
+        </linearGradient>
+
+        <!-- Shadows and Markers -->
+        <filter id="drop-shadow">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.1"/>
+        </filter>
+
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" 
+                markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+        </marker>
+
+        <marker id="dotted-arrow" viewBox="0 0 10 10" refX="9" refY="5" 
+                markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+        </marker>
+    </defs>
+
+    <!-- Background -->
+    <rect width="1200" height="900" fill="url(#bg-gradient)"/>
+    
+    <!-- Package Boundary -->
+    <rect x="300" y="40" width="850" height="820" rx="20" 
+          stroke="#94a3b8" stroke-width="2" stroke-dasharray="5,5" 
+          fill="none" filter="url(#drop-shadow)"/>
+    <text x="320" y="70" fill="#64748b" font-family="Arial" 
+          font-size="14" font-weight="bold">AgentNeo Python Package</text>
+
+    <!-- User Application -->
+    <g transform="translate(50, 120)">
+        <rect width="240" height="160" rx="15" 
+              fill="url(#user-app-gradient)" 
+              filter="url(#drop-shadow)"/>
+        <text x="120" y="40" text-anchor="middle" 
+              fill="#334155" font-family="Arial" 
+              font-size="18" font-weight="bold">User Application</text>
+        <rect x="30" y="60" width="180" height="80" rx="10" 
+              fill="white" opacity="0.8"/>
+        <text x="120" y="100" text-anchor="middle" 
+              fill="#475569" font-family="Arial" 
+              font-size="14">Python Code with</text>
+        <text x="120" y="120" text-anchor="middle" 
+              fill="#475569" font-family="Arial" 
+              font-size="14">@tracer Decorators</text>
+    </g>
+
+    <!-- Integrations -->
+    <g transform="translate(50, 350)">
+        <rect width="240" height="320" rx="15" 
+              fill="url(#integration-gradient)" 
+              filter="url(#drop-shadow)"/>
+        <text x="120" y="40" text-anchor="middle" 
+              fill="#6b21a8" font-family="Arial" 
+              font-size="18" font-weight="bold">Integrations</text>
+
+        <rect x="20" y="60" width="200" height="240" rx="10" 
+              fill="white" opacity="0.9"/>
+
+        <g font-family="Arial" font-size="12">
+            <text x="30" y="85" fill="#6b21a8" font-weight="bold">LLM Frameworks:</text>
+            <text x="40" y="105" fill="#6b21a8">• LangChain</text>
+            <text x="40" y="125" fill="#6b21a8">• LiteLLM</text>
+        </g>
+
+        <g font-family="Arial" font-size="12">
+            <text x="30" y="155" fill="#6b21a8" font-weight="bold">Agent Frameworks:</text>
+            <text x="40" y="175" fill="#6b21a8">• AutoGEN</text>
+            <text x="40" y="195" fill="#6b21a8">• CrewAI</text>
+            <text x="40" y="215" fill="#6b21a8">• LangGraph</text>
+            <text x="40" y="235" fill="#6b21a8">• OpenAI Swarm</text>
+        </g>
+
+        <g font-family="Arial" font-size="12">
+            <text x="30" y="265" fill="#6b21a8" font-weight="bold">LLM Support:</text>
+            <text x="40" y="285" fill="#6b21a8">OpenAI, All LLMs via LiteLLM</text>
+        </g>
+    </g>
+
+    <!-- AgentNeo Tracer -->
+    <g transform="translate(400, 120)">
+        <rect width="240" height="160" rx="15" 
+              fill="url(#tracer-gradient)" 
+              filter="url(#drop-shadow)"/>
+        <text x="120" y="40" text-anchor="middle" 
+              fill="#1e40af" font-family="Arial" 
+              font-size="18" font-weight="bold">AgentNeo Tracer</text>
+        <rect x="30" y="60" width="180" height="80" rx="10" 
+              fill="white" opacity="0.8"/>
+        <text x="120" y="110" text-anchor="middle" 
+              fill="#1e40af" font-family="Arial" 
+              font-size="14">Python Backend</text>
+    </g>
+
+    <!-- SQLite Database -->
+    <g transform="translate(400, 350)">
+        <rect width="240" height="160" rx="15" 
+              fill="url(#db-gradient)" 
+              filter="url(#drop-shadow)"/>
+        <text x="120" y="40" text-anchor="middle" 
+              fill="#5b21b6" font-family="Arial" 
+              font-size="18" font-weight="bold">Local Storage</text>
+        <rect x="30" y="60" width="180" height="80" rx="10" 
+              fill="white" opacity="0.8"/>
+        <text x="120" y="110" text-anchor="middle" 
+              fill="#5b21b6" font-family="Arial" 
+              font-size="14">SQLite Database</text>
+    </g>
+
+    <!-- Evaluation Module -->
+    <g transform="translate(800, 230)">
+        <rect width="300" height="160" rx="15" 
+              fill="url(#eval-gradient)" 
+              filter="url(#drop-shadow)"/>
+        <text x="150" y="95" text-anchor="middle" 
+              fill="#991b1b" font-family="Arial" 
+              font-size="18" font-weight="bold">Evaluation Module</text>
+    </g>
+
+    <!-- Flask Server -->
+    <g transform="translate(400, 580)">
+        <rect width="240" height="160" rx="15" 
+              fill="url(#server-gradient)" 
+              filter="url(#drop-shadow)"/>
+        <text x="120" y="40" text-anchor="middle" 
+              fill="#15803d" font-family="Arial" 
+              font-size="18" font-weight="bold">Flask Server</text>
+        <rect x="30" y="60" width="180" height="80" rx="10" 
+              fill="white" opacity="0.8"/>
+        <text x="120" y="110" text-anchor="middle" 
+              fill="#15803d" font-family="Arial" 
+              font-size="14">API + Static Files</text>
+    </g>
+
+    <!-- React Dashboard -->
+    <g transform="translate(800, 580)">
+        <rect width="300" height="160" rx="15" 
+              fill="url(#dashboard-gradient)" 
+              filter="url(#drop-shadow)"/>
+        <text x="150" y="40" text-anchor="middle" 
+              fill="#b45309" font-family="Arial" 
+              font-size="18" font-weight="bold">Dashboard</text>
+        <rect x="30" y="60" width="240" height="80" rx="10" 
+              fill="white" opacity="0.8"/>
+        <text x="150" y="95" text-anchor="middle" 
+              fill="#b45309" font-family="Arial" 
+              font-size="14">Interactive React UI</text>
+        <text x="150" y="115" text-anchor="middle" 
+              fill="#b45309" font-family="Arial" 
+              font-size="14">Visualization + Analytics</text>
+    </g>
+
+    <!-- Connections -->
+    <!-- Integration to User App -->
+    <path d="M 170,350 L 170,280" 
+          stroke="#94a3b8" stroke-width="2" 
+          stroke-dasharray="4,4"
+          marker-end="url(#dotted-arrow)"/>
+
+    <!-- User App to Tracer -->
+    <path d="M 290,200 L 400,200" 
+          stroke="#64748b" stroke-width="2" 
+          marker-end="url(#arrow)"/>
+
+    <!-- Tracer to SQLite -->
+    <path d="M 520,280 L 520,350" 
+          stroke="#64748b" stroke-width="2" 
+          marker-end="url(#arrow)"/>
+
+    <!-- SQLite to Evaluation -->
+    <path d="M 640,430 L 800,310" 
+          stroke="#64748b" stroke-width="2" 
+          marker-end="url(#arrow)"/>
+
+    <!-- Evaluation to SQLite -->
+    <path d="M 800,330 L 640,450" 
+          stroke="#64748b" stroke-width="2" 
+          marker-end="url(#arrow)"/>
+
+    <!-- SQLite to Flask -->
+    <path d="M 520,510 L 520,580" 
+          stroke="#64748b" stroke-width="2" 
+          marker-end="url(#arrow)"/>
+
+    <!-- Flask to Dashboard -->
+    <path d="M 640,660 L 800,660" 
+          stroke="#64748b" stroke-width="2" 
+          marker-end="url(#arrow)"/>
+
+    <!-- Flow Labels -->
+    <g font-family="Arial" font-size="12" fill="#64748b">
+        <text x="175" y="320">Integration</text>
+        <text x="320" y="180">Traces</text>
+        <text x="530" y="320">Store Traces</text>
+        <text x="680" y="350">Read Traces</text>
+        <text x="680" y="430">Store Results</text>
+        <text x="530" y="550">Query Data</text>
+        <text x="700" y="640">API + UI</text>
+    </g>
+</svg>

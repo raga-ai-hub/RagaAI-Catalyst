@@ -148,3 +148,9 @@ model_costs.yaml
 # Ensure these are not ignored
 !agentneo/ui/dist/
 !agentneo/configs/model_costs.json
+!agentneo/ui/package.json
+!agentneo/ui/tsconfig.json
+!agentneo/ui/tsconfig.node.json
+!agentneo/ui/tsconfig.app.json
+!agentneo/ui/src/lib/utils.ts
+!agentneo/ui/components.json

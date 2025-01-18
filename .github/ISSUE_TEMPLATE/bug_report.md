@@ -33,9 +33,7 @@ If applicable, add logs, stack traces, or screenshots to help explain the issue.
 
 **Environment Details**
 - **Operating System**: [e.g., Windows 10, Ubuntu 20.04, macOS Catalina]
-- **Python Version**: [e.g., 3.8.10]
-- **Node.js Version**: [e.g., 14.17.0]
-- **npm/yarn Version**: [e.g., npm 6.14.13 or yarn 1.22.10]
+- **Python Version**: [e.g., 3.9.10]
 - **AgentNeo Version**: [e.g., 1.0.0]
 - **Relevant Packages**: [e.g., OpenAI SDK 0.9.0, LiteLLM 1.2.3]
 

@@ -3,8 +3,7 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from .data.data_models import Base, ProjectInfoModel
-from .tracing import Tracer
-from .server.dashboard import launch_dashboard as _launch_dashboard
+from .utils import get_db_path
 
 
 class AgentNeo:
@@ -12,32 +11,13 @@ class AgentNeo:
         self.session_name = (
             session_name or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
-        self.db_path = self.get_db_path()
+        self.db_path = get_db_path()
         self.engine = create_engine(self.db_path)
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
         self.project_id = None
         self.project_name = None
         self.created_on = datetime.now()
-
-    @staticmethod
-    def get_db_path():
-        db_filename = "trace_data.db"
-
-        # First, try the local directory
-        local_db_path = os.path.join(os.getcwd(), "agentneo", "ui", "dist", db_filename)
-        if os.path.exists(os.path.dirname(local_db_path)):
-            return f"sqlite:///{local_db_path}"
-
-        # If local directory doesn't exist, use the package directory
-        package_dir = os.path.dirname(os.path.abspath(__file__))
-        public_dir = os.path.join(package_dir, "ui", "dist")
-        package_db_path = os.path.join(public_dir, db_filename)
-
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(package_db_path), exist_ok=True)
-
-        return f"sqlite:///{package_db_path}"
 
     def create_project(self, project_name: str):
         with self.Session() as session:
@@ -76,7 +56,7 @@ class AgentNeo:
 
     @staticmethod
     def list_projects(num_projects: int = None):
-        db_path = AgentNeo.get_db_path()
+        db_path = get_db_path()
         engine = create_engine(db_path)
         Session = sessionmaker(bind=engine)
         with Session() as session:
@@ -98,4 +78,6 @@ class AgentNeo:
 
         :param port: The port to run the dashboard on (default is 3000)
         """
+        from .server.dashboard import launch_dashboard as _launch_dashboard
+
         _launch_dashboard(port)

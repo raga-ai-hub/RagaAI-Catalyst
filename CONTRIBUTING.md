@@ -29,7 +29,7 @@ By participating in this project, you are expected to uphold our [Code of Conduc
 
 ## Setting Up Your Development Environment
 
-1. Ensure you have Python 3.8 or higher installed.
+1. Ensure you have Python 3.9 or higher installed.
 2. Install Node.js (version 14 or higher) and npm (version 6 or higher) or yarn (1.22+).
 3. Fork the AgentNeo repository on GitHub.
 4. Clone your fork locally:

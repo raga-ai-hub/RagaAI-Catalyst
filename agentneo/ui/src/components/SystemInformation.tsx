@@ -26,12 +26,25 @@ const SystemInformation: React.FC<SystemInformationProps> = React.memo(({ system
         const parsed = JSON.parse(diskSpace);
         const available = (parsed.available).toFixed(2);
         const total = (parsed.total).toFixed(2);
-        return `${available} GB free of ${total} GB`;
+        return `${total} GB (${available} GB free)`;
       } catch (e) {
         return diskSpace; // Return original string if parsing fails
       }
     }
     return diskSpace; // Return as-is if it's not a string
+  };
+
+  const formatMemory = (memory: string) => {
+    if (!memory) return 'N/A';
+    const memoryNumber = parseFloat(memory);
+    return `${memoryNumber.toFixed(2)} GB`;
+  };
+
+  const formatGPU = (gpu: string) => {
+    if (!gpu || gpu.toLowerCase() === 'none' || gpu.trim() === '') {
+      return 'N/A';
+    }
+    return gpu;
   };
 
   return (
@@ -44,8 +57,8 @@ const SystemInformation: React.FC<SystemInformationProps> = React.memo(({ system
           <InfoItem icon={<Terminal className="w-5 h-5 text-green-600" />} label="Python Version" value={systemData.pythonVersion} />
           <InfoItem icon={<Monitor className="w-5 h-5 text-blue-600" />} label="OS" value={systemData.os} />
           <InfoItem icon={<Cpu className="w-5 h-5 text-purple-600" />} label="CPU" value={systemData.cpu} />
-          <InfoItem icon={<Microchip className="w-5 h-5 text-red-600" />} label="GPU" value={systemData.gpu} />
-          <InfoItem icon={<HardDrive className="w-5 h-5 text-yellow-600" />} label="Total Memory" value={systemData.totalMemory} />
+          <InfoItem icon={<Microchip className="w-5 h-5 text-red-600" />} label="GPU" value={formatGPU(systemData.gpu)} />
+          <InfoItem icon={<HardDrive className="w-5 h-5 text-yellow-600" />} label="Total Memory" value={formatMemory(systemData.totalMemory)} />
           <InfoItem
             icon={<Database className="w-5 h-5 text-indigo-600" />}
             label="Disk Space"

@@ -28,7 +28,7 @@ const Sidebar: React.FC = () => {
           <nav>
             <ul className="space-y-4">
               <SidebarLink to="/" icon={LayoutDashboard} text="Overview" isCollapsed={isCollapsed} />
-              {/* <SidebarLink to="/analysis" icon={PieChart} text="Analytics" isCollapsed={isCollapsed} /> */}
+              <SidebarLink to="/analysis" icon={PieChart} text="Analytics" isCollapsed={isCollapsed} />
               <SidebarLink to="/trace-history" icon={History} text="Trace History" isCollapsed={isCollapsed} />
               <SidebarLink to="/evaluation" icon={ClipboardCheck} text="Evaluation" isCollapsed={isCollapsed} />
             </ul>
@@ -39,7 +39,7 @@ const Sidebar: React.FC = () => {
       <div className="relative z-10 mt-auto pt-6 border-t border-white border-opacity-20">
         <ul className="space-y-4">
           <SidebarExternalLink href="https://docs.raga.ai/agentneo" icon={BookOpen} text="Documentation" isCollapsed={isCollapsed} />
-          <SidebarExternalLink href="https://github.com/aristotle-ai/ragaai-agentneo" icon={Github} text="Code Repository" isCollapsed={isCollapsed} />
+          <SidebarExternalLink href="https://github.com/raga-ai-hub/agentneo" icon={Github} text="Code Repository" isCollapsed={isCollapsed} />
         </ul>
       </div>
 

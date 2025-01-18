@@ -1,6 +1,18 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
-import { fetchAllProjects, fetchTracesForProject } from '../utils/databaseUtils';
+import { fetchProjects, fetchTraces } from '../utils/api';
 
+// API response interfaces
+interface APIProject {
+  id: number;
+  project_name: string;
+  start_time: string;
+  end_time: string;
+  duration: number;
+  total_cost: number;
+  total_tokens: number;
+}
+
+// Internal interfaces used by the application
 interface Project {
   id: number;
   name: string;
@@ -59,10 +71,16 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
   const loadProjects = useCallback(async () => {
     try {
-      const fetchedProjects = await fetchAllProjects();
-      setProjects(fetchedProjects);
-      if (fetchedProjects.length > 0 && !selectedProject) {
-        setSelectedProject(fetchedProjects[0].id);
+      const response = await fetchProjects();
+      // Double type assertion to safely convert the response
+      const fetchedProjects = (response as unknown) as APIProject[];
+      const transformedProjects = fetchedProjects.map(p => ({
+        id: p.id,
+        name: p.project_name
+      }));
+      setProjects(transformedProjects);
+      if (transformedProjects.length > 0 && !selectedProject) {
+        setSelectedProject(transformedProjects[0].id);
       }
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -72,10 +90,14 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
   const loadTraces = useCallback(async (projectId: number) => {
     try {
-      const fetchedTraces = await fetchTracesForProject(projectId);
-      setTraces(fetchedTraces);
-      if (fetchedTraces.length > 0 && !selectedTraceId) {
-        setSelectedTraceId(fetchedTraces[0].id);
+      const fetchedTraces = await fetchTraces(projectId);
+      const transformedTraces = fetchedTraces.map(t => ({
+        id: t.id,
+        name: `Trace ${t.id} - ${new Date(t.start_time).toLocaleString()}`
+      }));
+      setTraces(transformedTraces);
+      if (transformedTraces.length > 0 && !selectedTraceId) {
+        setSelectedTraceId(transformedTraces[0].id);
       }
     } catch (error) {
       console.error('Error loading traces:', error);

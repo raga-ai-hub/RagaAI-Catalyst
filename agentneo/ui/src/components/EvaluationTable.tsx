@@ -6,27 +6,23 @@ import { ArrowUpDown } from "lucide-react";
 interface EvaluationTableProps {
   sortedData: any[];
   requestSort: (key: string) => void;
-  resultFields: string[];
+  metricNames: string[];
+  onTraceSelect: (traceId: string) => void;
+  selectedTraceId: string | null;
 }
 
-const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSort, resultFields }) => {
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
+const EvaluationTable: React.FC<EvaluationTableProps> = ({
+  sortedData,
+  requestSort,
+  metricNames,
+  onTraceSelect,
+  selectedTraceId
+}) => {
+  const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
 
-  const toggleRowExpansion = (metricId: string) => {
-    setExpandedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(metricId)) {
-        newSet.delete(metricId);
-      } else {
-        newSet.add(metricId);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleDetailExpansion = (cellId: string) => {
-    setExpandedDetails(prev => {
+  const toggleCellExpansion = (cellId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click when expanding cell
+    setExpandedCells(prev => {
       const newSet = new Set(prev);
       if (newSet.has(cellId)) {
         newSet.delete(cellId);
@@ -37,64 +33,55 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
     });
   };
 
-  const renderCell = (cellData: any, field: string, metricId: string, resultIndex: number) => {
-    if (cellData === undefined || cellData === null || cellData === '') return <TableCell>-</TableCell>;
+  const renderCell = (cellData: any, field: string, traceId: string, metric: string) => {
+    if (cellData === undefined || cellData === null || cellData === '') return <div>-</div>;
 
-    const cellId = `${metricId}-${resultIndex}-${field}`;
+    const cellId = `${traceId}-${metric}-${field}`;
+    const isExpanded = expandedCells.has(cellId);
     let content;
 
     switch (field) {
       case 'score':
         content = typeof cellData === 'number' ? cellData.toFixed(2) : cellData;
-        break;
-      case 'reason':
-      case 'result_detail':
-        const isExpanded = expandedDetails.has(cellId);
-        const truncatedContent = cellData.length > 50 ? cellData.substring(0, 50) + '...' : cellData;
-        content = (
-          <div 
-            className="cursor-pointer text-blue-600 hover:underline"
-            onClick={() => toggleDetailExpansion(cellId)}
-          >
-            {isExpanded ? cellData : truncatedContent}
+        return (
+          <div key={cellId} className="mb-2">
+            <span className="font-bold">Score: </span>
+            <span>{content}</span>
           </div>
         );
-        break;
-      case 'config':
-        try {
-          const parsedData = JSON.parse(cellData);
-          content = (
-            <pre className="whitespace-pre-wrap overflow-hidden text-xs">
-              {JSON.stringify(parsedData, null, 2)}
-            </pre>
-          );
-        } catch {
-          content = cellData;
-        }
-        break;
-      case 'start_time':
-      case 'end_time':
-        content = new Date(cellData).toLocaleString();
-        break;
-      case 'duration':
-        content = typeof cellData === 'number' ? `${cellData.toFixed(2)}s` : cellData;
-        break;
+      case 'reason':
+      case 'result_detail':
+        const truncatedContent = cellData.length > 50 ? cellData.substring(0, 50) + '...' : cellData;
+        return (
+          <div key={cellId} className="mb-2">
+            <span className="font-bold">{field.charAt(0).toUpperCase() + field.slice(1)}: </span>
+            <span
+              className="cursor-pointer text-blue-600 hover:underline"
+              onClick={(e) => toggleCellExpansion(cellId, e)}
+            >
+              {isExpanded ? cellData : truncatedContent}
+            </span>
+          </div>
+        );
       default:
         content = String(cellData);
+        return <div key={cellId} className="mb-2">{content}</div>;
     }
-
-    return <TableCell key={cellId}>{content}</TableCell>;
   };
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Metric</TableHead>
-          {resultFields.map(header => (
-            <TableHead key={header}>
-              <Button variant="ghost" onClick={() => requestSort(header)}>
-                {header.charAt(0).toUpperCase() + header.slice(1).replace(/_/g, ' ')} <ArrowUpDown className="ml-2 h-4 w-4" />
+          <TableHead>
+            <Button variant="ghost" onClick={() => requestSort('trace_id')}>
+              Trace ID <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+          </TableHead>
+          {metricNames.map(metric => (
+            <TableHead key={metric}>
+              <Button variant="ghost" onClick={() => requestSort(metric)}>
+                {metric.charAt(0).toUpperCase() + metric.slice(1).replace(/_/g, ' ')} <ArrowUpDown className="ml-2 h-4 w-4" />
               </Button>
             </TableHead>
           ))}
@@ -102,21 +89,27 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
       </TableHeader>
       <TableBody>
         {sortedData.map((row) => (
-          <React.Fragment key={row.metric}>
-            <TableRow 
-              className="hover:bg-gray-100 cursor-pointer"
-              onClick={() => toggleRowExpansion(row.metric)}
-            >
-              <TableCell>{row.metric}</TableCell>
-              {resultFields.map(field => renderCell(row.results[0]?.[field], field, row.metric, 0))}
-            </TableRow>
-            {expandedRows.has(row.metric) && row.results.slice(1).map((result, index) => (
-              <TableRow key={`${row.metric}-${index + 1}`} className="bg-gray-50">
-                <TableCell></TableCell>
-                {resultFields.map(field => renderCell(result[field], field, row.metric, index + 1))}
-              </TableRow>
+          <TableRow
+            key={row.trace_id}
+            onClick={() => onTraceSelect(row.trace_id)}
+            className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 ease-in-out ${selectedTraceId === row.trace_id ? 'bg-purple-50 dark:bg-purple-900' : ''
+              }`}
+          >
+            <TableCell>
+              <span className="text-blue-600 hover:underline cursor-pointer">
+                {row.trace_id}
+              </span>
+            </TableCell>
+            {metricNames.map(metric => (
+              <TableCell key={`${row.trace_id}-${metric}`} className="align-top">
+                <div className="space-y-2">
+                  {renderCell(row[metric]?.score, 'score', row.trace_id, metric)}
+                  {renderCell(row[metric]?.reason, 'reason', row.trace_id, metric)}
+                  {renderCell(row[metric]?.result_detail, 'result_detail', row.trace_id, metric)}
+                </div>
+              </TableCell>
             ))}
-          </React.Fragment>
+          </TableRow>
         ))}
       </TableBody>
     </Table>

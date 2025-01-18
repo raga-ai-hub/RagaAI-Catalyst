@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentneo"
-version = "1.1.2"
+version = "1.2.2"
 description = "A powerful tracing library for monitoring and analyzing AI agents, LLM calls, and tool interactions."
 authors = [
     { name = "Rehan Asif", email = "rehan.asif@raga.ai" },
@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
 ]
@@ -38,7 +39,8 @@ dependencies = [
     "setuptools>=67",
     "litellm~=1.49.2",
     "openai~=1.51.2",
-    "langchain~=0.2.16"
+    "langchain~=0.2.16",
+    "flask_caching~=2.3.0",
     "aiohttp~=3.10.4"
 ]
 

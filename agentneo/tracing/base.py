@@ -126,15 +126,12 @@ class BaseTracer:
                 project.duration = 0
             project.duration += trace.duration  # Accumulate duration
 
-            llm_calls = (
-                session.query(LLMCallModel).filter_by(trace_id=self.trace_id).all()
-            )
+            llm_calls = session.query(LLMCallModel).filter_by(trace_id=self.trace_id).all()
             trace_cost = sum(
-                json.loads(llm_call.cost).get("total", 0) for llm_call in llm_calls
+                sum(json.loads(llm_call.cost).values()) for llm_call in llm_calls
             )
             trace_tokens = sum(
-                json.loads(llm_call.token_usage).get("total", 0)
-                for llm_call in llm_calls
+                sum(json.loads(llm_call.token_usage).values()) for llm_call in llm_calls
             )
 
             # Accumulate costs and tokens instead of overwriting

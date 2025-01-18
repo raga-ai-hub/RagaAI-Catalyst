@@ -14,7 +14,7 @@ function App() {
         <Router>
           <Routes>
             <Route path="/" element={<Overview />} />
-            {/* <Route path="/analysis" element={<Analysis />} /> */}
+            <Route path="/analysis" element={<Analysis />} />
             <Route path="/trace-history" element={<TraceHistory />} />
             <Route path="/evaluation" element={<Evaluation />} />
           </Routes>

@@ -1,11 +1,41 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const InstalledPackages = ({ packages }) => {
-  if (!packages) {
-    return <div>Loading installed packages...</div>;
+interface PackageInfo {
+  name: string;
+  version: string;
+}
+
+interface InstalledPackagesProps {
+  packages: PackageInfo[];
+}
+
+export const InstalledPackages: React.FC<InstalledPackagesProps> = ({ packages }) => {
+  if (!packages || packages.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Installed Packages</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-gray-500">No packages found</div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -18,14 +48,14 @@ const InstalledPackages = ({ packages }) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>PACKAGE</TableHead>
-                <TableHead>VERSION</TableHead>
+                <TableHead className="w-[200px]">Package</TableHead>
+                <TableHead>Version</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {packages.map((pkg, index) => (
                 <TableRow key={index}>
-                  <TableCell>{pkg.name}</TableCell>
+                  <TableCell className="font-medium">{pkg.name}</TableCell>
                   <TableCell>{pkg.version}</TableCell>
                 </TableRow>
               ))}

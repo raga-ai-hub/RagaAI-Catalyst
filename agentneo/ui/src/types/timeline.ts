@@ -6,7 +6,9 @@ export interface TimelineData {
   color: string;
   type: string;
   row: string;
+  isDot?: boolean;
   details?: {
+    name?: string,
     agent?: string;
     function?: string;
     input?: string;
@@ -17,5 +19,13 @@ export interface TimelineData {
     error_message?: string;
     interaction_type?: string;
     content?: string;
+    parentName?: string;
+  };
+  counts?: {
+    llms: number;
+    tools: number;
+    interactions: number;
+    errors: number;
+    agents: number;
   };
 }

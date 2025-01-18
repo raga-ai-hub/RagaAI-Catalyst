@@ -33,6 +33,9 @@ class ToolTracerMixin:
         start_memory = psutil.Process().memory_info().rss
         agent_id = self.current_agent_id.get()
 
+        # Activate network tracing
+        self.network_tracer.activate_patches()
+
         try:
             result = func(*args, **kwargs)
 
@@ -52,6 +55,7 @@ class ToolTracerMixin:
                 end_time=end_time,
                 duration=(end_time - start_time).total_seconds(),
                 memory_used=memory_used,
+                network_calls=self.network_tracer.network_calls,
             )
             with self.Session() as session:
                 session.add(tool_call)
@@ -65,18 +69,18 @@ class ToolTracerMixin:
                 self.current_tool_call_ids.set(tool_call_ids)
             tool_call_ids.append(tool_call_id)
 
-            serialized_params = self._serialize_params(args, kwargs)
             self.trace_data.setdefault("tool_calls", []).append(
                 {
                     "id": tool_call_id,
                     "name": name,
                     "description": description,
-                    "input_parameters": (json.dumps(serialized_params)),
+                    "input_parameters": json.dumps(serialized_params),
                     "output": str(result),
                     "start_time": start_time.isoformat(),
                     "end_time": end_time.isoformat(),
                     "duration": (end_time - start_time).total_seconds(),
                     "memory_used": memory_used,
+                    "network_calls": self.network_tracer.network_calls,
                     "agent_id": agent_id,
                 }
             )
@@ -85,6 +89,8 @@ class ToolTracerMixin:
         except Exception as e:
             self._log_error(e, "tool", name)
             raise
+        finally:
+            self.network_tracer.deactivate_patches()
 
     async def _trace_tool_call_async(self, func, name, description, *args, **kwargs):
         start_time = datetime.now()
@@ -93,6 +99,9 @@ class ToolTracerMixin:
 
         # Initialize the UserInteractionTracer
         user_interaction_tracer = UserInteractionTracer(self)
+
+        # Activate network tracing
+        self.network_tracer.activate_patches()
 
         try:
             async with user_interaction_tracer.async_capture():
@@ -118,6 +127,7 @@ class ToolTracerMixin:
                 end_time=end_time,
                 duration=(end_time - start_time).total_seconds(),
                 memory_used=memory_used,
+                network_calls=self.network_tracer.network_calls,
             )
             with self.Session() as session:
                 session.add(tool_call)
@@ -125,32 +135,32 @@ class ToolTracerMixin:
                 tool_call_id = tool_call.id
 
             # Append tool_call_id to current_tool_call_ids if available
-            tool_call_ids = self.current_tool_call_ids.get(None)
+            tool_call_ids = self.current_tool_call_ids.get()
             if tool_call_ids is not None:
                 tool_call_ids.append(tool_call_id)
 
-            tool_call_data = {
-                "name": name,
-                "description": description,
-                "input_parameters": json.dumps(args) if args else json.dumps(kwargs),
-                "output": str(result),
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat(),
-                "duration": (end_time - start_time).total_seconds(),
-                "memory_used": memory_used,
-                "network_calls": self.network_tracer.network_calls,
-                "agent_id": agent_id,
-                "tool_call_id": tool_call_id,
-            }
-
-            self.trace_data["tool_calls"].append(tool_call_data)
+            self.trace_data.setdefault("tool_calls", []).append(
+                {
+                    "id": tool_call_id,
+                    "name": name,
+                    "description": description,
+                    "input_parameters": json.dumps(serialized_params),
+                    "output": str(result),
+                    "start_time": start_time.isoformat(),
+                    "end_time": end_time.isoformat(),
+                    "duration": (end_time - start_time).total_seconds(),
+                    "memory_used": memory_used,
+                    "network_calls": self.network_tracer.network_calls,
+                    "agent_id": agent_id,
+                }
+            )
 
             return result
         except Exception as e:
             self._log_error(e, "tool", name)
             raise
         finally:
-            self.network_tracer.deactivate_patches()  # Deactivate patches after execution
+            self.network_tracer.deactivate_patches()
 
     def _serialize_params(self, args, kwargs):
         def _serialize(obj):
