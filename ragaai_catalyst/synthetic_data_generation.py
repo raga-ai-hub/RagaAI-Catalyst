@@ -9,15 +9,10 @@ import pandas as pd
 import json
 from litellm import completion
 from tqdm import tqdm
-# import internal_api_completion
-# import proxy_call
 from .internal_api_completion import api_completion as internal_api_completion
 from .proxy_call import api_completion as proxy_api_completion
-# from ragaai_catalyst import internal_api_completion
-# from ragaai_catalyst import proxy_call
 import ast
 
-# dotenv.load_dotenv()
 
 class SyntheticDataGeneration:
     """
@@ -48,18 +43,15 @@ class SyntheticDataGeneration:
         Raises:
             ValueError: If an invalid provider is specified or API key is missing.
         """
-        BATCH_SIZE = 5  # Optimal batch size for maintaining response quality
+        BATCH_SIZE = 5  
         provider = model_config.get("provider")
         model = model_config.get("model")
         api_base = model_config.get("api_base")
 
-        # Initialize the appropriate client based on provider
         self._initialize_client(provider, api_key, api_base, internal_llm_proxy=kwargs.get("internal_llm_proxy", None))
 
-        # Initialize progress bar
         pbar = tqdm(total=n, desc="Generating QA pairs")
         
-        # Initial generation phase
         num_batches = (n + BATCH_SIZE - 1) // BATCH_SIZE
         all_responses = []
 
@@ -98,11 +90,9 @@ class SyntheticDataGeneration:
                     continue
         
         
-        # Convert to DataFrame and remove duplicates
         result_df = pd.DataFrame(all_responses)
         result_df = result_df.drop_duplicates(subset=['Question'])
         
-        # Replenish phase - generate additional questions if needed due to duplicates
         while (len(result_df) < n) and ((len(result_df) >= 1)):
             questions_needed = n - len(result_df)
             try:
@@ -114,7 +104,6 @@ class SyntheticDataGeneration:
                     additional_df = self._generate_batch_response(text, system_message, provider, model_config, api_key, api_base)
                 
                 if not additional_df.empty and len(additional_df) > 0:
-                    # Only add questions that aren't already in result_df
                     new_questions = additional_df[~additional_df['Question'].isin(result_df['Question'])]
                     if not new_questions.empty:
                         result_df = pd.concat([result_df, new_questions], ignore_index=True)
@@ -133,7 +122,6 @@ class SyntheticDataGeneration:
         
         pbar.close()
         
-        # Ensure exactly n rows and reset index starting from 1
         final_df = result_df.head(n)
         final_df.index = range(1, len(final_df) + 1)
         
@@ -171,7 +159,6 @@ class SyntheticDataGeneration:
                 if provider == "gemini" and api_base:
                     messages = [{'role': 'user', 'content': system_message + text}]
                     response = proxy_api_completion(messages=messages, model=model_config["model"], api_base=api_base)
-                    # response = proxy_call.api_completion(messages=messages, model=model_config["model"], api_base=api_base)
                     return pd.DataFrame(ast.literal_eval(response[0]))
                 else:
                     return self._generate_llm_response(text, system_message, model_config, api_key)
@@ -258,20 +245,17 @@ class SyntheticDataGeneration:
             Exception: If there's an error in generating the response.
         """
 
-            # Prepare the messages in the format expected by LiteLLM
         messages = [
             {"role": "system", "content": system_message},
             {"role": "user", "content": text}
         ]
 
-        # Set up the completion parameters
         completion_params = {
             "model": model_config["model"],
             "messages": messages,
             "api_key": api_key
         }
 
-        # Add optional parameters if they exist in model_config
         if "api_base" in model_config:
             completion_params["api_base"] = model_config["api_base"]
         if "max_tokens" in model_config:
@@ -279,7 +263,6 @@ class SyntheticDataGeneration:
         if "temperature" in model_config:
             completion_params["temperature"] = model_config["temperature"]
 
-        # Make the API call using LiteLLM
         try:
             response = completion(**completion_params)
         except Exception as e:
@@ -287,11 +270,9 @@ class SyntheticDataGeneration:
                 raise ValueError(f"Invalid API key provided for {model_config.get('provider', 'the specified')} provider")
             raise Exception(f"Error calling LLM API: {str(e)}")
 
-        # Extract the content from the response
         content = response.choices[0].message.content
         content = content.replace('\n', '').replace('```json','').replace('```', '').strip()
 
-        # Clean the response if needed (remove any prefix before the JSON list)
         list_start_index = content.find('[')
         if list_start_index != -1:
             content = content[list_start_index:]
@@ -315,8 +296,8 @@ class SyntheticDataGeneration:
             data = response.candidates[0].content.parts[0].text
         elif provider == "groq":
             data = response.choices[0].message.content.replace('\n', '')
-            list_start_index = data.find('[')  # Find the index of the first '['
-            substring_data = data[list_start_index:] if list_start_index != -1 else data  # Slice from the list start
+            list_start_index = data.find('[')  
+            substring_data = data[list_start_index:] if list_start_index != -1 else data  
             data = substring_data
 
         else:
@@ -325,7 +306,6 @@ class SyntheticDataGeneration:
             json_data = json.loads(data)
             return pd.DataFrame(json_data)
         except json.JSONDecodeError:
-            # If JSON parsing fails, return a DataFrame with a single column
             return pd.DataFrame({'content': [data]})
 
     def process_document(self, input_data):
@@ -343,7 +323,6 @@ class SyntheticDataGeneration:
         """
         if isinstance(input_data, str):
             if os.path.isfile(input_data):
-                # If input_data is a file path
                 _, file_extension = os.path.splitext(input_data)
                 try:
                     if file_extension.lower() == '.pdf':
@@ -359,7 +338,6 @@ class SyntheticDataGeneration:
                 except Exception as e:
                     raise ValueError(f"Error reading the file. Upload a valid file. \n{e}")
             else:
-                # If input_data is a string of text
                 return input_data
         else:
             raise ValueError("Input must be either a file path or a string of text")
@@ -444,10 +422,3 @@ class SyntheticDataGeneration:
         """
         return ['gemini', 'openai']
 
-# Usage:
-# from synthetic_data_generation import SyntheticDataGeneration
-# synthetic_data_generation = SyntheticDataGeneration()
-# text = synthetic_data_generation.process_document(input_data=text_file)
-# result = synthetic_data_generation.generate_question(text)
-# supported_question_types = synthetic_data_generation.get_supported_question_types()
-# supported_providers = synthetic_data_generation.get_supported_providers()

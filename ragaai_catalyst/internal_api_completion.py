@@ -42,7 +42,7 @@ def api_completion(messages, model_config, kwargs):
                         df = pd.DataFrame(json_data)
                         return(df)
                     except json.JSONDecodeError:
-                        attempts += 1  # Increment attempts if JSON parsing fails
+                        attempts += 1  
                         if attempts == 3:
                             raise Exception("Failed to generate a valid response after multiple attempts.")
 
