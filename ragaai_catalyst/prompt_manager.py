@@ -23,7 +23,7 @@ class PromptManager:
         self.project_name = project_name
         self.base_url = f"{RagaAICatalyst.BASE_URL}/playground/prompt"
         self.timeout = 10
-        self.size = 99999 #Number of projects to fetch
+        self.size = 99999
 
         try:
             response = requests.get(
@@ -423,7 +423,7 @@ class PromptObject:
             return float(value)
         elif type_ == "int":
             return int(value)
-        return value  # Default case, return as is
+        return value 
 
     def get_model_parameters(self):
         """

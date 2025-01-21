@@ -1,6 +1,3 @@
-import sys
-# sys.path.append('/Users/ritikagoel/workspace/synthetic-catalyst-internal-api2/ragaai-catalyst')
-
 import pytest
 from ragaai_catalyst import SyntheticDataGeneration
 import os
@@ -14,18 +11,18 @@ def synthetic_gen():
 
 @pytest.fixture
 def sample_text(synthetic_gen):
-    text_file = "/Users/siddharthakosti/Downloads/catalyst_error_handling/catalyst_v2/catalyst_v2_new_1/data/ai_document_061023_2.pdf"  # Update this path as needed
+    text_file = "xyz.pdf"  
     return synthetic_gen.process_document(input_data=text_file)
 
 def test_invalid_csv_processing(synthetic_gen):
     """Test processing an invalid CSV file"""
     with pytest.raises(Exception):
-        synthetic_gen.process_document(input_data="/Users/siddharthakosti/Downloads/catalyst_error_handling/catalyst_v2/catalyst_v2_new_1/data/OG1.csv")
+        synthetic_gen.process_document(input_data="xyz.csv")
 
 def test_special_chars_csv_processing(synthetic_gen):
     """Test processing CSV with special characters"""
     with pytest.raises(Exception):
-        synthetic_gen.process_document(input_data="/Users/siddharthakosti/Downloads/catalyst_error_handling/catalyst_v2/catalyst_v2_new_1/data/OG1.csv")
+        synthetic_gen.process_document(input_data="xyz.csv")
 
 
 
@@ -109,7 +106,7 @@ def test_default_question_count(synthetic_gen, sample_text):
         internal_llm_proxy="http://4.247.138.221:4000/chat/completions",
         user_id="1"
     )
-    assert len(result) == 5  # Default should be 5 questions
+    assert len(result) == 5  
 
 def test_default_question_type(synthetic_gen, sample_text):
     """Test default question type when question_type is not provided"""
@@ -120,7 +117,6 @@ def test_default_question_type(synthetic_gen, sample_text):
         internal_llm_proxy="http://20.244.126.4:4000/chat/completions",
         user_id="1"
     )
-    # Verify result contains simple Q/A format without multiple choice options
     assert all('options' not in qa for qa in result)
 
 def test_question_count_matches_n(synthetic_gen, sample_text):
