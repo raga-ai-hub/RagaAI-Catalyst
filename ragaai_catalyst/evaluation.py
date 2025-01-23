@@ -8,6 +8,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Evaluation:
+    """
+    A class to handle LLM evaluation tasks using the RagaAI Catalyst API.
+
+    This class provides functionality to:
+    - Initialize evaluation projects and datasets
+    - List available metrics
+    - Add new metrics for evaluation
+    - Track evaluation job status
+    - Retrieve evaluation results
+
+    Example:
+        >>> evaluation = Evaluation("my_project", "my_dataset")
+        >>> metrics = evaluation.list_metrics()
+        >>> evaluation.add_metrics([{
+        ...     "name": "metric_name",
+        ...     "config": {"provider": "openai"},
+        ...     "column_name": "result_column",
+        ...     "schema_mapping": {"input": "user_input"}
+        ... }])
+        >>> evaluation.get_status()
+        >>> results = evaluation.get_results()
+
+    Notes:
+        - Requires RAGAAI_CATALYST_TOKEN environment variable to be set
+        - API calls are made with a default timeout of 10 seconds
+    """
 
     def __init__(self, project_name, dataset_name):
         self.project_name = project_name
@@ -72,6 +98,13 @@ class Evaluation:
 
     
     def list_metrics(self):
+        """
+        Retrieve list of available metrics for evaluation.
+
+        Returns:
+            list: List of metric names available for evaluation
+        """
+
         headers = {
             "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
             'X-Project-Id': str(self.project_id),
@@ -124,7 +157,6 @@ class Evaluation:
 
 
     def _get_dataset_schema(self, metric_to_evaluate=None):
-        #this dataset_id is based on which type of metric_to_evaluate  
         data_set_id=self._get_dataset_id_based_on_dataset_type(metric_to_evaluate)
         self.dataset_id=data_set_id
 
@@ -183,7 +215,6 @@ class Evaluation:
             if schema["name"]==metric_name:
                 requiredFields = schema["config"]["requiredFields"]
 
-                #this is added to check if "Chat" column is required for metric evaluation
                 required_variables = [_["name"].lower() for _ in requiredFields]
                 if "chat" in required_variables:
                     metric_to_evaluate = "chat"
@@ -247,9 +278,7 @@ class Evaluation:
             base_json = self._get_metricParams()
             base_json["metricSpec"]["name"] = metric["name"]
             
-            #pasing model configuration
             for key, value in metric["config"].items():
-                #checking if provider is one of the allowed providers
                 if key.lower()=="provider" and value.lower() not in sub_providers:
                     raise ValueError("Enter a valid provider name. The following Provider names are supported: openai, azure, gemini, groq, anthropic, bedrock")
     
@@ -261,8 +290,6 @@ class Evaluation:
                             base_json["metricSpec"]["config"]["params"][key] = {f"{key_thres}":value_thres}
                 else:
                     base_json["metricSpec"]["config"]["params"][key] = {"value": value}
-
-
             # if metric["config"]["model"]:
             #     base_json["metricSpec"]["config"]["params"]["model"]["value"] = metric["config"]["model"]
             base_json["metricSpec"]["displayName"] = metric["column_name"]
@@ -303,7 +330,31 @@ class Evaluation:
             return []
 
     def add_metrics(self, metrics):
-        #Handle required key if missing
+        """
+        Add metrics for evaluation.
+
+        Args:
+            metrics (list): List of metric configurations. Each metric should be a dict with:
+                - name (str): Name of the metric
+                - config (dict): Metric configuration including provider and parameters
+                - column_name (str): Name for the results column
+                - schema_mapping (dict): Mapping between dataset columns and metric fields
+
+        Example:
+            >>> metrics = [{
+            ...     "name": "answer_relevancy",
+            ...     "config": {
+            ...         "provider": "openai",
+            ...         "threshold": {"gte": 0.7}
+            ...     },
+            ...     "column_name": "relevancy_score",
+            ...     "schema_mapping": {
+            ...         "question": "user_question",
+            ...         "answer": "model_response"
+            ...     }
+            ... }]
+            >>> evaluation.add_metrics(metrics)
+        """
         required_keys = {"name", "config", "column_name", "schema_mapping"}
         for metric in metrics:
             missing_keys = required_keys - metric.keys()
@@ -353,6 +404,13 @@ class Evaluation:
             logger.error(f"An unexpected error occurred: {e}")
 
     def get_status(self):
+        """
+        Check the status of the current evaluation job.
+
+        Prints the current status and provides a URL to track progress.
+        Status can be: "Failed", "In Progress", or "Completed"
+        """
+
         headers = {
             'Content-Type': 'application/json',
             "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
@@ -384,6 +442,9 @@ class Evaluation:
             logger.error(f"An unexpected error occurred: {e}")
 
     def get_results(self):
+        """
+        Retrieve the results of the evaluation.
+        """
 
         def get_presignedUrl():
             headers = {
