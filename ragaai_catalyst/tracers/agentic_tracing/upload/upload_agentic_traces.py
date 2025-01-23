@@ -50,7 +50,9 @@ class UploadAgenticTraces:
                 "Content-Type": "application/json",
             }
 
-        if "blob.core.windows.net" in presignedUrl:  # Azure
+        from urllib.parse import urlparse
+        parsed_url = urlparse(presignedUrl)
+        if parsed_url.hostname == "blob.core.windows.net":  # Azure
             headers["x-ms-blob-type"] = "BlockBlob"
         print(f"Uploading agentic traces...")
         try:
