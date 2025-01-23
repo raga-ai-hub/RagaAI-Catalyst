@@ -1,14 +1,15 @@
 import pytest
 import os
 import requests
+from unittest.mock import patch, MagicMock
 import dotenv
 dotenv.load_dotenv()
 import os
 
-from unittest.mock import patch, MagicMock
 from ragaai_catalyst import RagaAICatalyst
 
 
+# Mock environment variables for testing
 @pytest.fixture
 def mock_env_vars():
     original_environ = os.environ.copy()
@@ -49,7 +50,8 @@ def test_list_project():
             base_url=os.getenv("RAGAAI_CATALYST_BASE_URL")
         )
         use_case = catalyst.list_projects()
-        assert use_case is not None  
+        assert use_case is not None  # Check if the result is not None
+
 
 def test_existing_projectname():
         with pytest.raises(ValueError, match="already exists. Please choose a different name."):
@@ -121,7 +123,7 @@ def test_project_use_cases_failure(mock_get, raga_catalyst):
 @patch('ragaai_catalyst.RagaAICatalyst.list_projects')
 def test_create_project_success(mock_list_projects, mock_post, raga_catalyst):
     """Test successful project creation"""
-    mock_list_projects.return_value = []  
+    mock_list_projects.return_value = []  # No existing projects
     mock_post_response = MagicMock()
     mock_post_response.status_code = 200
     mock_post_response.json.return_value = {

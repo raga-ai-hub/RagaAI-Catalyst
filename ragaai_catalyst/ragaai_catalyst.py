@@ -8,7 +8,7 @@ logger = logging.getLogger("RagaAICatalyst")
 
 class RagaAICatalyst:
     BASE_URL = None
-    TIMEOUT = 10  
+    TIMEOUT = 10  # Default timeout in seconds
 
     def __init__(
         self,
@@ -64,8 +64,10 @@ class RagaAICatalyst:
                     "The provided base_url is not accessible. Please re-check the base_url."
                 )
         else:
+            # Get the token from the server
             self.get_token()
 
+        # Set the API keys, if  available
         if self.api_keys:
             self._upload_keys()
 
@@ -158,6 +160,7 @@ class RagaAICatalyst:
             timeout=RagaAICatalyst.TIMEOUT,
         )
 
+        # Handle specific status codes before raising an error
         if response.status_code == 400:
             token_response = response.json()
             if token_response.get("message") == "Please enter valid credentials":
@@ -195,7 +198,7 @@ class RagaAICatalyst:
                 headers=headers,
                 timeout=self.TIMEOUT
             )
-            response.raise_for_status() 
+            response.raise_for_status()  # Use raise_for_status to handle HTTP errors
             usecase = response.json()["data"]["usecase"]
             return usecase
         except requests.exceptions.RequestException as e:
@@ -214,7 +217,7 @@ class RagaAICatalyst:
         Returns:
             str: A message indicating the success or failure of the project creation.
         """
-        
+        # Check if the project already exists
         existing_projects = self.list_projects()
         if project_name in existing_projects:
             raise ValueError(f"Project name '{project_name}' already exists. Please choose a different name.")
@@ -375,6 +378,7 @@ class RagaAICatalyst:
             logger.debug("Metrics list retrieved successfully")
 
             metrics = response.json()["data"]["metrics"]
+            # For each dict in metric only return the keys: `name`, `category`
             sub_metrics = [metric["name"] for metric in metrics]
             return sub_metrics
 
@@ -399,6 +403,7 @@ class RagaAICatalyst:
                         project["name"]
                         for project in response.json()["data"]["metrics"]
                     ]
+                    # For each dict in metric only return the keys: `name`, `category`
                     sub_metrics = [
                         {
                             "name": metric["name"],

@@ -11,8 +11,9 @@ from typing import Dict, List
 from ragaai_catalyst import Evaluation, RagaAICatalyst
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-
+# Define model configurations
 MODEL_CONFIGS = [
+    # OpenAI Models
     {
         "provider": "openai",
         "model": "gpt-4",
@@ -33,6 +34,7 @@ MODEL_CONFIGS = [
         "model": "gpt-3.5-turbo",
         "suffix": "gpt35"
     },
+    # Gemini Models
     {
         "provider": "gemini",
         "model": "gemini-1.5-flash",
@@ -43,6 +45,7 @@ MODEL_CONFIGS = [
         "model": "gemini-1.5-pro",
         "suffix": "gemini15_pro"
     },
+    # Azure OpenAI Models
     {
         "provider": "azure",
         "model": "gpt-4",
@@ -245,33 +248,36 @@ def test_metric_initialization_gemini(evaluation, metric_name: str,capfd):
         "schema_mapping": schema_mapping
     }]
     
+    # Add metrics and capture the printed output
     evaluation.add_metrics(metrics=metrics)
     out, err = capfd.readouterr()
-    print(f"Add metrics output: {out}")  
+    print(f"Add metrics output: {out}")  # Debug print
     
+    # Verify the success message for metric addition
     assert "Metric Evaluation Job scheduled successfully" in out, f"Failed to schedule job for metric: {metric_name}"
     
     # Store the jobId for status checking
     assert evaluation.jobId is not None, "Job ID was not set after adding metrics"
-    print(f"Job ID: {evaluation.jobId}")  
+    print(f"Job ID: {evaluation.jobId}")  # Debug print
     
-    max_wait_time = 180  
-    poll_interval = 5    
+    # Check job status with timeout
+    max_wait_time = 180  # Increased timeout to 3 minutes
+    poll_interval = 5    # Check every 5 seconds
     start_time = time.time()
     status_checked = False
     last_status = None
     
-    print(f"Starting job status checks for {metric_name}...")  
+    print(f"Starting job status checks for {metric_name}...")  # Debug print
     
     while (time.time() - start_time) < max_wait_time:
         try:
             evaluation.get_status()
             out, err = capfd.readouterr()
-            print(f"Status check output: {out}") 
+            print(f"Status check output: {out}")  # Debug print
             
             if "Job completed" in out:
                 status_checked = True
-                print(f"Job completed for {metric_name}")  
+                print(f"Job completed for {metric_name}")  # Debug print
                 break
                 
             if "Job failed" in out:
@@ -281,16 +287,17 @@ def test_metric_initialization_gemini(evaluation, metric_name: str,capfd):
             time.sleep(poll_interval)
             
         except Exception as e:
-            print(f"Error checking status: {str(e)}") 
+            print(f"Error checking status: {str(e)}")  # Debug print
             time.sleep(poll_interval)
     
     if not status_checked:
-        print(f"Last known status: {last_status}")  
+        print(f"Last known status: {last_status}")  # Debug print
         if last_status and "In Progress" in last_status:
             pytest.skip(f"Job still in progress after {max_wait_time} seconds for {metric_name}. This is not a failure, but took longer than expected.")
         else:
             assert False, f"Job did not complete within {max_wait_time} seconds for metric: {metric_name}. Last status: {last_status}"
     
+    # Only check results if the job completed successfully
     if status_checked:
         try:
             results = evaluation.get_results()
@@ -338,32 +345,36 @@ def test_metric_initialization_openai(evaluation, metric_name: str,capfd):
         "schema_mapping": schema_mapping
     }]
     
+    # Add metrics and capture the printed output
     evaluation.add_metrics(metrics=metrics)
     out, err = capfd.readouterr()
-    print(f"Add metrics output: {out}")  
+    print(f"Add metrics output: {out}")  # Debug print
     
+    # Verify the success message for metric addition
     assert "Metric Evaluation Job scheduled successfully" in out, f"Failed to schedule job for metric: {metric_name}"
     
+    # Store the jobId for status checking
     assert evaluation.jobId is not None, "Job ID was not set after adding metrics"
-    print(f"Job ID: {evaluation.jobId}")  
+    print(f"Job ID: {evaluation.jobId}")  # Debug print
+    
     # Check job status with timeout
-    max_wait_time = 300  
-    poll_interval = 5    
+    max_wait_time = 300  # Increased timeout to 3 minutes
+    poll_interval = 5    # Check every 5 seconds
     start_time = time.time()
     status_checked = False
     last_status = None
     
-    print(f"Starting job status checks for {metric_name}...")  
+    print(f"Starting job status checks for {metric_name}...")  # Debug print
     
     while (time.time() - start_time) < max_wait_time:
         try:
             evaluation.get_status()
             out, err = capfd.readouterr()
-            print(f"Status check output: {out}")  
+            print(f"Status check output: {out}")  # Debug print
             
             if "Job completed" in out:
                 status_checked = True
-                print(f"Job completed for {metric_name}")  
+                print(f"Job completed for {metric_name}")  # Debug print
                 break
                 
             if "Job failed" in out:
@@ -373,11 +384,11 @@ def test_metric_initialization_openai(evaluation, metric_name: str,capfd):
             time.sleep(poll_interval)
             
         except Exception as e:
-            print(f"Error checking status: {str(e)}") 
+            print(f"Error checking status: {str(e)}")  # Debug print
             time.sleep(poll_interval)
     
     if not status_checked:
-        print(f"Last known status: {last_status}") 
+        print(f"Last known status: {last_status}")  # Debug print
         if last_status and "In Progress" in last_status:
             pytest.skip(f"Job still in progress after {max_wait_time} seconds for {metric_name}. This is not a failure, but took longer than expected.")
         else:
@@ -410,49 +421,54 @@ counter = 30
 ])
 def test_metric_initialization_openai_chatmetric(chat_evaluation, model_config, metric_name: str, capfd):
     """Test if adding each metric and tracking its completion works correctly"""
-    global counter  
+    global counter  # Use the global counter
     schema_mapping = {
         'ChatID': 'ChatID',
         'Chat': 'Chat',
         'Instructions': 'Instructions',
         'System Prompt': 'systemprompt',
     }
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
     metrics = [{
         "name": metric_name,
         "config": model_config,
-        "column_name": f"{metric_name}_column_{timestamp}_{counter}",  
+        "column_name": f"{metric_name}_column_{timestamp}_{counter}",  # Use counter for unique column name
         "schema_mapping": schema_mapping
     }]
     
+    # Increment the counter after each test
     counter += 1
     
+    # Add metrics and capture the printed output
     chat_evaluation.add_metrics(metrics=metrics)
     out, err = capfd.readouterr()
-    print(f"Add metrics output: {out}")  
+    print(f"Add metrics output: {out}")  # Debug print
     
+    # Verify the success message for metric addition
     assert "Metric Evaluation Job scheduled successfully" in out, f"Failed to schedule job for metric: {metric_name} and {model_config}"
     
+    # Store the jobId for status checking
     assert chat_evaluation.jobId is not None, "Job ID was not set after adding metrics"
-    print(f"Job ID: {chat_evaluation.jobId}")  
+    print(f"Job ID: {chat_evaluation.jobId}")  # Debug print
     
-    max_wait_time = 600  
-    poll_interval = 5    
+    # Check job status with timeout
+    max_wait_time = 600  # Increased timeout to 3 minutes
+    poll_interval = 5    # Check every 5 seconds
     start_time = time.time()
     status_checked = False
     last_status = None
     
-    print(f"Starting job status checks for {metric_name}...")  
+    print(f"Starting job status checks for {metric_name}...")  # Debug print
     
     while (time.time() - start_time) < max_wait_time:
         try:
             chat_evaluation.get_status()
             out, err = capfd.readouterr()
-            print(f"Status check output: {out}")  
+            print(f"Status check output: {out}")  # Debug print
             
             if "Job completed" in out:
                 status_checked = True
-                print(f"Job completed for {metric_name}")  
+                print(f"Job completed for {metric_name}")  # Debug print
                 break
                 
             if "Job failed" in out:
@@ -462,22 +478,23 @@ def test_metric_initialization_openai_chatmetric(chat_evaluation, model_config, 
             time.sleep(poll_interval)
             
         except Exception as e:
-            print(f"Error checking status: {str(e)}")  
+            print(f"Error checking status: {str(e)}")  # Debug print
             time.sleep(poll_interval)
     
     if not status_checked:
-        print(f"Last known status: {last_status}")  
+        print(f"Last known status: {last_status}")  # Debug print
         if last_status and "In Progress" in last_status:
             pytest.skip(f"Job still in progress after {max_wait_time} seconds {model_config} for {metric_name}. This is not a failure, but took longer than expected.")
         else:
             assert False, f"Job did not complete within {max_wait_time} seconds {model_config} for metric: {metric_name}. Last status: {last_status}"
     
+    # Only check results if the job completed successfully
     if status_checked:
         try:
             results = chat_evaluation.get_results()
             assert isinstance(results, pd.DataFrame), "Results should be returned as a DataFrame"
             assert not results.empty, "Results DataFrame should not be empty"
-            column_name = f"{metric_name}_column_{counter - 1}"  
+            column_name = f"{metric_name}_column_{counter - 1}"  # Use the last counter value
             assert column_name in results.columns, f"Expected column {column_name} not found in results. Available columns: {results.columns.tolist()}"
         except Exception as e:
             pytest.fail(f"Error getting results for {metric_name} with {model_config}: {str(e)}")

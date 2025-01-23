@@ -55,7 +55,9 @@ class Experiment:
             timeout=10,
         )
         response.raise_for_status()
+        # logger.debug("Projects list retrieved successfully")
         experiment_list = [exp["name"] for project in response.json()["data"]["content"] if project["name"] == self.project_name for exp in project["experiments"]]
+        # print(experiment_list)
         if self.experiment_name in experiment_list:
             raise ValueError("The experiment name already exists in the project. Enter a unique experiment name.")
 
@@ -103,6 +105,7 @@ class Experiment:
 
 
     def _check_if_project_exists(self,project_name,num_projects=100):
+        # TODO: 1. List All projects
         params = {
             "size": str(num_projects),
             "page": "0",
@@ -124,6 +127,8 @@ class Experiment:
             project["name"] for project in response.json()["data"]["content"]
         ]
         
+        # TODO: 2. Check if the given project_name exists
+        # TODO: 3. Return bool (True / False output)
         exists = project_name in project_list
         if exists:
             logger.info(f"Project '{project_name}' exists.")
@@ -162,8 +167,8 @@ class Experiment:
         response = make_request()
         response_checker(response, "Experiment.list_experiments")
         if response.status_code == 401:
-            get_token()  
-            response = make_request()  
+            get_token()  # Fetch a new token and set it in the environment
+            response = make_request()  # Retry the request
         if response.status_code != 200:
             return {
                 "status_code": response.status_code,
@@ -466,6 +471,7 @@ class Experiment:
             x.columns = x.columns.str.replace("_reason_status", "_status")
 
             columns_list = x.columns.tolist()
+            #remove trace_uri from columns_list if it exists
             columns_list = list(set(columns_list) - {"trace_uri"})
             x = x[columns_list]
 

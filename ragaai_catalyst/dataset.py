@@ -10,33 +10,6 @@ get_token = RagaAICatalyst.get_token
 
 
 class Dataset:
-    """
-    A class to manage datasets within a RagaAI Catalyst project.
-
-    This class provides functionality to interact with datasets in a RagaAI project,
-    including listing datasets, retrieving schema mappings, managing dataset columns,
-    and creating new datasets from CSV files.
-
-    Attributes:
-        BASE_URL (str): Base URL for the RagaAI Catalyst API endpoint
-        TIMEOUT (int): Request timeout in seconds
-        project_name (str): Name of the project to work with
-        project_id (str): ID of the project retrieved from the API
-        num_projects (int): Maximum number of projects to retrieve
-
-    Args:
-        project_name (str): The name of the project to initialize the Dataset instance with
-
-    Raises:
-        ValueError: If the provided project name is not found
-        requests.exceptions.RequestException: If there are any issues with API communication
-
-    Example:
-        >>> dataset = Dataset("my_project")
-        >>> available_datasets = dataset.list_datasets()
-        >>> schema = dataset.get_schema_mapping()
-    """
-
     BASE_URL = None
     TIMEOUT = 30
 
@@ -106,8 +79,8 @@ class Dataset:
             response = make_request()
             response_checker(response, "Dataset.list_datasets")
             if response.status_code == 401:
-                get_token()  
-                response = make_request()  
+                get_token()  # Fetch a new token and set it in the environment
+                response = make_request()  # Retry the request
             if response.status_code != 200:
                 return {
                     "status_code": response.status_code,
@@ -121,13 +94,6 @@ class Dataset:
             raise
 
     def get_schema_mapping(self):
-        """
-        Retrieves the schema mapping elements for the project.
-
-        Returns:
-            dict: A dictionary containing the schema elements for the project.
-        """
-
         headers = {
             "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
             "X-Project-Name": self.project_name,
@@ -147,19 +113,9 @@ class Dataset:
             logger.error(f"Failed to get CSV schema: {e}")
             raise
 
-    
+    ###################### CSV Upload APIs ###################
 
     def get_dataset_columns(self, dataset_name):
-        """
-        Retrieves the column names for a specific dataset.
-
-        Args:
-            dataset_name (str): Name of the dataset to retrieve columns for
-
-        Returns:
-            list: A list of column names in the dataset.
-        """
-
         list_dataset = self.list_datasets()
         if dataset_name not in list_dataset:
             raise ValueError(f"Dataset {dataset_name} does not exists. Please enter a valid dataset name")
@@ -206,15 +162,6 @@ class Dataset:
             raise
 
     def create_from_csv(self, csv_path, dataset_name, schema_mapping):
-        """
-        Creates a new dataset from a CSV file.
-
-        Args:
-            csv_path (str): Path to the CSV file to upload
-            dataset_name (str): Name for the new dataset
-            schema_mapping (dict): Mapping of column names to their schema types
-        """
-
         list_dataset = self.list_datasets()
         if dataset_name in list_dataset:
             raise ValueError(f"Dataset name {dataset_name} already exists. Please enter a unique dataset name")
@@ -278,6 +225,7 @@ class Dataset:
             logger.error(f"Error in put_csv_to_presignedUrl: {e}")
             raise
 
+        ## Upload csv to elastic
         def upload_csv_to_elastic(data):
             header = {
                 'Content-Type': 'application/json',
