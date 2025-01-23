@@ -88,7 +88,9 @@ class UploadTraces:
                 "Content-Type": "application/json",
             }
 
-        if "blob.core.windows.net" in presignedUrl:  # Azure
+        from urllib.parse import urlparse
+        parsed_url = urlparse(presignedUrl)
+        if parsed_url.hostname and parsed_url.hostname.endswith("blob.core.windows.net"):  # Azure
             headers["x-ms-blob-type"] = "BlockBlob"
         print(f"Uploading traces...")
         with open(filename) as f:
