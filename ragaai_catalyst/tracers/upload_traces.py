@@ -124,4 +124,4 @@ class UploadTraces:
         presignedUrl = self._get_presigned_url()
         self._put_presigned_url(presignedUrl, self.json_file_path)
         self._insert_traces(presignedUrl)
-        print("Traces uplaoded")
+        print("Traces uploaded")

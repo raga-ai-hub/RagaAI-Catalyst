@@ -1,8 +1,11 @@
 import json
 import os
+import requests
+import logging
 from importlib import resources
 from dataclasses import asdict
 
+logger = logging.getLogger(__name__)
 
 def convert_usage_to_dict(usage):
     # Initialize the token_usage dictionary with default values
@@ -66,6 +69,26 @@ def load_model_costs():
     except FileNotFoundError:
         with resources.open_text("utils", "model_costs.json") as file:
             return json.load(file)
+
+
+def update_model_costs_from_github():
+    """Updates the model_costs.json file with latest costs from GitHub."""
+    try:
+        logger.debug("loading the latest model costs.")
+        response = requests.get(
+            "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
+        )
+        if response.status_code == 200:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            model_costs_path = os.path.join(current_dir, "model_costs.json")
+            with open(model_costs_path, "w") as file:
+                json.dump(response.json(), file, indent=4)
+            logger.debug("Model costs updated successfully.")
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Failed to update model costs from GitHub: {e}")
+        return False
 
 
 def log_event(event_data, log_file_path):

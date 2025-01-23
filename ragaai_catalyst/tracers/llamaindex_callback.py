@@ -58,7 +58,7 @@ class LlamaIndexTracer:
             ) -> None:
                 trace = {
                     "event_type": event_type,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now().astimezone().isoformat(),
                     "payload": payload,
                     "status": "started",
                     "event_id": event_id,
@@ -82,7 +82,7 @@ class LlamaIndexTracer:
             ) -> None:
                 trace = {
                     "event_type": event_type,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now().astimezone().isoformat(),
                     "payload": payload,
                     "status": "completed",
                     "event_id": event_id,
@@ -181,7 +181,7 @@ class LlamaIndexTracer:
         # self._upload_traces(save_json_to_pwd=True)
         self.callback_manager.remove_handler(self.trace_handler)
         self._restore_original_inits()
-        print("Traces uplaoded")
+        print("Traces uploaded")
         self._upload_task = True
 
     def _restore_original_inits(self):
@@ -220,7 +220,7 @@ class LlamaIndexTracer:
         user_detail["trace_id"] = self._generate_trace_id()
         metadata = user_detail["metadata"]
         metadata["log_source"] = "llamaindex_tracer"
-        metadata["recorded_on"] = datetime.utcnow().isoformat().replace('T', ' ')
+        metadata["recorded_on"] = datetime.now().isoformat()
         user_detail["metadata"] = metadata
         return user_detail
     
@@ -351,7 +351,7 @@ class LlamaIndexTracer:
         presignedUrl = self._get_presigned_url()
         self._put_presigned_url(presignedUrl, filename)
         self._insert_traces(presignedUrl)
-        print("Traces uplaoded")
+        print("Traces uploaded")
 
     def get_upload_status(self):
         """Check the status of the trace upload."""

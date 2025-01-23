@@ -18,50 +18,7 @@ class UploadAgenticTraces:
         self.dataset_name = dataset_name
         self.user_detail = user_detail
         self.base_url = base_url
-        self.timeout = 99999
-
-    def _create_dataset_schema_with_trace(self):
-        SCHEMA_MAPPING_NEW = {
-            "trace_id": {"columnType": "traceId"},
-            "trace_uri": {"columnType": "traceUri"},
-            "prompt": {"columnType": "prompt"},
-            "response":{"columnType": "response"},
-            "context": {"columnType": "context"},
-            "llm_model": {"columnType":"pipeline"},
-            "recorded_on": {"columnType": "metadata"},
-            "embed_model": {"columnType":"pipeline"},
-            "log_source": {"columnType": "metadata"},
-            "vector_store":{"columnType":"pipeline"},
-            "feedback": {"columnType":"feedBack"}
-        }
-        def make_request():
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
-                "X-Project-Name": self.project_name,
-            }
-            payload = json.dumps({
-                "datasetName": self.dataset_name,
-                # "schemaMapping": SCHEMA_MAPPING_NEW,
-                "traceFolderUrl": None,
-            })
-            response = requests.request("POST",
-                f"{self.base_url}/v1/llm/dataset/logs",
-                headers=headers,
-                data=payload,
-                timeout=self.timeout
-            )
-
-            return response
-
-        response = make_request()
-
-        if response.status_code == 401:
-            # get_token()  # Fetch a new token and set it in the environment
-            response = make_request()  # Retry the request
-        if response.status_code != 200:
-            return response.status_code
-        return response.status_code
+        self.timeout = 30
 
 
     def _get_presigned_url(self):
@@ -181,10 +138,11 @@ class UploadAgenticTraces:
             return None
     
     def upload_agentic_traces(self):
-        self._create_dataset_schema_with_trace()
-        presignedUrl = self._get_presigned_url()
-        if presignedUrl is None:
-            return
-        self._put_presigned_url(presignedUrl, self.json_file_path)
-        self.insert_traces(presignedUrl)
-        print("Agentic Traces uploaded")
+        try:
+            presignedUrl = self._get_presigned_url()
+            if presignedUrl is None:
+                return
+            self._put_presigned_url(presignedUrl, self.json_file_path)
+            self.insert_traces(presignedUrl)
+        except Exception as e:
+            print(f"Error while uploading agentic traces: {e}")

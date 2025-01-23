@@ -173,7 +173,26 @@ class LLMCall:
     duration: float = field(default=0)
 
 class Component:
-    def __init__(self, id: str, hash_id: str, source_hash_id: str, type: str, name: str, start_time: str, end_time: str, parent_id: int, info: Dict[str, Any], extra_info: Optional[Dict[str, Any]] = None, data: Dict[str, Any]={}, network_calls: Optional[List[NetworkCall]] = None, interactions: Optional[List[Union[Interaction, Dict]]] = None, error: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        id: str,
+        hash_id: str,
+        source_hash_id: str,
+        type: str,
+        name: str,
+        start_time: str,
+        end_time: str,
+        parent_id: int,
+        info: Dict[str, Any],
+        extra_info: Optional[Dict[str, Any]] = None,
+        data: Dict[str, Any]={},
+        metadata: Optional[Dict[str, Any]] = None, 
+        metrics: Optional[List[Dict[str, Any]]] = None, 
+        feedback: Optional[Any] = None,
+        network_calls: Optional[List[NetworkCall]] = None,
+        interactions: Optional[List[Union[Interaction, Dict]]] = None,
+        error: Optional[Dict[str, Any]] = None):
+
         self.id = id
         self.hash_id = hash_id
         self.source_hash_id = source_hash_id
@@ -185,7 +204,9 @@ class Component:
         self.info = info
         self.extra_info = extra_info
         self.data = data
-        self.error = error
+        self.metadata = metadata or {}
+        self.metrics = metrics or []
+        self.feedback = feedback
         self.network_calls = network_calls or []
         self.interactions = []
         self.error = error
@@ -197,7 +218,7 @@ class Component:
                             id=interaction.get("id", str(uuid.uuid4())),
                             type=interaction.get("interaction_type", ""),
                             content=str(interaction.get("content", "")),
-                            timestamp=interaction.get("timestamp", datetime.utcnow().isoformat())
+                            timestamp=interaction.get("timestamp", datetime.now().astimezone().isoformat())
                         )
                     )
                 else:
@@ -217,22 +238,25 @@ class Component:
             "extra_info": self.extra_info,
             "error": self.error,
             "data": self.data,
-            "error": self.error,
+            "metadata": self.metadata,
+            "metrics": self.metrics,
+            "feedback": self.feedback,
             "network_calls": [call.to_dict() if hasattr(call, 'to_dict') else call for call in self.network_calls],
             "interactions": self.interactions
         }
 
 class LLMComponent(Component):
-    def __init__(self, id: str, hash_id: str, source_hash_id: str, type: str, name: str, start_time: str, end_time: str, parent_id: int, info: Dict[str, Any], data: Dict[str, Any], extra_info: Optional[Dict[str, Any]] = None, network_calls: Optional[List[NetworkCall]] = None, interactions: Optional[List[Union[Interaction, Dict]]] = None, error: Optional[Dict[str, Any]] = None):
-        super().__init__(id, hash_id, source_hash_id, type, name, start_time, end_time, parent_id, info, extra_info, data, network_calls, interactions, error)
+    def __init__(self, id: str, hash_id: str, source_hash_id: str, type: str, name: str, start_time: str, end_time: str, parent_id: int, info: Dict[str, Any], extra_info: Optional[Dict[str, Any]] = None, data: Dict[str, Any]={}, metadata: Optional[Dict[str, Any]] = None, metrics: Optional[List[Dict[str, Any]]] = None, feedback: Optional[Any] = None, network_calls: Optional[List[NetworkCall]] = None, interactions: Optional[List[Union[Interaction, Dict]]] = None, error: Optional[Dict[str, Any]] = None):
+        super().__init__(id, hash_id, source_hash_id, type, name, start_time, end_time, parent_id, info, extra_info, data, metadata, metrics, feedback, network_calls, interactions, error)
 
 class AgentComponent(Component):
-    def __init__(self, id: str, hash_id: str, source_hash_id: str, type: str, name: str, start_time: str, end_time: str, parent_id: int, info: Dict[str, Any], data: Dict[str, Any], extra_info: Optional[Dict[str, Any]] = None, network_calls: Optional[List[NetworkCall]] = None, interactions: Optional[List[Union[Interaction, Dict]]] = None, error: Optional[Dict[str, Any]] = None):
-        super().__init__(id, hash_id, source_hash_id, type, name, start_time, end_time, parent_id, info, extra_info, data, network_calls, interactions, error)
+    def __init__(self, id: str, hash_id: str, source_hash_id: str, type: str, name: str, start_time: str, end_time: str, parent_id: int, info: Dict[str, Any], extra_info: Optional[Dict[str, Any]] = None, data: Dict[str, Any]={}, metadata: Optional[Dict[str, Any]] = None, metrics: Optional[List[Dict[str, Any]]] = None, feedback: Optional[Any] = None, network_calls: Optional[List[NetworkCall]] = None, interactions: Optional[List[Union[Interaction, Dict]]] = None, error: Optional[Dict[str, Any]] = None):
+        super().__init__(id, hash_id, source_hash_id, type, name, start_time, end_time, parent_id, info, extra_info, data, metadata, metrics, feedback, network_calls, interactions, error)
 
 class ToolComponent(Component):
-    def __init__(self, id: str, hash_id: str, source_hash_id: str, type: str, name: str, start_time: str, end_time: str, parent_id: int, info: Dict[str, Any], data: Dict[str, Any], extra_info: Optional[Dict[str, Any]] = None, network_calls: Optional[List[NetworkCall]] = None, interactions: Optional[List[Union[Interaction, Dict]]] = None, error: Optional[Dict[str, Any]] = None):
-        super().__init__(id, hash_id, source_hash_id, type, name, start_time, end_time, parent_id, info, extra_info, data, network_calls, interactions, error)
+    def __init__(self, id: str, hash_id: str, source_hash_id: str, type: str, name: str, start_time: str, end_time: str, parent_id: int, info: Dict[str, Any], extra_info: Optional[Dict[str, Any]] = None, data: Dict[str, Any]={}, metadata: Optional[Dict[str, Any]] = None, metrics: Optional[List[Dict[str, Any]]] = None, feedback: Optional[Any] = None, network_calls: Optional[List[NetworkCall]] = None, interactions: Optional[List[Union[Interaction, Dict]]] = None, error: Optional[Dict[str, Any]] = None):
+        super().__init__(id, hash_id, source_hash_id, type, name, start_time, end_time, parent_id, info, extra_info, data, metadata, metrics, feedback, network_calls, interactions, error)
+
 
 @dataclass
 class ComponentInfo:
@@ -247,8 +271,9 @@ class ComponentInfo:
     cost: Optional[Dict[str, float]] = None
 
 class Trace:
-    def __init__(self, id: str, project_name: str, start_time: str, end_time: str, metadata: Optional[Metadata] = None, data: Optional[List[Dict[str, Any]]] = None, replays: Optional[Dict[str, Any]] = None):
+    def __init__(self, id: str, trace_name: str, project_name: str, start_time: str, end_time: str, metadata: Optional[Metadata] = None, data: Optional[List[Dict[str, Any]]] = None, replays: Optional[Dict[str, Any]] = None):
         self.id = id
+        self.trace_name = trace_name
         self.project_name = project_name
         self.start_time = start_time
         self.end_time = end_time
@@ -259,6 +284,7 @@ class Trace:
     def to_dict(self):
         return {
             "id": self.id,
+            "trace_name": self.trace_name,
             "project_name": self.project_name,
             "start_time": self.start_time,
             "end_time": self.end_time,

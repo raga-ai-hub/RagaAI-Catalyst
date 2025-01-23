@@ -91,9 +91,43 @@ def extract_token_usage(result):
         # Run the coroutine in the current event loop
         result = loop.run_until_complete(result)
 
-    # Handle standard OpenAI/Anthropic format
+    # Handle text attribute responses (JSON string or Vertex AI)
+    if hasattr(result, "text"):
+        # First try parsing as JSON for OpenAI responses
+        try:
+            import json
+            json_data = json.loads(result.text)
+            if isinstance(json_data, dict) and "usage" in json_data:
+                usage = json_data["usage"]
+                return {
+                    "prompt_tokens": usage.get("prompt_tokens", 0),
+                    "completion_tokens": usage.get("completion_tokens", 0),
+                    "total_tokens": usage.get("total_tokens", 0)
+                }
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+        # If JSON parsing fails, try Vertex AI format
+        total_tokens = getattr(result, "token_count", 0)
+        if not total_tokens and hasattr(result, "_raw_response"):
+            total_tokens = getattr(result._raw_response, "token_count", 0)
+        if total_tokens:  # Only return if we actually found tokens
+            return {
+                "prompt_tokens": 0,  # Vertex AI doesn't provide this breakdown
+                "completion_tokens": total_tokens,
+                "total_tokens": total_tokens
+            }
+
+    # Handle Claude 3 message format
     if hasattr(result, "usage"):
         usage = result.usage
+        if hasattr(usage, "input_tokens") and hasattr(usage, "output_tokens"):
+            return {
+                "prompt_tokens": usage.input_tokens,
+                "completion_tokens": usage.output_tokens,
+                "total_tokens": usage.input_tokens + usage.output_tokens
+            }
+        # Handle standard OpenAI/Anthropic format
         return {
             "prompt_tokens": getattr(usage, "prompt_tokens", 0),
             "completion_tokens": getattr(usage, "completion_tokens", 0),
@@ -133,19 +167,6 @@ def extract_token_usage(result):
                 "total_tokens": metadata.get("total_tokens", 0)
             }
     
-    # Handle Vertex AI format
-    if hasattr(result, "text"):
-        # For LangChain ChatVertexAI
-        total_tokens = getattr(result, "token_count", 0)
-        if not total_tokens and hasattr(result, "_raw_response"):
-            # Try to get from raw response
-            total_tokens = getattr(result._raw_response, "token_count", 0)
-        return {
-            "prompt_tokens": 0,  # Vertex AI doesn't provide this breakdown
-            "completion_tokens": total_tokens,
-            "total_tokens": total_tokens
-        }
-    
     return {
         "prompt_tokens": 0,
         "completion_tokens": 0,
@@ -171,10 +192,19 @@ def calculate_llm_cost(token_usage, model_name, model_costs):
         }
 
     # Get model costs, defaulting to default costs if unknown
-    model_cost = model_costs.get(model_name, {
+    model_cost = model_cost = model_costs.get(model_name, {
         "input_cost_per_token": 0.0,   
         "output_cost_per_token": 0.0   
     })
+    if model_cost['input_cost_per_token'] == 0.0 and model_cost['output_cost_per_token'] == 0.0:
+        provide_name = model_name.split('-')[0]
+        if provide_name == 'azure':
+            model_name = os.path.join('azure', '-'.join(model_name.split('-')[1:]))
+
+            model_cost = model_costs.get(model_name, {
+                "input_cost_per_token": 0.0,   
+                "output_cost_per_token": 0.0   
+            })
 
     input_cost = (token_usage.get("prompt_tokens", 0)) * model_cost.get("input_cost_per_token", 0.0)
     output_cost = (token_usage.get("completion_tokens", 0)) * model_cost.get("output_cost_per_token", 0.0)
