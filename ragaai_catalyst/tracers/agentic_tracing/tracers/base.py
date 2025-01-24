@@ -5,7 +5,7 @@ import psutil
 import pkg_resources
 from datetime import datetime
 from pathlib import Path
-from typing import List, Any
+from typing import List, Any, Dict
 import uuid
 import sys
 import tempfile
@@ -81,6 +81,7 @@ class BaseTracer:
         self.project_id = self.user_details["project_id"]  # Access the project_id
         self.trace_name = self.user_details["trace_name"]  # Access the trace_name
         self.visited_metrics = []
+        self.trace_metrics = []  # Store metrics here
 
         # Initialize trace data
         self.trace_id = None
@@ -211,6 +212,10 @@ class BaseTracer:
         threading.Thread(target=self._track_disk_usage).start()
         threading.Thread(target=self._track_network_usage).start()
 
+        # Reset metrics
+        self.visited_metrics = []
+        self.trace_metrics = []
+
         metadata = Metadata(
             cost={},
             tokens={},
@@ -241,6 +246,7 @@ class BaseTracer:
             metadata=metadata,
             data=self.data_key,
             replays={"source": None},
+            metrics=[]  # Initialize empty metrics list
         )
 
     def stop(self):
@@ -300,8 +306,12 @@ class BaseTracer:
             # replace source code with zip_path
             self.trace.metadata.system_info.source_code = hash_id
 
+            # Add metrics to trace before saving
+            trace_data = self.trace.to_dict()
+
+            trace_data["metrics"] = self.trace_metrics
+
             # Clean up trace_data before saving
-            trace_data = self.trace.__dict__
             cleaned_trace_data = self._clean_trace(trace_data)
 
             # Format interactions and add to trace
@@ -609,9 +619,7 @@ class BaseTracer:
                     "span_id": child.get("id"),
                     "interaction_type": "llm_call_end",
                     "name": child.get("name"),
-                    "content": {
-                        "response": child.get("data", {}).get("output")
-                    },
+                    "content": {"response": child.get("data", {}).get("output")},
                     "timestamp": child.get("end_time"),
                     "error": child.get("error"),
                 }
@@ -882,8 +890,90 @@ class BaseTracer:
 
         return {"workflow": sorted_interactions}
 
+    def add_metrics(
+        self,
+        name: str | List[Dict[str, Any]] | Dict[str, Any] = None,
+        score: float | int = None,
+        reasoning: str = "",
+        cost: float = None,
+        latency: float = None,
+        metadata: Dict[str, Any] = None,
+        config: Dict[str, Any] = None,
+    ):
+        """Add metrics at the trace level.
+
+        Can be called in two ways:
+        1. With individual parameters:
+           tracer.add_metrics(name="metric_name", score=0.9, reasoning="Good performance")
+           
+        2. With a dictionary or list of dictionaries:
+           tracer.add_metrics({"name": "metric_name", "score": 0.9})
+           tracer.add_metrics([{"name": "metric1", "score": 0.9}, {"name": "metric2", "score": 0.8}])
+
+        Args:
+            name: Either the metric name (str) or a metric dictionary/list of dictionaries
+            score: Score value (float or int) when using individual parameters
+            reasoning: Optional explanation for the score
+            cost: Optional cost associated with the metric
+            latency: Optional latency measurement
+            metadata: Optional additional metadata as key-value pairs
+            config: Optional configuration parameters
+        """
+        if not hasattr(self, 'trace'):
+            logger.warning("Cannot add metrics before trace is initialized. Call start() first.")
+            return
+
+        # Convert individual parameters to metric dict if needed
+        if isinstance(name, str):
+            metrics = [{
+                "name": name,
+                "score": score,
+                "reasoning": reasoning,
+                "cost": cost,
+                "latency": latency,
+                "metadata": metadata or {},
+                "config": config or {}
+            }]
+        else:
+            # Handle dict or list input
+            metrics = name if isinstance(name, list) else [name] if isinstance(name, dict) else []
+
+        try:
+            for metric in metrics:
+                if not isinstance(metric, dict):
+                    raise ValueError(f"Expected dict, got {type(metric)}")
+                
+                if "name" not in metric or "score" not in metric:
+                    raise ValueError("Metric must contain 'name' and 'score' fields")
+
+                # Handle duplicate metric names
+                metric_name = metric["name"]
+                if metric_name in self.visited_metrics:
+                    count = sum(1 for m in self.visited_metrics if m.startswith(metric_name))
+                    metric_name = f"{metric_name}_{count + 1}"
+                self.visited_metrics.append(metric_name)
+
+                formatted_metric = {
+                    "name": metric_name,  # Use potentially modified name
+                    "score": metric["score"],
+                    "reason": metric.get("reasoning", ""),
+                    "source": "user",
+                    "cost": metric.get("cost"),
+                    "latency": metric.get("latency"),
+                    "metadata": metric.get("metadata", {}),
+                    "mappings": [],
+                    "config": metric.get("config", {})
+                }
+                
+                self.trace_metrics.append(formatted_metric)
+                logger.debug(f"Added trace-level metric: {formatted_metric}")
+
+        except ValueError as e:
+            logger.error(f"Validation Error: {e}")
+        except Exception as e:
+            logger.error(f"Error adding metric: {e}")
+    
     def span(self, span_name):
         if span_name not in self.span_attributes_dict:
             self.span_attributes_dict[span_name] = SpanAttributes(span_name)
         return self.span_attributes_dict[span_name]
-    

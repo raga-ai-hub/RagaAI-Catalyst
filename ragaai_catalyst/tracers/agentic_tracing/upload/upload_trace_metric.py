@@ -59,6 +59,13 @@ def _get_children_metrics_of_agent(children_traces):
 
 def get_trace_metrics_from_trace(traces):
     metrics = []
+
+    # get trace level metrics
+    if "metrics" in traces.keys():
+        if len(traces["metrics"]) > 0:
+            metrics.extend(traces["metrics"])
+
+    # get span level metrics
     for span in traces["data"][0]["spans"]:
         if span["type"] == "agent":
             children_metric = _get_children_metrics_of_agent(span["data"]["children"])
