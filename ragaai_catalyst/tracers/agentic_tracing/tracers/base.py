@@ -308,15 +308,14 @@ class BaseTracer:
 
             # Add metrics to trace before saving
             trace_data = self.trace.to_dict()
-
             trace_data["metrics"] = self.trace_metrics
-
-            # Clean up trace_data before saving
-            cleaned_trace_data = self._clean_trace(trace_data)
 
             # Format interactions and add to trace
             interactions = self.format_interactions()
-            self.trace.workflow = interactions["workflow"]
+            trace_data["workflow"] = interactions["workflow"]
+
+            # Clean up trace_data before saving
+            cleaned_trace_data = self._clean_trace(trace_data)
 
             with open(filepath, "w") as f:
                 json.dump(cleaned_trace_data, f, cls=TracerJSONEncoder, indent=2)
@@ -954,7 +953,7 @@ class BaseTracer:
                 self.visited_metrics.append(metric_name)
 
                 formatted_metric = {
-                    "name": metric_name,  # Use potentially modified name
+                    "name": metric_name,  
                     "score": metric["score"],
                     "reason": metric.get("reasoning", ""),
                     "source": "user",
