@@ -4,21 +4,24 @@ import requests
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from config import initialize_tracer
+import sys 
+sys.path.append(".")
 
-# Initialize tracer
-tracer = initialize_tracer()
+from ragaai_catalyst import trace_llm, trace_tool, current_span
 
-@tracer.trace_llm(name="llm_call")
+# Load environment variables
+load_dotenv()
+
+@trace_llm(name="llm_call", model="gpt-4o-mini")
 def llm_call(prompt, max_tokens=512, model="gpt-4o-mini", name="default"):
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    tracer.span("llm_call").add_metrics(
-            name=f"Q/A_v3_{random.randint(1, 10000)}", 
-            score=0.3, 
-            reasoning="Some Reason 1", 
-            cost=0.0003, 
-            latency=0.002
-        )
+    current_span().add_metrics(
+        name=f"Q/A_v3_{random.randint(1, 10000)}", 
+        score=0.3, 
+        reasoning="Some Reason 1", 
+        cost=0.0003, 
+        latency=0.002
+    )
 
     response = client.chat.completions.create(
         model=model,
@@ -29,17 +32,17 @@ def llm_call(prompt, max_tokens=512, model="gpt-4o-mini", name="default"):
 
     return response.choices[0].message.content.strip()
 
-@tracer.trace_tool(name="weather_tool")
+@trace_tool(name="weather_tool", tool_type="api")
 def weather_tool(destination):
     api_key = os.environ.get("OPENWEATHERMAP_API_KEY")
     base_url = "http://api.openweathermap.org/data/2.5/weather"
-    tracer.span("weather_tool").add_metrics(
-            name="Q/A_v2",
-            score=0.3,
-            reasoning="Some Reason 2",
-            cost=0.00036,
-            latency=0.0021,
-        )
+    current_span().add_metrics(
+        name="Q/A_v2",
+        score=0.3,
+        reasoning="Some Reason 2",
+        cost=0.00036,
+        latency=0.0021,
+    )
     params = {"q": destination, "appid": api_key, "units": "metric"}
     print("Calculating weather for:", destination)
     try:
@@ -50,33 +53,39 @@ def weather_tool(destination):
     except requests.RequestException:
         return "Weather data not available."
 
-@tracer.trace_tool(name="currency_converter_tool")
+@trace_tool(name="currency_converter", tool_type="api")
 def currency_converter_tool(amount, from_currency, to_currency):
-    tracer.span("currency_converter_tool").add_metrics(
-            name="Q/A_v2",
-            score=0.11,
-            reasoning="Some Reason 4",
-            cost=0.0009,
-            latency=0.0089,
-        )
     api_key = os.environ.get("EXCHANGERATE_API_KEY")
     base_url = f"https://v6.exchangerate-api.com/v6/{api_key}/pair/{from_currency}/{to_currency}"
+    current_span().add_metrics(
+        name="Q/A_v2",
+        score=0.11,
+        reasoning="Some Reason 4",
+        cost=0.0009,
+        latency=0.0089,
+    )
 
     try:
         response = requests.get(base_url)
         response.raise_for_status()
         data = response.json()
-        return amount * data["conversion_rate"] if data["result"] == "success" else None
+
+        if data["result"] == "success":
+            rate = data["conversion_rate"]
+            return amount * rate
+        else:
+            return None
     except requests.RequestException:
         return None
 
-@tracer.trace_tool(name="flight_price_estimator_tool")
+@trace_tool(name="flight_price_estimator", tool_type="mock")
 def flight_price_estimator_tool(origin, destination):
-    tracer.span("flight_price_estimator_tool").add_metrics(
-            name="Q/A_v1",
-            score=0.67,
-            reasoning="Some Reason 3",
-            cost=0.0067,
-            latency=0.0011,
-        )
+    current_span().add_metrics(
+        name="Q/A_v1",
+        score=0.67,
+        reasoning="Some Reason 3",
+        cost=0.0067,
+        latency=0.0011,
+    )
+    # This is a mock function. In a real scenario, you'd integrate with a flight API.
     return f"Estimated price from {origin} to {destination}: $500-$1000"
