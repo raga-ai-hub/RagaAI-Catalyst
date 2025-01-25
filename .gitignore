@@ -5,6 +5,7 @@ ragaai_catalyst.egg-info/
 .DS_Store 
 test_files/
 __pycache__/
+*/model_costs.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
