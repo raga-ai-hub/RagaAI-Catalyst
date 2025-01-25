@@ -434,38 +434,44 @@ class BaseTracer:
     def _extract_cost_tokens(self, trace):
         cost = {}
         tokens = {}
-        for span in trace.data[0]["spans"]:
-            if span.type == "llm":
-                info = span.info
-                if isinstance(info, dict):
-                    cost_info = info.get("cost", {})
-                    for key, value in cost_info.items():
-                        if key not in cost:
-                            cost[key] = 0
-                        cost[key] += value
-                    token_info = info.get("tokens", {})
-                    for key, value in token_info.items():
-                        if key not in tokens:
-                            tokens[key] = 0
-                        tokens[key] += value
-            if span.type == "agent":
-                for children in span.data["children"]:
-                    if "type" not in children:
-                        continue
-                    if children["type"] != "llm":
-                        continue
-                    info = children["info"]
-                    if isinstance(info, dict):
-                        cost_info = info.get("cost", {})
-                        for key, value in cost_info.items():
-                            if key not in cost:
-                                cost[key] = 0
-                            cost[key] += value
-                        token_info = info.get("tokens", {})
-                        for key, value in token_info.items():
-                            if key not in tokens:
-                                tokens[key] = 0
-                            tokens[key] += value
+
+        def process_span_info(info):
+            if not isinstance(info, dict):
+                return
+            cost_info = info.get("cost", {})
+            for key, value in cost_info.items():
+                if key not in cost:
+                    cost[key] = 0
+                cost[key] += value
+            token_info = info.get("tokens", {})
+            for key, value in token_info.items():
+                if key not in tokens:
+                    tokens[key] = 0
+                tokens[key] += value
+
+        def process_spans(spans):
+            for span in spans:
+                # Get span type, handling both span objects and dictionaries
+                span_type = span.type if hasattr(span, 'type') else span.get('type')
+                span_info = span.info if hasattr(span, 'info') else span.get('info', {})
+                span_data = span.data if hasattr(span, 'data') else span.get('data', {})
+
+                # Process direct LLM spans
+                if span_type == "llm":
+                    process_span_info(span_info)
+                # Process agent spans recursively
+                elif span_type == "agent":
+                    # Process LLM children in the current agent span
+                    children = span_data.get("children", [])
+                    for child in children:
+                        child_type = child.get("type")
+                        if child_type == "llm":
+                            process_span_info(child.get("info", {}))
+                        # Recursively process nested agent spans
+                        elif child_type == "agent":
+                            process_spans([child])
+
+        process_spans(trace.data[0]["spans"])
         trace.metadata.cost = cost
         trace.metadata.tokens = tokens
         return trace
