@@ -2,8 +2,6 @@ import sys
 import os
 from dotenv import load_dotenv
 
-sys.path.append(".")
-
 from ragaai_catalyst import RagaAICatalyst, init_tracing
 from ragaai_catalyst.tracers import Tracer
 import uuid

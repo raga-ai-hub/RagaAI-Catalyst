@@ -4,9 +4,6 @@ import requests
 from dotenv import load_dotenv
 from openai import OpenAI
 
-import sys 
-sys.path.append(".")
-
 from ragaai_catalyst import trace_llm, trace_tool, current_span
 
 # Load environment variables
