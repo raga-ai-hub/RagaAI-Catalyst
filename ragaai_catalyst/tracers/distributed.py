@@ -227,6 +227,51 @@ def trace_tool(name: str = None, tool_type: str = "generic", version: str = "1.0
         return async_wrapper if is_async else sync_wrapper
     return decorator
 
+
+
+def trace_custom(name: str = None, custom_type: str = "generic", version: str = "1.0.0", trace_variables: bool = False, **kwargs):
+    """Decorator for tracing custom functions."""
+    def decorator(func):
+        is_async = asyncio.iscoroutinefunction(func)
+        
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            tracer = get_current_tracer()
+            if not tracer:
+                return await func(*args, **kwargs)
+
+            # Use async tool tracing
+            return await tracer._trace_custom_execution(
+                func,
+                name or func.__name__,
+                custom_type,
+                version,
+                trace_variables,
+                *args,
+                **kwargs
+            )
+
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            tracer = get_current_tracer()
+            if not tracer:
+                return func(*args, **kwargs)
+
+            # Use synchronous tool tracing
+            return tracer._trace_sync_custom_execution(
+                func,
+                name or func.__name__,
+                custom_type,
+                version,
+                trace_variables,
+                *args,
+                **kwargs
+            )
+
+        return async_wrapper if is_async else sync_wrapper
+    return decorator
+
+
 def current_span():
     """Get the current active span for adding metrics."""
     tracer = get_current_tracer()
