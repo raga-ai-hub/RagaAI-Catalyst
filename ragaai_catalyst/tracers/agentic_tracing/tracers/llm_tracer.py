@@ -475,7 +475,7 @@ class LLMTracerMixin:
                 parameters=parameters,
             )
 
-            # self.add_component(llm_component)
+            self.add_component(llm_component)
             self.llm_data = llm_component
 
             return result

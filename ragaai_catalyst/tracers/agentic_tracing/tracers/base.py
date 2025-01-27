@@ -308,15 +308,14 @@ class BaseTracer:
 
             # Add metrics to trace before saving
             trace_data = self.trace.to_dict()
-
             trace_data["metrics"] = self.trace_metrics
-
+            
             # Clean up trace_data before saving
             cleaned_trace_data = self._clean_trace(trace_data)
 
             # Format interactions and add to trace
             interactions = self.format_interactions()
-            self.trace.workflow = interactions["workflow"]
+            trace_data["workflow"] = interactions["workflow"]
 
             with open(filepath, "w") as f:
                 json.dump(cleaned_trace_data, f, cls=TracerJSONEncoder, indent=2)
@@ -434,38 +433,44 @@ class BaseTracer:
     def _extract_cost_tokens(self, trace):
         cost = {}
         tokens = {}
-        for span in trace.data[0]["spans"]:
-            if span.type == "llm":
-                info = span.info
-                if isinstance(info, dict):
-                    cost_info = info.get("cost", {})
-                    for key, value in cost_info.items():
-                        if key not in cost:
-                            cost[key] = 0
-                        cost[key] += value
-                    token_info = info.get("tokens", {})
-                    for key, value in token_info.items():
-                        if key not in tokens:
-                            tokens[key] = 0
-                        tokens[key] += value
-            if span.type == "agent":
-                for children in span.data["children"]:
-                    if "type" not in children:
-                        continue
-                    if children["type"] != "llm":
-                        continue
-                    info = children["info"]
-                    if isinstance(info, dict):
-                        cost_info = info.get("cost", {})
-                        for key, value in cost_info.items():
-                            if key not in cost:
-                                cost[key] = 0
-                            cost[key] += value
-                        token_info = info.get("tokens", {})
-                        for key, value in token_info.items():
-                            if key not in tokens:
-                                tokens[key] = 0
-                            tokens[key] += value
+
+        def process_span_info(info):
+            if not isinstance(info, dict):
+                return
+            cost_info = info.get("cost", {})
+            for key, value in cost_info.items():
+                if key not in cost:
+                    cost[key] = 0
+                cost[key] += value
+            token_info = info.get("tokens", {})
+            for key, value in token_info.items():
+                if key not in tokens:
+                    tokens[key] = 0
+                tokens[key] += value
+
+        def process_spans(spans):
+            for span in spans:
+                # Get span type, handling both span objects and dictionaries
+                span_type = span.type if hasattr(span, 'type') else span.get('type')
+                span_info = span.info if hasattr(span, 'info') else span.get('info', {})
+                span_data = span.data if hasattr(span, 'data') else span.get('data', {})
+
+                # Process direct LLM spans
+                if span_type == "llm":
+                    process_span_info(span_info)
+                # Process agent spans recursively
+                elif span_type == "agent":
+                    # Process LLM children in the current agent span
+                    children = span_data.get("children", [])
+                    for child in children:
+                        child_type = child.get("type")
+                        if child_type == "llm":
+                            process_span_info(child.get("info", {}))
+                        # Recursively process nested agent spans
+                        elif child_type == "agent":
+                            process_spans([child])
+
+        process_spans(trace.data[0]["spans"])
         trace.metadata.cost = cost
         trace.metadata.tokens = tokens
         return trace
@@ -665,10 +670,23 @@ class BaseTracer:
                 {
                     "id": str(interaction_id),
                     "span_id": child.get("id"),
-                    "interaction_type": child_type,
+                    "interaction_type": f"{child_type}_call_start",
                     "name": child.get("name"),
                     "content": child.get("data", {}),
                     "timestamp": child.get("start_time"),
+                    "error": child.get("error"),
+                }
+            )
+            interaction_id += 1
+            
+            interactions.append(
+                {
+                    "id": str(interaction_id),
+                    "span_id": child.get("id"),
+                    "interaction_type": f"{child_type}_call_end",
+                    "name": child.get("name"),
+                    "content": child.get("data", {}),
+                    "timestamp": child.get("end_time"),
                     "error": child.get("error"),
                 }
             )
@@ -833,10 +851,23 @@ class BaseTracer:
                     {
                         "id": str(interaction_id),
                         "span_id": span.id,
-                        "interaction_type": span.type,
+                        "interaction_type": f"{span.type}_call_start",
                         "name": span.name,
                         "content": span.data,
                         "timestamp": span.start_time,
+                        "error": span.error,
+                    }
+                )
+                interaction_id += 1
+                
+                interactions.append(
+                    {
+                        "id": str(interaction_id),
+                        "span_id": span.id,
+                        "interaction_type": f"{span.type}_call_end",
+                        "name": span.name,
+                        "content": span.data,
+                        "timestamp": span.end_time,
                         "error": span.error,
                     }
                 )
@@ -954,7 +985,7 @@ class BaseTracer:
                 self.visited_metrics.append(metric_name)
 
                 formatted_metric = {
-                    "name": metric_name,  # Use potentially modified name
+                    "name": metric_name,  
                     "score": metric["score"],
                     "reason": metric.get("reasoning", ""),
                     "source": "user",
