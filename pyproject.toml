@@ -48,7 +48,6 @@ dependencies = [
     "py-cpuinfo~=9.0.0",
     "requests~=2.32.3",
     "GPUtil~=1.4.0",
-    "astor>=0.8.1",
     "ipynbname",
 ]
 
