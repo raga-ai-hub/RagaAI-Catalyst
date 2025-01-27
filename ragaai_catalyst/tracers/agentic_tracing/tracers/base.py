@@ -670,10 +670,23 @@ class BaseTracer:
                 {
                     "id": str(interaction_id),
                     "span_id": child.get("id"),
-                    "interaction_type": child_type,
+                    "interaction_type": f"{child_type}_call_start",
                     "name": child.get("name"),
                     "content": child.get("data", {}),
                     "timestamp": child.get("start_time"),
+                    "error": child.get("error"),
+                }
+            )
+            interaction_id += 1
+            
+            interactions.append(
+                {
+                    "id": str(interaction_id),
+                    "span_id": child.get("id"),
+                    "interaction_type": f"{child_type}_call_end",
+                    "name": child.get("name"),
+                    "content": child.get("data", {}),
+                    "timestamp": child.get("end_time"),
                     "error": child.get("error"),
                 }
             )
@@ -838,10 +851,23 @@ class BaseTracer:
                     {
                         "id": str(interaction_id),
                         "span_id": span.id,
-                        "interaction_type": span.type,
+                        "interaction_type": f"{span.type}_call_start",
                         "name": span.name,
                         "content": span.data,
                         "timestamp": span.start_time,
+                        "error": span.error,
+                    }
+                )
+                interaction_id += 1
+                
+                interactions.append(
+                    {
+                        "id": str(interaction_id),
+                        "span_id": span.id,
+                        "interaction_type": f"{span.type}_call_end",
+                        "name": span.name,
+                        "content": span.data,
+                        "timestamp": span.end_time,
                         "error": span.error,
                     }
                 )
