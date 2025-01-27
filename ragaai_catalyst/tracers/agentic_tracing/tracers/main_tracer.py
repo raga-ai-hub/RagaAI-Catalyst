@@ -137,13 +137,28 @@ class AgenticTracing(
             self.network_tracer.network_calls.copy()
         )
         self.network_tracer.network_calls = []  # Reset for next component
-        # self.component_user_interaction[component_id] = [interaction for interaction in self.user_interaction_tracer.interactions if interaction.get('component_id') == component_id]
+
+        # Store user interactions for the component
         for interaction in self.user_interaction_tracer.interactions:
             interaction_component_id = interaction.get("component_id")
             if interaction_component_id not in self.component_user_interaction:
                 self.component_user_interaction[interaction_component_id] = []
             if interaction not in self.component_user_interaction[interaction_component_id]:
                 self.component_user_interaction[interaction_component_id].append(interaction)
+                
+        # Only reset component_id if it matches the current one
+        # This ensures we don't reset a parent's component_id when a child component ends
+        if self.current_component_id.get() == component_id:
+            # Get the parent agent's component_id if it exists
+            parent_agent_id = self.current_agent_id.get()
+            # If there's a parent agent, set the component_id back to the parent's
+            if parent_agent_id:
+                self.current_component_id.set(parent_agent_id)
+                self.user_interaction_tracer.component_id.set(parent_agent_id)
+            else:
+                # Only reset to None if there's no parent
+                self.current_component_id.set(None)
+                self.user_interaction_tracer.component_id.set(None)
 
     def start(self):
         """Start tracing"""
