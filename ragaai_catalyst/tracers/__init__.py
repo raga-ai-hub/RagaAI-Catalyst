@@ -5,6 +5,7 @@ from .distributed import (
     trace_llm,
     trace_tool,
     current_span,
+    trace_custom,
 )
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "trace_agent", 
     "trace_llm",
     "trace_tool",
-    "current_span"
+    "current_span",
+    "trace_custom"
 ]

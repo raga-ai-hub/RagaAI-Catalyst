@@ -7,7 +7,7 @@ from .evaluation import Evaluation
 from .synthetic_data_generation import SyntheticDataGeneration
 from .guardrails_manager import GuardrailsManager
 from .guard_executor import GuardExecutor
-from .tracers import Tracer, init_tracing, trace_agent, trace_llm, trace_tool, current_span
+from .tracers import Tracer, init_tracing, trace_agent, trace_llm, trace_tool, current_span, trace_custom
 
 
 
@@ -25,5 +25,6 @@ __all__ = [
     "trace_agent", 
     "trace_llm",
     "trace_tool",
-    "current_span"
+    "current_span",
+    "trace_custom"
 ]
