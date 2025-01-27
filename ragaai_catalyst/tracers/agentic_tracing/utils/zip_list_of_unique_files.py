@@ -5,7 +5,6 @@ import re
 import ast
 import importlib.util
 import json
-import astor
 import ipynbname
 import sys
 
@@ -74,12 +73,14 @@ class PackageUsageRemover(ast.NodeTransformer):
 def remove_package_code(source_code: str, package_name: str) -> str:
     try:
         tree = ast.parse(source_code)
-        transformer = PackageUsageRemover(package_name)
-        modified_tree = transformer.visit(tree)
-        modified_code = astor.to_source(modified_tree)
+        remover = PackageUsageRemover(package_name)
+        modified_tree = remover.visit(tree)
+        modified_code = ast.unparse(modified_tree)
+
         return modified_code
     except Exception as e:
-        raise Exception(f"Error processing source code: {str(e)}")
+        logger.error(f"Error in remove_package_code: {e}")
+        return source_code
 
 class JupyterNotebookHandler:
     @staticmethod
@@ -452,4 +453,3 @@ if __name__ == "__main__":
     hash_id, zip_path = zip_list_of_unique_files(filepaths)
     print(f"Created zip file: {zip_path}")
     print(f"Hash ID: {hash_id}")
-
