@@ -41,7 +41,17 @@ class NetworkTracer:
         
         # Extract protocol from URL
         protocol = "https" if url.startswith("https") else "http"
-        
+
+        try:
+            response_body = response_body[:1000] if response_body else None
+        except:
+            response_body = response_body if response_body else None
+
+        try:
+            request_body = request_body[:1000] if request_body else None
+        except:
+            request_body = request_body if request_body else None
+            
         self.network_calls.append(
             {
                 "url": url,
@@ -57,11 +67,11 @@ class NetworkTracer:
                 "parent_id": None,  # Will be set by the component
                 "request": {
                     "headers": request_headers,
-                    "body": request_body[:1000] if request_body else None,  # Limit to 1000 chars
+                    "body": request_body,
                 },
                 "response": {
                     "headers": response_headers,
-                    "body": response_body[:1000] if response_body else None,  # Limit to 1000 chars
+                    "body": response_body,
                 },
                 "error": str(error) if error else None,
             }
