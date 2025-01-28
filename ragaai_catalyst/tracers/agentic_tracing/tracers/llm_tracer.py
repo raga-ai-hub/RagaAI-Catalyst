@@ -78,6 +78,7 @@ class LLMTracerMixin:
 
         if "openai" in sys.modules:
             self.patch_openai_methods(sys.modules["openai"])
+            self.patch_openai_beta_methods(sys.modules["openai"])
         if "litellm" in sys.modules:
             self.patch_litellm_methods(sys.modules["litellm"])
         if "anthropic" in sys.modules:
@@ -97,6 +98,7 @@ class LLMTracerMixin:
             self.patch_vertex_ai_methods, "vertexai.generative_models"
         )
         wrapt.register_post_import_hook(self.patch_openai_methods, "openai")
+        wrapt.register_post_import_hook(self.patch_openai_beta_methods, "openai")
         wrapt.register_post_import_hook(self.patch_litellm_methods, "litellm")
         wrapt.register_post_import_hook(self.patch_anthropic_methods, "anthropic")
         wrapt.register_post_import_hook(
@@ -134,6 +136,40 @@ class LLMTracerMixin:
         except Exception as e:
             # Log the error but continue execution
             print(f"Warning: Failed to patch OpenAI methods: {str(e)}")
+
+    def patch_openai_beta_methods(self, openai_module):
+        """
+        Patch the new openai.beta endpoints (threads, runs, messages, etc.)
+        so that calls like openai.beta.threads.create(...) or
+        openai.beta.threads.runs.create(...) are automatically traced.
+        """
+        # Make sure openai_module has a 'beta' attribute
+        if not hasattr(openai_module, "beta"):
+            return
+
+        beta_module = openai_module.beta
+
+        # Patch openai.beta.threads
+        if hasattr(beta_module, "threads"):
+            threads_obj = beta_module.threads
+            # Patch top-level methods on openai.beta.threads
+            for method_name in ["create", "list"]:
+                if hasattr(threads_obj, method_name):
+                    self.wrap_method(threads_obj, method_name)
+
+            # Patch the nested objects: messages, runs
+            if hasattr(threads_obj, "messages"):
+                messages_obj = threads_obj.messages
+                for method_name in ["create", "list"]:
+                    if hasattr(messages_obj, method_name):
+                        self.wrap_method(messages_obj, method_name)
+
+            if hasattr(threads_obj, "runs"):
+                runs_obj = threads_obj.runs
+                for method_name in ["create", "retrieve", "list"]:
+                    if hasattr(runs_obj, method_name):
+                        self.wrap_method(runs_obj, method_name)
+
 
     def patch_anthropic_methods(self, module):
         if hasattr(module, "Anthropic"):
