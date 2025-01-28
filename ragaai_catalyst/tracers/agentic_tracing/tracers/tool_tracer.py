@@ -94,7 +94,7 @@ class ToolTracerMixin:
 
         @functools.wraps(original_method)
         def wrapper(*args, **kwargs):
-            name = original_method.__name__
+            name = method_name
             tool_type = "langchain"
             version = None
             if asyncio.iscoroutinefunction(original_method):
