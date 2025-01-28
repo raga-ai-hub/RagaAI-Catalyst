@@ -82,109 +82,14 @@ class ToolTracerMixin:
 
         @functools.wraps(original_method)
         def wrapper(*args, **kwargs):
+            name = original_method.__name__
+            tool_type = "langchain"
+            version = None
             if asyncio.iscoroutinefunction(original_method):
-                return self.trace_tool_call(original_method, *args, **kwargs)
-            return self.trace_tool_call_sync(original_method, *args, **kwargs)
+                return self._trace_tool_execution(original_method, name, tool_type, version, *args, **kwargs)
+            return self._trace_sync_tool_execution(original_method, name, tool_type, version, *args, **kwargs)
             
         setattr(obj, method_name, wrapper)
-        
-    def trace_tool_call(self, original_func, instance, *args, **kwargs):
-        """Trace an async tool call"""
-        async def wrapper():
-            start_time = time.time()
-            error = None
-            output_data = None
-            
-            try:
-                output_data = await original_func(instance, *args, **kwargs)
-            except Exception as e:
-                error = str(e)
-                raise
-            finally:
-                end_time = time.time()
-                memory_used = psutil.Process(os.getpid()).memory_info().rss
-                
-                # Get tool name and type based on the instance
-                if hasattr(instance, "__class__"):
-                    if instance.__class__.__name__ == "ToolNode":
-                        # For ToolNode, get the names of all tools
-                        tool_names = [t.__class__.__name__ for t in instance.tools]
-                        tool_name = f"ToolNode({','.join(tool_names)})"
-                        tool_type = "langgraph"
-                    else:
-                        tool_name = instance.__class__.__name__
-                        tool_type = "langchain"
-                else:
-                    tool_name = original_func.__qualname__.split('.')[0]
-                    tool_type = "generic"
-                
-                hash_id = generate_unique_hash_simple()
-                
-                self.create_tool_component(
-                    component_id=str(uuid.uuid4()),
-                    hash_id=hash_id,
-                    name=tool_name,
-                    tool_type=tool_type,
-                    version="1.0.0",
-                    memory_used=memory_used,
-                    start_time=datetime.fromtimestamp(start_time).isoformat(),
-                    input_data={"args": args, "kwargs": kwargs},
-                    output_data=output_data,
-                    error=error
-                )
-                
-                self.add_component(tool_component)
-                
-            return output_data
-            
-        return wrapper()
-        
-    def trace_tool_call_sync(self, original_func, instance, *args, **kwargs):
-        """Trace a sync tool call"""
-        start_time = time.time()
-        error = None
-        output_data = None
-        try:
-            output_data = original_func(instance, *args, **kwargs)
-        except Exception as e:
-            error = str(e)
-            raise
-        finally:
-            end_time = time.time()
-            memory_used = psutil.Process(os.getpid()).memory_info().rss
-            
-            # Get tool name and type based on the instance
-            if hasattr(instance, "__class__"):
-                if instance.__class__.__name__ == "ToolNode":
-                    # For ToolNode, get the names of all tools
-                    tool_names = [t.__class__.__name__ for t in instance.tools]
-                    tool_name = f"ToolNode({','.join(tool_names)})"
-                    tool_type = "langgraph"
-                else:
-                    tool_name = instance.__class__.__name__
-                    tool_type = "langchain"
-            else:
-                tool_name = original_func.__qualname__.split('.')[0]
-                tool_type = "generic"
-            
-            hash_id = generate_unique_hash_simple()
-            
-            self.create_tool_component(
-                component_id=str(uuid.uuid4()),
-                hash_id=hash_id,
-                name=tool_name,
-                tool_type=tool_type,
-                version="1.0.0",
-                memory_used=memory_used,
-                start_time=datetime.fromtimestamp(start_time).isoformat(),
-                input_data={"args": args, "kwargs": kwargs},
-                output_data=output_data,
-                error=error
-            )
-            
-            self.add_component(tool_component)
-            
-        return output_data
 
     def instrument_user_interaction_calls(self):
         self.auto_instrument_user_interaction = True
