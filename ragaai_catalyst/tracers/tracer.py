@@ -98,10 +98,10 @@ class Tracer(AgenticTracing):
                     "custom": False
                 }
         elif isinstance(auto_instrumentation, dict):
-            auto_instrumentation = {k: v for k, v in auto_instrumentation.items() if v}
+            auto_instrumentation = {k: v for k, v in auto_instrumentation.items()}
             for key in ["llm", "tool", "agent", "user_interaction", "file_io", "network", "custom"]:
                 if key not in auto_instrumentation:
-                    auto_instrumentation[key] = False
+                    auto_instrumentation[key] = True
         
         super().__init__(user_detail=user_detail, auto_instrumentation=auto_instrumentation)
 

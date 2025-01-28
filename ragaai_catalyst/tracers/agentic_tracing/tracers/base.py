@@ -695,11 +695,12 @@ class BaseTracer:
         # Process additional interactions and network calls
         if "interactions" in child:
             for interaction in child["interactions"]:
-                interaction["id"] = str(interaction_id)
-                interaction["span_id"] = child.get("id")
-                interaction["error"] = None
-                interactions.append(interaction)
-                interaction_id += 1
+                if interaction!=[]:
+                    interaction["id"] = str(interaction_id)
+                    interaction["span_id"] = child.get("id")
+                    interaction["error"] = None
+                    interactions.append(interaction)
+                    interaction_id += 1
 
         if "network_calls" in child:
             for child_network_call in child["network_calls"]:
@@ -876,15 +877,16 @@ class BaseTracer:
             # Process interactions from span.data if they exist
             if span.interactions:
                 for span_interaction in span.interactions:
-                    interaction = {}
-                    interaction["id"] = str(interaction_id)
-                    interaction["span_id"] = span.id
-                    interaction["interaction_type"] = span_interaction.type
-                    interaction["content"] = span_interaction.content
-                    interaction["timestamp"] = span_interaction.timestamp
-                    interaction["error"] = span.error
-                    interactions.append(interaction)
-                    interaction_id += 1
+                    if span_interaction != []:
+                        interaction = {}
+                        interaction["id"] = str(interaction_id)
+                        interaction["span_id"] = span.id
+                        interaction["interaction_type"] = span_interaction.type
+                        interaction["content"] = span_interaction.content
+                        interaction["timestamp"] = span_interaction.timestamp
+                        interaction["error"] = span.error
+                        interactions.append(interaction)
+                        interaction_id += 1
 
             if span.network_calls:
                 for span_network_call in span.network_calls:
