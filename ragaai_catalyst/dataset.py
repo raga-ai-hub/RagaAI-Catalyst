@@ -434,17 +434,16 @@ class Dataset:
             
             # Check response
             response_data = response.json()
-            if not response_data.get('success', False):
-                raise ValueError(response_data.get('message', 'Unknown error occurred'))
-            
-            print(f"Successfully added rows to dataset {dataset_name}")
-            return response_data
+            if response_data.get('success', False):
+                print(f"{response_data['message']}")
+            else:
+                raise ValueError(response_data.get('message', 'Failed to add rows'))
         
         except Exception as e:
             logger.error(f"Error in add_rows_to_dataset: {e}")
             raise
 
-    def add_columns(self,text_fields,dataset_name, column_name, provider, model,variables={}):
+    def add_columns(self, text_fields, dataset_name, column_name, provider, model, variables={}):
         """
         Add a column to a dataset with dynamically fetched model parameters
         
@@ -571,7 +570,7 @@ class Dataset:
                     variable_specs.append({
                         "name": key,
                         "type": "string",
-                        "schema": values
+                        "schema": "query"
                     })
                 add_column_payload["promptTemplate"]["variableSpecs"] = variable_specs
             
@@ -593,9 +592,10 @@ class Dataset:
             response.raise_for_status()
             response_data = response.json()
             
-            print("Column added successfully:")
-            print(json.dumps(response_data, indent=2))
-            return response_data
+            if response_data.get('success', False):
+                print(f"Column '{column_name}' added successfully to dataset '{dataset_name}'")
+            else:
+                raise ValueError(response_data.get('message', 'Failed to add column'))
         
         except requests.exceptions.RequestException as e:
             print(f"Error adding column: {e}")
