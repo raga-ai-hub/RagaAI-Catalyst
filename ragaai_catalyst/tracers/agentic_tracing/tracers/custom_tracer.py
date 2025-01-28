@@ -251,13 +251,13 @@ class CustomTracerMixin:
             for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
                 if interaction["interaction_type"] in ["input", "output"]:
                     input_output_interactions.append(interaction)
-            interactions.append(input_output_interactions) 
+            interactions.extend(input_output_interactions) 
         if self.auto_instrument_file_io:
             file_io_interactions = []
             for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
                 if interaction["interaction_type"] in ["file_read", "file_write"]:
                     file_io_interactions.append(interaction)
-            interactions.append(file_io_interactions)
+            interactions.extend(file_io_interactions)
             
         component = {
             "id": kwargs["component_id"],
