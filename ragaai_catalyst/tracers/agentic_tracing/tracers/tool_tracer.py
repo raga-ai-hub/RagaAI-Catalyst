@@ -44,62 +44,49 @@ class ToolTracerMixin:
         # Handle modules that are already imported
         import sys
         
-        if "langchain_community.tools.tavily_search" in sys.modules:
-            self.patch_tavily_search_methods(sys.modules["langchain_community.tools.tavily_search"])
-        if "langgraph.prebuilt" in sys.modules:
-            self.patch_langgraph_methods(sys.modules["langgraph.prebuilt"])
+        if "langchain_community.tools" in sys.modules:
+            self.patch_langchain_community_tools(sys.modules["langchain_community.tools"])
+            
+        if "langchain.tools" in sys.modules:
+            self.patch_langchain_community_tools(sys.modules["langchain.tools"])
         
         # Register hooks for future imports
         wrapt.register_post_import_hook(
-            self.patch_tavily_search_methods, "langchain_community.tools.tavily_search"
+            self.patch_langchain_community_tools, "langchain_community.tools"
         )
         wrapt.register_post_import_hook(
-            self.patch_langgraph_methods, "langgraph.prebuilt"
+            self.patch_langchain_community_tools, "langchain.tools"
         )
-        
-    def patch_langgraph_methods(self, module):
-        """Patch LangGraph ToolNode methods"""
-        if hasattr(module, "ToolNode"):
-            tool_node_class = getattr(module, "ToolNode")
-            
-            # Patch the call method which is used by LangGraph
-            if hasattr(tool_node_class, "call"):
-                self.wrap_method(tool_node_class, "call")
-            if hasattr(tool_node_class, "acall"):
-                self.wrap_method(tool_node_class, "acall")
                 
-    def patch_tavily_search_methods(self, module):
-        """Patch Tavily Search tool methods"""
-        if hasattr(module, "TavilySearchResults"):
-            tool_class = getattr(module, "TavilySearchResults")
-            
-            # Patch the invoke method which is used by LangGraph
-            if hasattr(tool_class, "invoke"):
-                self.wrap_method(tool_class, "invoke")
-            if hasattr(tool_class, "ainvoke"):
-                self.wrap_method(tool_class, "ainvoke")
-                
-            # Also patch the run methods
-            if hasattr(tool_class, "_run"):
-                self.wrap_method(tool_class, "_run")
-            if hasattr(tool_class, "_arun"):
-                self.wrap_method(tool_class, "_arun")
+    def patch_langchain_community_tools(self, module):
+        """Patch langchain-community tool methods"""
+        for directory in dir(module):
+            dir_class = getattr(module, directory)
+            tools = getattr(dir_class, "__all__", None)
+            if tools is None:
+                continue
+            for tool in tools:
+                tool_class = getattr(dir_class, tool)   
+                if hasattr(tool_class, "invoke"):
+                    self.wrap_method(tool_class, "invoke")
+                if hasattr(tool_class, "ainvoke"):
+                    self.wrap_method(tool_class, "ainvoke")
+                if hasattr(tool_class, "run"):
+                    self.wrap_method(tool_class, "run")
+                if hasattr(tool_class, "arun"):
+                    self.wrap_method(tool_class, "arun")
             
     def wrap_method(self, obj, method_name):
         """Wrap a method with tracing functionality"""
-        if not hasattr(obj, method_name):
-            return
-            
         original_method = getattr(obj, method_name)
-        
-        @wrapt.decorator
-        def wrapper(wrapped, instance, args, kwargs):
-            if asyncio.iscoroutinefunction(wrapped):
-                return self.trace_tool_call(wrapped, instance, *args, **kwargs)
-            return self.trace_tool_call_sync(wrapped, instance, *args, **kwargs)
+
+        @functools.wraps(original_method)
+        def wrapper(*args, **kwargs):
+            if asyncio.iscoroutinefunction(original_method):
+                return self.trace_tool_call(original_method, *args, **kwargs)
+            return self.trace_tool_call_sync(original_method, *args, **kwargs)
             
-        wrapped_method = wrapper(original_method)
-        setattr(obj, method_name, wrapped_method)
+        setattr(obj, method_name, wrapper)
         
     def trace_tool_call(self, original_func, instance, *args, **kwargs):
         """Trace an async tool call"""
@@ -157,7 +144,6 @@ class ToolTracerMixin:
         start_time = time.time()
         error = None
         output_data = None
-        
         try:
             output_data = original_func(instance, *args, **kwargs)
         except Exception as e:
