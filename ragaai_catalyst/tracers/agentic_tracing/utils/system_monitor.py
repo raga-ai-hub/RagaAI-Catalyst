@@ -51,8 +51,7 @@ class SystemMonitor:
             )
         except Exception as e:
             logger.warning(f"Failed to get OS info: {str(e)}")
-            # Keep the default os_info with None values
-
+             
         try:
             # Get Python environment info
             installed_packages = [
@@ -67,7 +66,7 @@ class SystemMonitor:
             )
         except Exception as e:
             logger.warning(f"Failed to get environment info: {str(e)}")
-            # Keep the default env_info with None values
+             
 
         # Always return a valid SystemInfo object
         return SystemInfo(
@@ -124,7 +123,7 @@ class SystemMonitor:
             cpu = CPUResource(info=cpu_info, interval="5s", values=[psutil.cpu_percent()])
         except Exception as e:
             logger.warning(f"Failed to get CPU info: {str(e)}")
-            # Keep the default cpu with None values
+             
 
         try:
             # Memory info
@@ -136,7 +135,7 @@ class SystemMonitor:
             mem = MemoryResource(info=mem_info, interval="5s", values=[memory.percent])
         except Exception as e:
             logger.warning(f"Failed to get memory info: {str(e)}")
-            # Keep the default mem with None values
+             
 
         try:
             # Disk info
@@ -151,8 +150,7 @@ class SystemMonitor:
             )
         except Exception as e:
             logger.warning(f"Failed to get disk info: {str(e)}")
-            # Keep the default disk_resource with None values
-
+             
         try:
             # Network info
             net_io = psutil.net_io_counters()
@@ -168,7 +166,7 @@ class SystemMonitor:
             )
         except Exception as e:
             logger.warning(f"Failed to get network info: {str(e)}")
-            # Keep the default net with None values
+            
 
         # Always return a valid Resources object
         return Resources(cpu=cpu, memory=mem, disk=disk_resource, network=net)
@@ -180,7 +178,7 @@ class SystemMonitor:
             return memory_usage / (1024 * 1024)  # Convert to MB
         except Exception as e:
             logger.warning(f"Failed to track memory usage: {str(e)}")
-            return None  # Explicitly return None to maintain consistency
+            return None  
 
     def track_cpu_usage(self, interval: float) -> Optional[float]:
         """Track CPU usage percentage"""
@@ -188,7 +186,7 @@ class SystemMonitor:
             return psutil.cpu_percent(interval=interval)
         except Exception as e:
             logger.warning(f"Failed to track CPU usage: {str(e)}")
-            return None  # Explicitly return None to maintain consistency
+            return None  
 
     def track_disk_usage(self) -> Dict[str, Optional[float]]:
         """Track disk I/O in MB"""
@@ -201,7 +199,7 @@ class SystemMonitor:
             }
         except Exception as e:
             logger.warning(f"Failed to track disk usage: {str(e)}")
-            return default_response  # Return default structure with None values
+            return default_response 
 
     def track_network_usage(self) -> Dict[str, Optional[float]]:
         """Track network I/O in MB"""
@@ -214,4 +212,4 @@ class SystemMonitor:
             }
         except Exception as e:
             logger.warning(f"Failed to track network usage: {str(e)}")
-            return default_response  # Return default structure with None values
+            return default_response 
