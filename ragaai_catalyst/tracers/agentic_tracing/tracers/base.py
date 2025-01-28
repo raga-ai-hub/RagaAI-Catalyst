@@ -1,8 +1,5 @@
 import json
 import os
-import platform
-import psutil
-import pkg_resources
 from datetime import datetime
 from pathlib import Path
 from typing import List, Any, Dict
@@ -16,20 +13,9 @@ from ..data.data_structure import (
     Trace,
     Metadata,
     SystemInfo,
-    OSInfo,
-    EnvironmentInfo,
     Resources,
-    CPUResource,
-    MemoryResource,
-    DiskResource,
-    NetworkResource,
-    ResourceInfo,
-    MemoryInfo,
-    DiskInfo,
-    NetworkInfo,
     Component,
 )
-
 from ..upload.upload_agentic_traces import UploadAgenticTraces
 from ..upload.upload_code import upload_code
 from ..upload.upload_trace_metric import upload_trace_metric
@@ -37,9 +23,8 @@ from ..utils.file_name_tracker import TrackName
 from ..utils.zip_list_of_unique_files import zip_list_of_unique_files
 from ..utils.span_attributes import SpanAttributes
 from ..utils.create_dataset_schema import create_dataset_schema_with_trace
+from ..utils.system_monitor import SystemMonitor
 
-
-# Configure logging to show debug messages (which includes info messages as well)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -76,12 +61,12 @@ class TracerJSONEncoder(json.JSONEncoder):
 class BaseTracer:
     def __init__(self, user_details):
         self.user_details = user_details
-        self.project_name = self.user_details["project_name"]  # Access the project_name
-        self.dataset_name = self.user_details["dataset_name"]  # Access the dataset_name
-        self.project_id = self.user_details["project_id"]  # Access the project_id
-        self.trace_name = self.user_details["trace_name"]  # Access the trace_name
+        self.project_name = self.user_details["project_name"]
+        self.dataset_name = self.user_details["dataset_name"]
+        self.project_id = self.user_details["project_id"]
+        self.trace_name = self.user_details["trace_name"]
         self.visited_metrics = []
-        self.trace_metrics = []  # Store metrics here
+        self.trace_metrics = []
 
         # Initialize trace data
         self.trace_id = None
@@ -97,117 +82,60 @@ class BaseTracer:
         self.network_usage_list = []
         self.tracking_thread = None
         self.tracking = False
+        self.system_monitor = None
 
     def _get_system_info(self) -> SystemInfo:
-        # Get OS info
-        os_info = OSInfo(
-            name=platform.system(),
-            version=platform.version(),
-            platform=platform.machine(),
-            kernel_version=platform.release(),
-        )
-
-        # Get Python environment info
-        installed_packages = [
-            f"{pkg.key}=={pkg.version}" for pkg in pkg_resources.working_set
-        ]
-        env_info = EnvironmentInfo(
-            name="Python",
-            version=platform.python_version(),
-            packages=installed_packages,
-            env_path=sys.prefix,
-            command_to_run=f"python {sys.argv[0]}",
-        )
-
-        return SystemInfo(
-            id=f"sys_{self.trace_id}",
-            os=os_info,
-            environment=env_info,
-            source_code="Path to the source code .zip file in format hashid.zip",  # TODO: Implement source code archiving
-        )
+        return self.system_monitor.get_system_info()
 
     def _get_resources(self) -> Resources:
-        # CPU info
-        cpu_info = ResourceInfo(
-            name=platform.processor(),
-            cores=psutil.cpu_count(logical=False),
-            threads=psutil.cpu_count(logical=True),
-        )
-        cpu = CPUResource(info=cpu_info, interval="5s", values=[psutil.cpu_percent()])
-
-        # Memory info
-        memory = psutil.virtual_memory()
-        mem_info = MemoryInfo(
-            total=memory.total / (1024**3),  # Convert to GB
-            free=memory.available / (1024**3),
-        )
-        mem = MemoryResource(info=mem_info, interval="5s", values=[memory.percent])
-
-        # Disk info
-        disk = psutil.disk_usage("/")
-        disk_info = DiskInfo(total=disk.total / (1024**3), free=disk.free / (1024**3))
-        disk_io = psutil.disk_io_counters()
-        disk_resource = DiskResource(
-            info=disk_info,
-            interval="5s",
-            read=[disk_io.read_bytes / (1024**2)],  # MB
-            write=[disk_io.write_bytes / (1024**2)],
-        )
-
-        # Network info
-        net_io = psutil.net_io_counters()
-        net_info = NetworkInfo(
-            upload_speed=net_io.bytes_sent / (1024**2),  # MB
-            download_speed=net_io.bytes_recv / (1024**2),
-        )
-        net = NetworkResource(
-            info=net_info,
-            interval="5s",
-            uploads=[net_io.bytes_sent / (1024**2)],
-            downloads=[net_io.bytes_recv / (1024**2)],
-        )
-
-        return Resources(cpu=cpu, memory=mem, disk=disk_resource, network=net)
+        return self.system_monitor.get_resources()
 
     def _track_memory_usage(self):
         self.memory_usage_list = []
         while self.tracking:
-            memory_usage = psutil.Process().memory_info().rss
-            self.memory_usage_list.append(memory_usage / (1024 * 1024))  # Convert to MB and append to the list
-            time.sleep(self.interval_time)
+            usage = self.system_monitor.track_memory_usage()
+            self.memory_usage_list.append(usage)
+            try:
+                time.sleep(self.interval_time)
+            except Exception as e:
+                logger.warning(f"Sleep interrupted in memory tracking: {str(e)}")
 
     def _track_cpu_usage(self):
         self.cpu_usage_list = []
         while self.tracking:
-            cpu_usage = psutil.cpu_percent(interval=self.interval_time)
-            self.cpu_usage_list.append(cpu_usage)
-            time.sleep(self.interval_time)
+            usage = self.system_monitor.track_cpu_usage(self.interval_time)
+            self.cpu_usage_list.append(usage)
+            try:
+                time.sleep(self.interval_time)
+            except Exception as e:
+                logger.warning(f"Sleep interrupted in CPU tracking: {str(e)}")
 
     def _track_disk_usage(self):
         self.disk_usage_list = []
         while self.tracking:
-            disk_io = psutil.disk_io_counters()
-            self.disk_usage_list.append({
-                'disk_read': disk_io.read_bytes / (1024 * 1024),  # Convert to MB
-                'disk_write': disk_io.write_bytes / (1024 * 1024)  # Convert to MB
-            })
-            time.sleep(self.interval_time)
+            usage = self.system_monitor.track_disk_usage()
+            self.disk_usage_list.append(usage)
+            try:
+                time.sleep(self.interval_time)
+            except Exception as e:
+                logger.warning(f"Sleep interrupted in disk tracking: {str(e)}")
 
     def _track_network_usage(self):
         self.network_usage_list = []
         while self.tracking:
-            net_io = psutil.net_io_counters()
-            self.network_usage_list.append({
-                'uploads': net_io.bytes_sent / (1024 * 1024),  # Convert to MB
-                'downloads': net_io.bytes_recv / (1024 * 1024)  # Convert to MB
-            })
-            time.sleep(self.interval_time)
+            usage = self.system_monitor.track_network_usage()
+            self.network_usage_list.append(usage)
+            try:
+                time.sleep(self.interval_time)
+            except Exception as e:
+                logger.warning(f"Sleep interrupted in network tracking: {str(e)}")
 
     def start(self):
         """Initialize a new trace"""
         self.tracking = True
-        self.tracking_thread = threading.Thread(target=self._track_memory_usage)
-        self.tracking_thread.start()
+        self.trace_id = str(uuid.uuid4())
+        self.system_monitor = SystemMonitor(self.trace_id)
+        threading.Thread(target=self._track_memory_usage).start()
         threading.Thread(target=self._track_cpu_usage).start()
         threading.Thread(target=self._track_disk_usage).start()
         threading.Thread(target=self._track_network_usage).start()
@@ -222,9 +150,6 @@ class BaseTracer:
             system_info=self._get_system_info(),
             resources=self._get_resources(),
         )
-
-        # Generate a unique trace ID, when trace starts
-        self.trace_id = str(uuid.uuid4())
 
         # Get the start time
         self.start_time = datetime.now().astimezone().isoformat()
@@ -257,8 +182,6 @@ class BaseTracer:
 
             #track memory usage
             self.tracking = False
-            if self.tracking_thread is not None:
-                self.tracking_thread.join()
             self.trace.metadata.resources.memory.values = self.memory_usage_list
 
             #track cpu usage
@@ -695,12 +618,11 @@ class BaseTracer:
         # Process additional interactions and network calls
         if "interactions" in child:
             for interaction in child["interactions"]:
-                if interaction!=[]:
-                    interaction["id"] = str(interaction_id)
-                    interaction["span_id"] = child.get("id")
-                    interaction["error"] = None
-                    interactions.append(interaction)
-                    interaction_id += 1
+                interaction["id"] = str(interaction_id)
+                interaction["span_id"] = child.get("id")
+                interaction["error"] = None
+                interactions.append(interaction)
+                interaction_id += 1
 
         if "network_calls" in child:
             for child_network_call in child["network_calls"]:
@@ -877,16 +799,15 @@ class BaseTracer:
             # Process interactions from span.data if they exist
             if span.interactions:
                 for span_interaction in span.interactions:
-                    if span_interaction != []:
-                        interaction = {}
-                        interaction["id"] = str(interaction_id)
-                        interaction["span_id"] = span.id
-                        interaction["interaction_type"] = span_interaction.type
-                        interaction["content"] = span_interaction.content
-                        interaction["timestamp"] = span_interaction.timestamp
-                        interaction["error"] = span.error
-                        interactions.append(interaction)
-                        interaction_id += 1
+                    interaction = {}
+                    interaction["id"] = str(interaction_id)
+                    interaction["span_id"] = span.id
+                    interaction["interaction_type"] = span_interaction.type
+                    interaction["content"] = span_interaction.content
+                    interaction["timestamp"] = span_interaction.timestamp
+                    interaction["error"] = span.error
+                    interactions.append(interaction)
+                    interaction_id += 1
 
             if span.network_calls:
                 for span_network_call in span.network_calls:
