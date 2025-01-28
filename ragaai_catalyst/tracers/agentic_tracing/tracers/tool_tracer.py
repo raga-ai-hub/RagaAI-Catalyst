@@ -10,6 +10,8 @@ import asyncio
 from ..utils.file_name_tracker import TrackName
 from ..utils.span_attributes import SpanAttributes
 import logging
+import wrapt
+import time
 
 logger = logging.getLogger(__name__)
 logging_level = (
@@ -36,7 +38,167 @@ class ToolTracerMixin:
 
     # take care of auto_instrument
     def instrument_tool_calls(self):
+        """Enable tool instrumentation"""
         self.auto_instrument_tool = True
+        
+        # Handle modules that are already imported
+        import sys
+        
+        if "langchain_community.tools.tavily_search" in sys.modules:
+            self.patch_tavily_search_methods(sys.modules["langchain_community.tools.tavily_search"])
+        if "langgraph.prebuilt" in sys.modules:
+            self.patch_langgraph_methods(sys.modules["langgraph.prebuilt"])
+        
+        # Register hooks for future imports
+        wrapt.register_post_import_hook(
+            self.patch_tavily_search_methods, "langchain_community.tools.tavily_search"
+        )
+        wrapt.register_post_import_hook(
+            self.patch_langgraph_methods, "langgraph.prebuilt"
+        )
+        
+    def patch_langgraph_methods(self, module):
+        """Patch LangGraph ToolNode methods"""
+        if hasattr(module, "ToolNode"):
+            tool_node_class = getattr(module, "ToolNode")
+            
+            # Patch the call method which is used by LangGraph
+            if hasattr(tool_node_class, "call"):
+                self.wrap_method(tool_node_class, "call")
+            if hasattr(tool_node_class, "acall"):
+                self.wrap_method(tool_node_class, "acall")
+                
+    def patch_tavily_search_methods(self, module):
+        """Patch Tavily Search tool methods"""
+        if hasattr(module, "TavilySearchResults"):
+            tool_class = getattr(module, "TavilySearchResults")
+            
+            # Patch the invoke method which is used by LangGraph
+            if hasattr(tool_class, "invoke"):
+                self.wrap_method(tool_class, "invoke")
+            if hasattr(tool_class, "ainvoke"):
+                self.wrap_method(tool_class, "ainvoke")
+                
+            # Also patch the run methods
+            if hasattr(tool_class, "_run"):
+                self.wrap_method(tool_class, "_run")
+            if hasattr(tool_class, "_arun"):
+                self.wrap_method(tool_class, "_arun")
+            
+    def wrap_method(self, obj, method_name):
+        """Wrap a method with tracing functionality"""
+        if not hasattr(obj, method_name):
+            return
+            
+        original_method = getattr(obj, method_name)
+        
+        @wrapt.decorator
+        def wrapper(wrapped, instance, args, kwargs):
+            if asyncio.iscoroutinefunction(wrapped):
+                return self.trace_tool_call(wrapped, instance, *args, **kwargs)
+            return self.trace_tool_call_sync(wrapped, instance, *args, **kwargs)
+            
+        wrapped_method = wrapper(original_method)
+        setattr(obj, method_name, wrapped_method)
+        
+    def trace_tool_call(self, original_func, instance, *args, **kwargs):
+        """Trace an async tool call"""
+        async def wrapper():
+            start_time = time.time()
+            error = None
+            output_data = None
+            
+            try:
+                output_data = await original_func(instance, *args, **kwargs)
+            except Exception as e:
+                error = str(e)
+                raise
+            finally:
+                end_time = time.time()
+                memory_used = psutil.Process(os.getpid()).memory_info().rss
+                
+                # Get tool name and type based on the instance
+                if hasattr(instance, "__class__"):
+                    if instance.__class__.__name__ == "ToolNode":
+                        # For ToolNode, get the names of all tools
+                        tool_names = [t.__class__.__name__ for t in instance.tools]
+                        tool_name = f"ToolNode({','.join(tool_names)})"
+                        tool_type = "langgraph"
+                    else:
+                        tool_name = instance.__class__.__name__
+                        tool_type = "langchain"
+                else:
+                    tool_name = original_func.__qualname__.split('.')[0]
+                    tool_type = "generic"
+                
+                hash_id = generate_unique_hash_simple()
+                
+                self.create_tool_component(
+                    component_id=str(uuid.uuid4()),
+                    hash_id=hash_id,
+                    name=tool_name,
+                    tool_type=tool_type,
+                    version="1.0.0",
+                    memory_used=memory_used,
+                    start_time=datetime.fromtimestamp(start_time).isoformat(),
+                    input_data={"args": args, "kwargs": kwargs},
+                    output_data=output_data,
+                    error=error
+                )
+                
+                self.add_component(tool_component)
+                
+            return output_data
+            
+        return wrapper()
+        
+    def trace_tool_call_sync(self, original_func, instance, *args, **kwargs):
+        """Trace a sync tool call"""
+        start_time = time.time()
+        error = None
+        output_data = None
+        
+        try:
+            output_data = original_func(instance, *args, **kwargs)
+        except Exception as e:
+            error = str(e)
+            raise
+        finally:
+            end_time = time.time()
+            memory_used = psutil.Process(os.getpid()).memory_info().rss
+            
+            # Get tool name and type based on the instance
+            if hasattr(instance, "__class__"):
+                if instance.__class__.__name__ == "ToolNode":
+                    # For ToolNode, get the names of all tools
+                    tool_names = [t.__class__.__name__ for t in instance.tools]
+                    tool_name = f"ToolNode({','.join(tool_names)})"
+                    tool_type = "langgraph"
+                else:
+                    tool_name = instance.__class__.__name__
+                    tool_type = "langchain"
+            else:
+                tool_name = original_func.__qualname__.split('.')[0]
+                tool_type = "generic"
+            
+            hash_id = generate_unique_hash_simple()
+            
+            self.create_tool_component(
+                component_id=str(uuid.uuid4()),
+                hash_id=hash_id,
+                name=tool_name,
+                tool_type=tool_type,
+                version="1.0.0",
+                memory_used=memory_used,
+                start_time=datetime.fromtimestamp(start_time).isoformat(),
+                input_data={"args": args, "kwargs": kwargs},
+                output_data=output_data,
+                error=error
+            )
+            
+            self.add_component(tool_component)
+            
+        return output_data
 
     def instrument_user_interaction_calls(self):
         self.auto_instrument_user_interaction = True
