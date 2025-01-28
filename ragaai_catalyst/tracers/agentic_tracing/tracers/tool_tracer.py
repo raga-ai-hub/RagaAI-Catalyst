@@ -32,6 +32,7 @@ class ToolTracerMixin:
         # add auto_instrument option
         self.auto_instrument_tool = False
         self.auto_instrument_user_interaction = False
+        self.auto_instrument_file_io = False
         self.auto_instrument_network = False
 
     # take care of auto_instrument
@@ -40,6 +41,9 @@ class ToolTracerMixin:
 
     def instrument_user_interaction_calls(self):
         self.auto_instrument_user_interaction = True
+        
+    def instrument_file_io_calls(self):
+        self.auto_instrument_file_io = True
 
     def instrument_network_calls(self):
         self.auto_instrument_network = True
@@ -284,9 +288,19 @@ class ToolTracerMixin:
             network_calls = self.component_network_calls.get(kwargs["component_id"], [])
         interactions = []
         if self.auto_instrument_user_interaction:
-            interactions = self.component_user_interaction.get(
-                kwargs["component_id"], []
-            )
+            input_output_interactions = []
+            for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
+                if interaction["interaction_type"] in ["input", "output"]:
+                    input_output_interactions.append(interaction)
+            if input_output_interactions!=[]:
+                interactions.extend(input_output_interactions) 
+        if self.auto_instrument_file_io:
+            file_io_interactions = []
+            for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
+                if interaction["interaction_type"] in ["file_read", "file_write"]:
+                    file_io_interactions.append(interaction)
+            if file_io_interactions!=[]:
+                interactions.extend(file_io_interactions)
 
         # Get tags, metrics
         name = kwargs["name"]
