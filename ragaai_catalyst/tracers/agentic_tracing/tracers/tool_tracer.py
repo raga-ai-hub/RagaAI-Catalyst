@@ -32,6 +32,7 @@ class ToolTracerMixin:
         # add auto_instrument option
         self.auto_instrument_tool = False
         self.auto_instrument_user_interaction = False
+        self.auto_instrument_file_io = False
         self.auto_instrument_network = False
 
     # take care of auto_instrument
@@ -40,6 +41,9 @@ class ToolTracerMixin:
 
     def instrument_user_interaction_calls(self):
         self.auto_instrument_user_interaction = True
+        
+    def instrument_file_io_calls(self):
+        self.auto_instrument_file_io = True
 
     def instrument_network_calls(self):
         self.auto_instrument_network = True
@@ -133,6 +137,10 @@ class ToolTracerMixin:
         component_id = str(uuid.uuid4())
         hash_id = generate_unique_hash_simple(func)
 
+        # Set current tool name and store the token
+        name_token = self.current_tool_name.set(name)
+        id_token = self.current_tool_id.set(component_id)
+
         # Start tracking network calls for this component
         self.start_component(component_id)
 
@@ -191,6 +199,12 @@ class ToolTracerMixin:
             self.add_component(tool_component)
 
             raise
+        finally:
+            # Reset the tool name and id context
+            if name_token:
+                self.current_tool_name.reset(name_token)
+            if id_token:
+                self.current_tool_id.reset(id_token)
 
     async def _trace_tool_execution(
         self, func, name, tool_type, version, *args, **kwargs
@@ -206,6 +220,10 @@ class ToolTracerMixin:
         start_memory = psutil.Process().memory_info().rss
         component_id = str(uuid.uuid4())
         hash_id = generate_unique_hash_simple(func)
+
+        # Set current tool name and store the token
+        name_token = self.current_tool_name.set(name)
+        id_token = self.current_tool_id.set(component_id)
 
         self.start_component(component_id)
         try:
@@ -256,6 +274,12 @@ class ToolTracerMixin:
             self.add_component(tool_component)
 
             raise
+        finally:
+            # Reset the tool name and id context
+            if name_token:
+                self.current_tool_name.reset(name_token)
+            if id_token:
+                self.current_tool_id.reset(id_token)
 
     def create_tool_component(self, **kwargs):
         """Create a tool component according to the data structure"""
@@ -264,9 +288,19 @@ class ToolTracerMixin:
             network_calls = self.component_network_calls.get(kwargs["component_id"], [])
         interactions = []
         if self.auto_instrument_user_interaction:
-            interactions = self.component_user_interaction.get(
-                kwargs["component_id"], []
-            )
+            input_output_interactions = []
+            for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
+                if interaction["interaction_type"] in ["input", "output"]:
+                    input_output_interactions.append(interaction)
+            if input_output_interactions!=[]:
+                interactions.extend(input_output_interactions) 
+        if self.auto_instrument_file_io:
+            file_io_interactions = []
+            for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
+                if interaction["interaction_type"] in ["file_read", "file_write"]:
+                    file_io_interactions.append(interaction)
+            if file_io_interactions!=[]:
+                interactions.extend(file_io_interactions)
 
         # Get tags, metrics
         name = kwargs["name"]
