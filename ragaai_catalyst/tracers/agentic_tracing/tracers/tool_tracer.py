@@ -49,6 +49,9 @@ class ToolTracerMixin:
             
         if "langchain.tools" in sys.modules:
             self.patch_langchain_community_tools(sys.modules["langchain.tools"])
+            
+        if "langchain_core.tools" in sys.modules:
+            self.patch_langchain_core_tools(sys.modules["langchain_core.tools"])
         
         # Register hooks for future imports
         wrapt.register_post_import_hook(
@@ -56,6 +59,10 @@ class ToolTracerMixin:
         )
         wrapt.register_post_import_hook(
             self.patch_langchain_community_tools, "langchain.tools"
+        )
+        
+        wrapt.register_post_import_hook(
+            self.patch_langchain_core_tools, "langchain_core.tools"
         )
                 
     def patch_langchain_community_tools(self, module):
@@ -67,17 +74,22 @@ class ToolTracerMixin:
                 continue
             for tool in tools:
                 tool_class = getattr(dir_class, tool)   
-                if hasattr(tool_class, "invoke"):
-                    self.wrap_method(tool_class, "invoke")
-                if hasattr(tool_class, "ainvoke"):
-                    self.wrap_method(tool_class, "ainvoke")
-                if hasattr(tool_class, "run"):
-                    self.wrap_method(tool_class, "run")
-                if hasattr(tool_class, "arun"):
-                    self.wrap_method(tool_class, "arun")
+                if hasattr(tool_class, f"invoke"):
+                    self.wrap_tool_method(tool_class, f"{tool}.invoke")
+                if hasattr(tool_class, f"ainvoke"):
+                    self.wrap_tool_method(tool_class, f"{tool}.ainvoke")
+                if hasattr(tool_class, f"run"):
+                    self.wrap_tool_method(tool_class, f"{tool}.run")
+                if hasattr(tool_class, f"arun"):
+                    self.wrap_tool_method(tool_class, f"{tool}.arun")
+                    
+    def patch_langchain_core_tools(self, module):
+        """Patch langchain-core tool methods"""
+        pass
             
-    def wrap_method(self, obj, method_name):
+    def wrap_tool_method(self, obj, method_name):
         """Wrap a method with tracing functionality"""
+        method_name = method_name.split(".")[-1]
         original_method = getattr(obj, method_name)
 
         @functools.wraps(original_method)
