@@ -1,6 +1,7 @@
 import os
 import uuid
 from datetime import datetime
+from langchain_core.tools import tool
 import psutil
 import functools
 from typing import Optional, Any, Dict, List
@@ -139,11 +140,12 @@ class ToolTracerMixin:
     def wrap_tool_method(self, obj, method_name):
         """Wrap a method with tracing functionality"""
         method_name = method_name.split(".")[-1]
+        tool_name = obj.__name__.split(".")[0]
         original_method = getattr(obj, method_name)
       
         @functools.wraps(original_method)
         def wrapper(*args, **kwargs):
-            name = method_name
+            name = tool_name    
             tool_type = "langchain"
             version = None
             if asyncio.iscoroutinefunction(original_method):
