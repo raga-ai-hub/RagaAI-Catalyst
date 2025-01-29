@@ -20,7 +20,7 @@ class UploadTraces:
         self.base_url = base_url
         self.timeout = 10
 
-    def _create_dataset_schema_with_trace(self):
+    def _create_dataset_schema_with_trace(self, additional_metadata_keys=None, additional_pipeline_keys=None):
         SCHEMA_MAPPING_NEW = {
             "trace_id": {"columnType": "traceId"},
             "trace_uri": {"columnType": "traceUri"},
@@ -34,6 +34,15 @@ class UploadTraces:
             "vector_store":{"columnType":"pipeline"},
             "feedback": {"columnType":"feedBack"}
         }
+
+        if additional_metadata_keys:
+            for key in additional_metadata_keys:
+                SCHEMA_MAPPING_NEW[key] = {"columnType": "metadata"}
+
+        if additional_pipeline_keys:
+            for key in additional_pipeline_keys:
+                SCHEMA_MAPPING_NEW[key] = {"columnType": "pipeline"}
+                
         def make_request():
             headers = {
                 "Content-Type": "application/json",
@@ -119,9 +128,14 @@ class UploadTraces:
                                     data=payload,
                                     timeout=self.timeout)
 
-    def upload_traces(self):
-        self._create_dataset_schema_with_trace()
-        presignedUrl = self._get_presigned_url()
-        self._put_presigned_url(presignedUrl, self.json_file_path)
-        self._insert_traces(presignedUrl)
-        print("Traces uploaded")
+    def upload_traces(self, additional_metadata_keys=None, additional_pipeline_keys=None):
+        try:
+            self._create_dataset_schema_with_trace(additional_metadata_keys, additional_pipeline_keys)
+            presignedUrl = self._get_presigned_url()
+            if presignedUrl is None:
+                return
+            self._put_presigned_url(presignedUrl, self.json_file_path)
+            self._insert_traces(presignedUrl)
+            print("Traces uploaded")
+        except Exception as e:
+            print(f"Error while uploading agentic traces: {e}")
