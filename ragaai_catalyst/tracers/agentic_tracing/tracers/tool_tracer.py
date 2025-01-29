@@ -65,6 +65,46 @@ class ToolTracerMixin:
         wrapt.register_post_import_hook(
             self.patch_langchain_core_tools, "langchain_core.tools"
         )
+        
+    def patch_langchain_core_tools(self, module):
+        """Patch langchain core tools by wrapping @tool decorated functions"""
+        from langchain_core.tools import BaseTool, StructuredTool, Tool
+    
+        # Patch the tool decorator
+        original_tool = module.tool
+        
+        def wrapped_tool(*args, **kwargs):
+            # Get the original decorated function
+            decorated = original_tool(*args, **kwargs)
+            
+            def wrapper(func):
+                tool_instance = decorated(func)
+                # Wrap the tool's run/arun methods
+                if hasattr(tool_instance, 'run'):
+                    self.wrap_tool_method(tool_instance.__class__, 'run')
+                if hasattr(tool_instance, 'arun'):
+                    self.wrap_tool_method(tool_instance.__class__, 'arun')
+                if hasattr(tool_instance, 'invoke'):
+                    self.wrap_tool_method(tool_instance.__class__, 'invoke')
+                if hasattr(tool_instance, 'ainvoke'):
+                    self.wrap_tool_method(tool_instance.__class__, 'ainvoke')
+                return tool_instance
+                
+            return wrapper
+            
+        # Replace the original decorator
+        module.tool = wrapped_tool
+        
+        # Patch base tool classes
+        for tool_class in [BaseTool, StructuredTool, Tool]:
+            if hasattr(tool_class, 'run'):
+                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.run')
+            if hasattr(tool_class, 'arun'):
+                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.arun')
+            if hasattr(tool_class, 'invoke'):
+                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.invoke')
+            if hasattr(tool_class, 'ainvoke'):
+                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.ainvoke')
                 
     def patch_langchain_community_tools(self, module):
         """Patch langchain-community tool methods"""
@@ -100,7 +140,7 @@ class ToolTracerMixin:
         """Wrap a method with tracing functionality"""
         method_name = method_name.split(".")[-1]
         original_method = getattr(obj, method_name)
-
+      
         @functools.wraps(original_method)
         def wrapper(*args, **kwargs):
             name = method_name
