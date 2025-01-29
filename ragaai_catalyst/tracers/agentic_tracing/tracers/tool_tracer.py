@@ -98,6 +98,8 @@ class ToolTracerMixin:
         
         # Patch base tool classes
         for tool_class in [BaseTool, StructuredTool, Tool]:
+            if tool_class in self._instrumented_tools:
+                continue
             if hasattr(tool_class, 'run'):
                 self.wrap_tool_method(tool_class, f'{tool_class.__name__}.run')
             if hasattr(tool_class, 'arun'):
@@ -106,6 +108,7 @@ class ToolTracerMixin:
                 self.wrap_tool_method(tool_class, f'{tool_class.__name__}.invoke')
             if hasattr(tool_class, 'ainvoke'):
                 self.wrap_tool_method(tool_class, f'{tool_class.__name__}.ainvoke')
+            self._instrumented_tools.add(tool_class)
                 
     def patch_langchain_community_tools(self, module):
         """Patch langchain-community tool methods"""
@@ -132,11 +135,7 @@ class ToolTracerMixin:
                     self.wrap_tool_method(tool_class, f"{tool}.arun")
                 
                 self._instrumented_tools.add(tool_class)
-                    
-    def patch_langchain_core_tools(self, module):
-        """Patch langchain-core tool methods"""
-        pass
-            
+           
     def wrap_tool_method(self, obj, method_name):
         """Wrap a method with tracing functionality"""
         method_name = method_name.split(".")[-1]
@@ -444,25 +443,22 @@ class ToolTracerMixin:
     def end_component(self, component_id):
         pass
 
-    def _sanitize_input(self, args: tuple, kwargs: dict) -> Dict:
-        """Sanitize and format input data"""
+    def _sanitize_input(self, args: tuple, kwargs: dict) -> dict:
+        """Sanitize and format input data, including handling of nested lists and dictionaries."""
+
+        def sanitize_value(value):
+            if isinstance(value, (int, float, bool, str)):
+                return value
+            elif isinstance(value, list):
+                return [sanitize_value(item) for item in value]
+            elif isinstance(value, dict):
+                return {key: sanitize_value(val) for key, val in value.items()}
+            else:
+                return str(value)  # Convert non-standard types to string
+
         return {
-            "args": [
-                (
-                    str(arg)
-                    if not isinstance(arg, (int, float, bool, str, list, dict))
-                    else arg
-                )
-                for arg in args
-            ],
-            "kwargs": {
-                k: (
-                    str(v)
-                    if not isinstance(v, (int, float, bool, str, list, dict))
-                    else v
-                )
-                for k, v in kwargs.items()
-            },
+            "args": [sanitize_value(arg) for arg in args],
+            "kwargs": {key: sanitize_value(val) for key, val in kwargs.items()},
         }
 
     def _sanitize_output(self, output: Any) -> Any:

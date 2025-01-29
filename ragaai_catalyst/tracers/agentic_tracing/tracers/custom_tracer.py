@@ -286,15 +286,23 @@ class CustomTracerMixin:
         """End tracking network calls for a component"""
         pass
 
-    def _sanitize_input(self, args: tuple, kwargs: dict) -> Dict:
-        """Sanitize and format input data"""
-        return {
-            "args": [str(arg) if not isinstance(arg, (int, float, bool, str, list, dict)) else arg for arg in args],
-            "kwargs": {
-                k: str(v) if not isinstance(v, (int, float, bool, str, list, dict)) else v 
-                for k, v in kwargs.items()
+    def _sanitize_input(self, args: tuple, kwargs: dict) -> dict:
+            """Sanitize and format input data, including handling of nested lists and dictionaries."""
+
+            def sanitize_value(value):
+                if isinstance(value, (int, float, bool, str)):
+                    return value
+                elif isinstance(value, list):
+                    return [sanitize_value(item) for item in value]
+                elif isinstance(value, dict):
+                    return {key: sanitize_value(val) for key, val in value.items()}
+                else:
+                    return str(value)  # Convert non-standard types to string
+
+            return {
+                "args": [sanitize_value(arg) for arg in args],
+                "kwargs": {key: sanitize_value(val) for key, val in kwargs.items()},
             }
-        }
 
     def _sanitize_output(self, output: Any) -> Any:
         """Sanitize and format output data"""
