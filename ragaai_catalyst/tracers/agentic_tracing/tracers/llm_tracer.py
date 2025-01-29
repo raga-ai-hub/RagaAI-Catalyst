@@ -150,6 +150,8 @@ class LLMTracerMixin:
         beta_module = openai_module.beta
 
         # Patch openai.beta.threads
+        import openai
+        openai.api_type = "openai"
         if hasattr(beta_module, "threads"):
             threads_obj = beta_module.threads
             # Patch top-level methods on openai.beta.threads
@@ -741,7 +743,20 @@ class LLMTracerMixin:
 
                     if error_info:
                         llm_component["error"] = error_info["error"]
-
+                    
+                    self.end_component(component_id)
+                    # metrics
+                    metrics = []
+                    if name in self.span_attributes_dict:
+                        raw_metrics = self.span_attributes_dict[name].metrics or []
+                        for metric in raw_metrics:
+                            base_metric_name = metric["name"]
+                            counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
+                            metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
+                            self.visited_metrics.append(metric_name)
+                            metric["name"] = metric_name  
+                            metrics.append(metric)
+                    llm_component["metrics"] = metrics
                     if parent_agent_id:
                         children = self.agent_children.get()
                         children.append(llm_component)
@@ -749,7 +764,6 @@ class LLMTracerMixin:
                     else:
                         self.add_component(llm_component)
 
-                    self.end_component(component_id)
                     llm_component["interactions"] = self.component_user_interaction.get(
                         component_id, []
                     )
@@ -787,7 +801,6 @@ class LLMTracerMixin:
                     }
                     raise
                 finally:
-
                     llm_component = self.llm_data
                     if (name is not None) or (name != ""):
                         llm_component["name"] = name
@@ -795,6 +808,18 @@ class LLMTracerMixin:
                     if error_info:
                         llm_component["error"] = error_info["error"]
 
+                    self.end_component(component_id)
+                    metrics = []
+                    if name in self.span_attributes_dict:
+                        raw_metrics = self.span_attributes_dict[name].metrics or []
+                        for metric in raw_metrics:
+                            base_metric_name = metric["name"]
+                            counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
+                            metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
+                            self.visited_metrics.append(metric_name)
+                            metric["name"] = metric_name  
+                            metrics.append(metric)
+                    llm_component["metrics"] = metrics  
                     if parent_agent_id:
                         children = self.agent_children.get()
                         children.append(llm_component)
@@ -802,7 +827,6 @@ class LLMTracerMixin:
                     else:
                         self.add_component(llm_component)
 
-                    self.end_component(component_id)
                     llm_component["interactions"] = self.component_user_interaction.get(
                         component_id, []
                     )
