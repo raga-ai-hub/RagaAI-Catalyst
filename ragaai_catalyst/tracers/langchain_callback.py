@@ -210,30 +210,56 @@ class LangchainTracer(BaseCallbackHandler):
 
     def _monkey_patch(self):
         """Enhanced monkey-patching with comprehensive component support"""
-        from langchain.llms import OpenAI
-        # from langchain_groq import ChatGroq
-        from langchain_google_vertexai import ChatVertexAI
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        from langchain_anthropic import ChatAnthropic
-        from langchain_community.chat_models import ChatLiteLLM
-        # from langchain_cohere import ChatCohere
-        from langchain_openai import ChatOpenAI as ChatOpenAI_LangchainOpenAI
-        from langchain.chat_models import ChatOpenAI as ChatOpenAI_ChatModels
-        from langchain.chains import create_retrieval_chain, RetrievalQA
-
-        components_to_patch = {
-            "OpenAI": (OpenAI, "__init__"),
-            # "ChatGroq": (ChatGroq, "__init__"),
-            "ChatVertexAI": (ChatVertexAI, "__init__"),
-            "ChatGoogleGenerativeAI": (ChatGoogleGenerativeAI, "__init__"),
-            "ChatAnthropic": (ChatAnthropic, "__init__"),
-            "ChatLiteLLM": (ChatLiteLLM, "__init__"),
-            # "ChatCohere": (ChatCohere, "__init__"),
-            "ChatOpenAI_LangchainOpenAI": (ChatOpenAI_LangchainOpenAI, "__init__"),
-            "ChatOpenAI_ChatModels": (ChatOpenAI_ChatModels, "__init__"),
-            "RetrievalQA": (RetrievalQA, "from_chain_type"),
-            "create_retrieval_chain": (create_retrieval_chain, None),
-        }
+        components_to_patch = {}
+        
+        try:
+            from langchain.llms import OpenAI
+            components_to_patch["OpenAI"] = (OpenAI, "__init__")
+        except ImportError:
+            logger.debug("OpenAI not available for patching")
+            
+        try:
+            from langchain_google_vertexai import ChatVertexAI
+            components_to_patch["ChatVertexAI"] = (ChatVertexAI, "__init__")
+        except ImportError:
+            logger.debug("ChatVertexAI not available for patching")
+            
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            components_to_patch["ChatGoogleGenerativeAI"] = (ChatGoogleGenerativeAI, "__init__")
+        except ImportError:
+            logger.debug("ChatGoogleGenerativeAI not available for patching")
+            
+        try:
+            from langchain_anthropic import ChatAnthropic
+            components_to_patch["ChatAnthropic"] = (ChatAnthropic, "__init__")
+        except ImportError:
+            logger.debug("ChatAnthropic not available for patching")
+            
+        try:
+            from langchain_community.chat_models import ChatLiteLLM
+            components_to_patch["ChatLiteLLM"] = (ChatLiteLLM, "__init__")
+        except ImportError:
+            logger.debug("ChatLiteLLM not available for patching")
+            
+        try:
+            from langchain_openai import ChatOpenAI as ChatOpenAI_LangchainOpenAI
+            components_to_patch["ChatOpenAI_LangchainOpenAI"] = (ChatOpenAI_LangchainOpenAI, "__init__")
+        except ImportError:
+            logger.debug("ChatOpenAI_LangchainOpenAI not available for patching")
+            
+        try:
+            from langchain.chat_models import ChatOpenAI as ChatOpenAI_ChatModels
+            components_to_patch["ChatOpenAI_ChatModels"] = (ChatOpenAI_ChatModels, "__init__")
+        except ImportError:
+            logger.debug("ChatOpenAI_ChatModels not available for patching")
+            
+        try:
+            from langchain.chains import create_retrieval_chain, RetrievalQA
+            components_to_patch["RetrievalQA"] = (RetrievalQA, "from_chain_type")
+            components_to_patch["create_retrieval_chain"] = (create_retrieval_chain, None)
+        except ImportError:
+            logger.debug("Langchain chains not available for patching")
 
         for name, (component, method_name) in components_to_patch.items():
             try:
@@ -260,22 +286,45 @@ class LangchainTracer(BaseCallbackHandler):
 
     def _restore_original_methods(self):
         """Restore all original methods and functions with enhanced error handling"""
-        from langchain.llms import OpenAI
-        # from langchain_groq import ChatGroq
-        from langchain_google_vertexai import ChatVertexAI
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        from langchain_anthropic import ChatAnthropic
-        from langchain_community.chat_models import ChatLiteLLM
-        # from langchain_cohere import ChatCohere
-        from langchain_openai import ChatOpenAI as ChatOpenAI_LangchainOpenAI
-        from langchain.chat_models import ChatOpenAI as ChatOpenAI_ChatModels
-        from langchain.chains import create_retrieval_chain, RetrievalQA
-
+        # Dynamically import only what we need based on what was patched
+        imported_components = {}
+        
+        if self._original_inits or self._original_methods:
+            for name in list(self._original_inits.keys()) + list(self._original_methods.keys()):
+                try:
+                    if name == "OpenAI":
+                        from langchain.llms import OpenAI
+                        imported_components[name] = OpenAI
+                    elif name == "ChatVertexAI":
+                        from langchain_google_vertexai import ChatVertexAI
+                        imported_components[name] = ChatVertexAI
+                    elif name == "ChatGoogleGenerativeAI":
+                        from langchain_google_genai import ChatGoogleGenerativeAI
+                        imported_components[name] = ChatGoogleGenerativeAI
+                    elif name == "ChatAnthropic":
+                        from langchain_anthropic import ChatAnthropic
+                        imported_components[name] = ChatAnthropic
+                    elif name == "ChatLiteLLM":
+                        from langchain_community.chat_models import ChatLiteLLM
+                        imported_components[name] = ChatLiteLLM
+                    elif name == "ChatOpenAI_LangchainOpenAI":
+                        from langchain_openai import ChatOpenAI as ChatOpenAI_LangchainOpenAI
+                        imported_components[name] = ChatOpenAI_LangchainOpenAI
+                    elif name == "ChatOpenAI_ChatModels":
+                        from langchain.chat_models import ChatOpenAI as ChatOpenAI_ChatModels
+                        imported_components[name] = ChatOpenAI_ChatModels
+                    elif name in ["RetrievalQA", "create_retrieval_chain"]:
+                        from langchain.chains import create_retrieval_chain, RetrievalQA
+                        imported_components["RetrievalQA"] = RetrievalQA
+                        imported_components["create_retrieval_chain"] = create_retrieval_chain
+                except ImportError:
+                    logger.debug(f"{name} not available for restoration")
 
         for name, original in self._original_inits.items():
             try:
-                component = eval(name)
-                component.__init__ = original
+                if name in imported_components:
+                    component = imported_components[name]
+                    component.__init__ = original
             except Exception as e:
                 logger.error(f"Error restoring {name}: {e}")
                 self.on_error(e, context=f"restore_{name}")
@@ -284,10 +333,12 @@ class LangchainTracer(BaseCallbackHandler):
             try:
                 if "." in name:
                     module_name, method_name = name.rsplit(".", 1)
-                    module = eval(module_name)
-                    setattr(module, method_name, original)
+                    if module_name in imported_components:
+                        module = imported_components[module_name]
+                        setattr(module, method_name, original)
                 else:
-                    globals()[name] = original
+                    if name in imported_components:
+                        globals()[name] = original
             except Exception as e:
                 logger.error(f"Error restoring {name}: {e}")
                 self.on_error(e, context=f"restore_{name}")
