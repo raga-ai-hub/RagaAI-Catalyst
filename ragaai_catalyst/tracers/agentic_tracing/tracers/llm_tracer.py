@@ -150,6 +150,8 @@ class LLMTracerMixin:
         beta_module = openai_module.beta
 
         # Patch openai.beta.threads
+        import openai
+        openai.api_type = "openai"
         if hasattr(beta_module, "threads"):
             threads_obj = beta_module.threads
             # Patch top-level methods on openai.beta.threads
