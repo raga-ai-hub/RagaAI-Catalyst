@@ -84,27 +84,23 @@ class AgenticTracing(
             self.auto_instrument_custom = True
         else:
             # Set global active state
-            self.is_active = (
-                any(auto_instrumentation.values())
-                if isinstance(auto_instrumentation, dict)
-                else bool(auto_instrumentation)
-            )
+            self.is_active = True
 
             # Set individual components
             if isinstance(auto_instrumentation, dict):
-                self.auto_instrument_llm = auto_instrumentation.get("llm", False)
-                self.auto_instrument_tool = auto_instrumentation.get("tool", False)
-                self.auto_instrument_agent = auto_instrumentation.get("agent", False)
+                self.auto_instrument_llm = auto_instrumentation.get("llm", True)
+                self.auto_instrument_tool = auto_instrumentation.get("tool", True)
+                self.auto_instrument_agent = auto_instrumentation.get("agent", True)
                 self.auto_instrument_user_interaction = auto_instrumentation.get(
-                    "user_interaction", False
+                    "user_interaction", True
                 )
                 self.auto_instrument_file_io = auto_instrumentation.get(
-                    "file_io", False
+                    "file_io", True
                 )
                 self.auto_instrument_network = auto_instrumentation.get(
-                    "network", False
+                    "network", True
                 )
-                self.auto_instrument_custom = auto_instrumentation.get("custom", False)
+                self.auto_instrument_custom = auto_instrumentation.get("custom", True)
             else:
                 # If boolean provided, apply to all components
                 self.auto_instrument_llm = bool(auto_instrumentation)
@@ -170,9 +166,6 @@ class AgenticTracing(
         self.user_interaction_tracer.trace_id.set(self.trace_id)
         self.user_interaction_tracer.tracer = self
         self.user_interaction_tracer.component_id.set(self.current_component_id.get())
-        builtins.print = self.user_interaction_tracer.traced_print
-        builtins.input = self.user_interaction_tracer.traced_input
-        builtins.open = self.user_interaction_tracer.traced_open
 
         # Start base tracer (includes system info and resource monitoring)
         super().start()
@@ -194,11 +187,12 @@ class AgenticTracing(
             self.instrument_custom_calls()
 
         if self.auto_instrument_user_interaction:
-
             ToolTracerMixin.instrument_user_interaction_calls(self)
             LLMTracerMixin.instrument_user_interaction_calls(self)
             AgentTracerMixin.instrument_user_interaction_calls(self)
             CustomTracerMixin.instrument_user_interaction_calls(self)
+            builtins.print = self.user_interaction_tracer.traced_print
+            builtins.input = self.user_interaction_tracer.traced_input
 
         if self.auto_instrument_network:
             ToolTracerMixin.instrument_network_calls(self)
@@ -206,9 +200,12 @@ class AgenticTracing(
             AgentTracerMixin.instrument_network_calls(self)
             CustomTracerMixin.instrument_network_calls(self)
 
-        # These will be implemented later
-        # if self.auto_instrument_file_io:
-        #     self.instrument_file_io_calls()
+        if self.auto_instrument_file_io:
+            ToolTracerMixin.instrument_file_io_calls(self)
+            LLMTracerMixin.instrument_file_io_calls(self)
+            AgentTracerMixin.instrument_file_io_calls(self)
+            CustomTracerMixin.instrument_file_io_calls(self)
+            builtins.open = self.user_interaction_tracer.traced_open
 
     def stop(self):
         """Stop tracing and save results"""
