@@ -2,7 +2,7 @@ import os
 import logging
 import requests
 from typing import Dict, Optional, Union
-
+import re
 logger = logging.getLogger("RagaAICatalyst")
 
 
@@ -55,10 +55,11 @@ class RagaAICatalyst:
         self.api_keys = api_keys or {}
 
         if base_url:
-            RagaAICatalyst.BASE_URL = base_url
+            RagaAICatalyst.BASE_URL = self._normalize_base_url(base_url)
             try:
+                #set the os.environ["RAGAAI_CATALYST_BASE_URL"] before getting the token as it is used in the get_token method
+                os.environ["RAGAAI_CATALYST_BASE_URL"] = RagaAICatalyst.BASE_URL
                 self.get_token()
-                os.environ["RAGAAI_CATALYST_BASE_URL"] = base_url
             except requests.exceptions.RequestException:
                 raise ConnectionError(
                     "The provided base_url is not accessible. Please re-check the base_url."
@@ -70,6 +71,14 @@ class RagaAICatalyst:
         # Set the API keys, if  available
         if self.api_keys:
             self._upload_keys()
+
+    @staticmethod
+    def _normalize_base_url(url):
+        url = re.sub(r'(?<!:)//+', '/', url)  # Ignore the `://` part of URLs and remove extra // if any
+        url = url.rstrip("/") # To remove trailing slashes
+        if not url.endswith("/api"): # To ensure it ends with /api
+            url = f"{url}/api"
+        return url
 
     def _set_access_key_secret_key(self, access_key, secret_key):
         os.environ["RAGAAI_CATALYST_ACCESS_KEY"] = access_key

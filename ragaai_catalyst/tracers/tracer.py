@@ -1,4 +1,6 @@
+from audioop import add
 import os
+import uuid
 import datetime
 import logging
 import asyncio
@@ -6,6 +8,13 @@ import aiohttp
 import requests
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
+from ragaai_catalyst.tracers.langchain_callback import LangchainTracer
+from ragaai_catalyst.tracers.utils.convert_langchain_callbacks_output import convert_langchain_callbacks_output
+
+from ragaai_catalyst.tracers.utils.langchain_tracer_extraction_logic import langchain_tracer_extraction
+from ragaai_catalyst.tracers.upload_traces import UploadTraces
+import tempfile
+import json
 
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -118,6 +127,7 @@ class Tracer(AgenticTracing):
         self.timeout = 30
         self.num_projects = 100
         self.start_time = datetime.datetime.now().astimezone().isoformat()
+        self.model_cost_dict = load_model_costs()
 
         if update_llm_cost:
             # First update the model costs file from GitHub
@@ -152,11 +162,12 @@ class Tracer(AgenticTracing):
             raise
 
         if tracer_type == "langchain":
-            self.raga_client = RagaExporter(project_name=self.project_name, dataset_name=self.dataset_name)
+            # self.raga_client = RagaExporter(project_name=self.project_name, dataset_name=self.dataset_name)
 
-            self._tracer_provider = self._setup_provider()
-            self._instrumentor = self._setup_instrumentor(tracer_type)
-            self.is_instrumented = False
+            # self._tracer_provider = self._setup_provider()
+            # self._instrumentor = self._setup_instrumentor(tracer_type)
+            # self.is_instrumented = False
+            # self._upload_task = None
             self._upload_task = None
         elif tracer_type == "llamaindex":
             self._upload_task = None
@@ -239,11 +250,12 @@ class Tracer(AgenticTracing):
     def start(self):
         """Start the tracer."""
         if self.tracer_type == "langchain":
-            if not self.is_instrumented:
-                self._instrumentor().instrument(tracer_provider=self._tracer_provider)
-                self.is_instrumented = True
-            print(f"Tracer started for project: {self.project_name}")
-            return self
+            # if not self.is_instrumented:
+            #     self._instrumentor().instrument(tracer_provider=self._tracer_provider)
+            #     self.is_instrumented = True
+            # print(f"Tracer started for project: {self.project_name}")
+            self.langchain_tracer = LangchainTracer()
+            return self.langchain_tracer.start()
         elif self.tracer_type == "llamaindex":
             from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
             return LlamaIndexTracer(self._pass_user_data()).start()
@@ -254,17 +266,74 @@ class Tracer(AgenticTracing):
     def stop(self):
         """Stop the tracer and initiate trace upload."""
         if self.tracer_type == "langchain":
-            if not self.is_instrumented:
-                logger.warning("Tracer was not started. No traces to upload.")
-                return "No traces to upload"
+            # if not self.is_instrumented:
+            #     logger.warning("Tracer was not started. No traces to upload.")
+            #     return "No traces to upload"
 
-            print("Stopping tracer and initiating trace upload...")
-            self._cleanup()
-            self._upload_task = self._run_async(self._upload_traces())
-            self.is_active = False
-            self.dataset_name = None
+            # print("Stopping tracer and initiating trace upload...")
+            # self._cleanup()
+            # self._upload_task = self._run_async(self._upload_traces())
+            # self.is_active = False
+            # self.dataset_name = None
+
+            # filename = f"langchain_callback_traces.json"
+            # filepath = os.path.join(tempfile.gettempdir(), filename) 
             
-            return "Trace upload initiated. Use get_upload_status() to check the status."
+            user_detail = self._pass_user_data()
+            data, additional_metadata = self.langchain_tracer.stop()
+
+            # Add cost if possible
+            # import pdb; pdb.set_trace()
+            if additional_metadata['model_name']:
+                try:
+                    model_cost_data = self.model_cost_dict[additional_metadata['model_name']]
+                    prompt_cost = additional_metadata["tokens"]["prompt"]*model_cost_data["input_cost_per_token"]
+                    completion_cost = additional_metadata["tokens"]["completion"]*model_cost_data["output_cost_per_token"]
+                    # additional_metadata.setdefault('cost', {})["prompt_cost"] = prompt_cost
+                    # additional_metadata.setdefault('cost', {})["completion_cost"] = completion_cost
+                    additional_metadata.setdefault('cost', {})["total_cost"] = prompt_cost + completion_cost 
+                except Exception as e:
+                    logger.warning(f"Error adding cost: {e}")
+
+            # with open(filepath, 'r') as f:
+            #     data = json.load(f)
+            additional_metadata["total_tokens"] = additional_metadata["tokens"]["total"]
+            additional_metadata["total_cost"] = additional_metadata["cost"]["total_cost"]
+
+            del additional_metadata["tokens"]
+            del additional_metadata["cost"]
+            
+            combined_metadata = user_detail['trace_user_detail']['metadata'].copy()
+            combined_metadata.update(additional_metadata)
+            combined_metadata
+
+            langchain_traces = langchain_tracer_extraction(data)
+            final_result = convert_langchain_callbacks_output(langchain_traces)
+            final_result[0]['project_name'] = user_detail['project_name']
+            final_result[0]['trace_id'] = str(uuid.uuid4())
+            final_result[0]['session_id'] = None
+            final_result[0]['metadata'] = combined_metadata
+            final_result[0]['pipeline'] = user_detail['trace_user_detail']['pipeline']
+
+            filepath_3 = os.path.join(os.getcwd(), "final_result.json")
+            with open(filepath_3, 'w') as f:
+                json.dump(final_result, f, indent=2)
+            
+            
+            print(filepath_3)
+
+            additional_metadata_keys = additional_metadata.keys() if additional_metadata else None
+
+            UploadTraces(json_file_path=filepath_3,
+                         project_name=self.project_name,
+                         project_id=self.project_id,
+                         dataset_name=self.dataset_name,
+                         user_detail=user_detail,
+                         base_url=self.base_url
+                         ).upload_traces(additional_metadata_keys=additional_metadata_keys)
+            
+            return 
+
         elif self.tracer_type == "llamaindex":
             from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
             return LlamaIndexTracer(self._pass_user_data()).stop()
