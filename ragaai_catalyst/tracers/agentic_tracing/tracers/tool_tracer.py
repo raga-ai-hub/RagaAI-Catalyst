@@ -35,6 +35,7 @@ class ToolTracerMixin:
         self.auto_instrument_tool = False
         self.auto_instrument_user_interaction = False
         self.auto_instrument_network = False
+        self._instrumented_tools = set()  # Track which tools we've instrumented
 
     # take care of auto_instrument
     def instrument_tool_calls(self):
@@ -73,15 +74,23 @@ class ToolTracerMixin:
             if tools is None:
                 continue
             for tool in tools:
-                tool_class = getattr(dir_class, tool)   
-                if hasattr(tool_class, f"invoke"):
+                tool_class = getattr(dir_class, tool)
+                # Skip if already instrumented
+                if tool_class in self._instrumented_tools:
+                    continue
+                
+                # Prefer invoke/ainvoke over run/arun
+                if hasattr(tool_class, "invoke"):
                     self.wrap_tool_method(tool_class, f"{tool}.invoke")
-                if hasattr(tool_class, f"ainvoke"):
-                    self.wrap_tool_method(tool_class, f"{tool}.ainvoke")
-                if hasattr(tool_class, f"run"):
+                elif hasattr(tool_class, "run"):  # Only wrap run if invoke doesn't exist
                     self.wrap_tool_method(tool_class, f"{tool}.run")
-                if hasattr(tool_class, f"arun"):
+                
+                if hasattr(tool_class, "ainvoke"):
+                    self.wrap_tool_method(tool_class, f"{tool}.ainvoke")
+                elif hasattr(tool_class, "arun"):  # Only wrap arun if ainvoke doesn't exist
                     self.wrap_tool_method(tool_class, f"{tool}.arun")
+                
+                self._instrumented_tools.add(tool_class)
                     
     def patch_langchain_core_tools(self, module):
         """Patch langchain-core tool methods"""
