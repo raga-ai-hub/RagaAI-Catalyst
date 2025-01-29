@@ -12,6 +12,9 @@ import asyncio
 from langchain_core.documents import Document
 import logging
 import tempfile
+import sys
+import importlib
+from importlib.util import find_spec
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -201,28 +204,59 @@ class LangchainTracer(BaseCallbackHandler):
 
     def _monkey_patch(self):
         """Enhanced monkey-patching with comprehensive component support"""
-        from langchain.llms import OpenAI
-        # from langchain_groq import ChatGroq
-        # from langchain_google_genai import ChatGoogleGenerativeAI
-        # from langchain_anthropic import ChatAnthropic
-        from langchain_community.chat_models import ChatLiteLLM
-        # from langchain_cohere import ChatCohere
-        from langchain_openai import ChatOpenAI as ChatOpenAI_LangchainOpenAI
-        from langchain.chat_models import ChatOpenAI as ChatOpenAI_ChatModels
-        from langchain.chains import create_retrieval_chain, RetrievalQA
-
-        components_to_patch = {
-            "OpenAI": (OpenAI, "__init__"),
-            # "ChatGroq": (ChatGroq, "__init__"),
-            # "ChatGoogleGenerativeAI": (ChatGoogleGenerativeAI, "__init__"),
-            # "ChatAnthropic": (ChatAnthropic, "__init__"),
-            "ChatLiteLLM": (ChatLiteLLM, "__init__"),
-            # "ChatCohere": (ChatCohere, "__init__"),
-            "ChatOpenAI_LangchainOpenAI": (ChatOpenAI_LangchainOpenAI, "__init__"),
-            "ChatOpenAI_ChatModels": (ChatOpenAI_ChatModels, "__init__"),
-            "RetrievalQA": (RetrievalQA, "from_chain_type"),
-            "create_retrieval_chain": (create_retrieval_chain, None),
+        supported_components = {
+            "OpenAI": ("langchain.llms", "OpenAI"),
+            "ChatVertexAI": ("langchain_google_vertexai", "ChatVertexAI"),
+            "ChatGoogleGenerativeAI": ("langchain_google_genai", "ChatGoogleGenerativeAI"),
+            "ChatAnthropic": ("langchain_anthropic", "ChatAnthropic"),
+            "ChatLiteLLM": ("langchain_community.chat_models", "ChatLiteLLM"),
+            "ChatBedrock": ("lanchain_aws", "ChatBedrock"),
+            "ChatOpenAI": ("langchain_openai", "ChatOpenAI"),
+            "AzureChatOpenAI": ("langchain_openai", "AzureChatOpenAI"),
+            "RetrievalQA": ("langchain.chains", "RetrievalQA"),
+            "create_retrieval_chain": ("langchain.chains", "create_retrieval_chain"),
         }
+
+        # Try importing components and track which ones are available
+        available_components = {}
+        for component_name, (module_path, attr_name) in supported_components.items():
+            try:
+                # Check if module can be imported
+                if find_spec(module_path) is None:
+                    logger.debug(f"Module {module_path} not installed")
+                    continue
+
+                # Get module reference (whether already imported or not)
+                if module_path in sys.modules:
+                    module = sys.modules[module_path]
+                else:
+                    try:
+                        module = importlib.import_module(module_path)
+                    except ImportError as e:
+                        logger.debug(f"Failed to import {module_path}: {e}")
+                        continue
+
+                # Get component reference
+                if hasattr(module, attr_name):
+                    component = getattr(module, attr_name)
+                    available_components[component_name] = component
+                else:
+                    logger.debug(f"Component {attr_name} not found in {module_path}")
+            except Exception as e:
+                logger.debug(f"Error processing {component_name}: {e}")
+
+        if not available_components:
+            logger.warning("No supported LLM components found in the environment")
+            return
+
+        components_to_patch = {}
+        for name, component in available_components.items():
+            if name == "RetrievalQA":
+                components_to_patch[name] = (component, "from_chain_type")
+            elif name == "create_retrieval_chain":
+                components_to_patch[name] = (component, None)
+            else:
+                components_to_patch[name] = (component, "__init__")
 
         for name, (component, method_name) in components_to_patch.items():
             try:
@@ -249,17 +283,7 @@ class LangchainTracer(BaseCallbackHandler):
 
     def _restore_original_methods(self):
         """Restore all original methods and functions with enhanced error handling"""
-        from langchain.llms import OpenAI
-        # from langchain_groq import ChatGroq
-        # from langchain_google_genai import ChatGoogleGenerativeAI
-        # from langchain_anthropic import ChatAnthropic
-        from langchain_community.chat_models import ChatLiteLLM
-        # from langchain_cohere import ChatCohere
-        from langchain_openai import ChatOpenAI as ChatOpenAI_LangchainOpenAI
-        from langchain.chat_models import ChatOpenAI as ChatOpenAI_ChatModels
-        from langchain.chains import create_retrieval_chain, RetrievalQA
-
-
+        # Restore original __init__ methods
         for name, original in self._original_inits.items():
             try:
                 component = eval(name)
@@ -268,6 +292,7 @@ class LangchainTracer(BaseCallbackHandler):
                 logger.error(f"Error restoring {name}: {e}")
                 self.on_error(e, context=f"restore_{name}")
 
+        # Restore original methods and functions
         for name, original in self._original_methods.items():
             try:
                 if "." in name:
