@@ -48,8 +48,9 @@ class LangchainTracer(BaseCallbackHandler):
         self._original_methods = {}
         self.additional_metadata = {}
         self._save_task = None
-        self._current_query = None  # Add this line to track the current query
+        self._current_query = None
         self.filepath = None
+        self.model_names = {}  # Store model names by component instance
         logger.setLevel(log_level)
 
         if not os.path.exists(output_path):
@@ -86,7 +87,7 @@ class LangchainTracer(BaseCallbackHandler):
             "retriever_actions": [],
             "tokens": [],
             "errors": [],
-            "query": self._current_query,  # Add this line to include the query in the trace
+            "query": self._current_query,
             "metadata": {
                 "version": "2.0",
                 "trace_all": self.trace_all,
@@ -172,6 +173,14 @@ class LangchainTracer(BaseCallbackHandler):
                     kwargs_copy['callbacks'] = [self]
                 elif self not in kwargs_copy['callbacks']:
                     kwargs_copy['callbacks'].append(self)
+
+                # Store model name if available
+                if component_name in ["OpenAI", "ChatOpenAI_LangchainOpenAI", "ChatOpenAI_ChatModels", 
+                                    "ChatVertexAI", "ChatGoogleGenerativeAI", "ChatAnthropic", "ChatLiteLLM"]:
+                    instance = args[0] if args else None
+                    model_name = kwargs.get('model_name') or kwargs.get('model')
+                    if instance and model_name:
+                        self.model_names[id(instance)] = model_name
                 
                 # Try different method signatures
                 try:
@@ -203,8 +212,9 @@ class LangchainTracer(BaseCallbackHandler):
         """Enhanced monkey-patching with comprehensive component support"""
         from langchain.llms import OpenAI
         # from langchain_groq import ChatGroq
-        # from langchain_google_genai import ChatGoogleGenerativeAI
-        # from langchain_anthropic import ChatAnthropic
+        from langchain_google_vertexai import ChatVertexAI
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        from langchain_anthropic import ChatAnthropic
         from langchain_community.chat_models import ChatLiteLLM
         # from langchain_cohere import ChatCohere
         from langchain_openai import ChatOpenAI as ChatOpenAI_LangchainOpenAI
@@ -214,8 +224,9 @@ class LangchainTracer(BaseCallbackHandler):
         components_to_patch = {
             "OpenAI": (OpenAI, "__init__"),
             # "ChatGroq": (ChatGroq, "__init__"),
-            # "ChatGoogleGenerativeAI": (ChatGoogleGenerativeAI, "__init__"),
-            # "ChatAnthropic": (ChatAnthropic, "__init__"),
+            "ChatVertexAI": (ChatVertexAI, "__init__"),
+            "ChatGoogleGenerativeAI": (ChatGoogleGenerativeAI, "__init__"),
+            "ChatAnthropic": (ChatAnthropic, "__init__"),
             "ChatLiteLLM": (ChatLiteLLM, "__init__"),
             # "ChatCohere": (ChatCohere, "__init__"),
             "ChatOpenAI_LangchainOpenAI": (ChatOpenAI_LangchainOpenAI, "__init__"),
@@ -251,8 +262,9 @@ class LangchainTracer(BaseCallbackHandler):
         """Restore all original methods and functions with enhanced error handling"""
         from langchain.llms import OpenAI
         # from langchain_groq import ChatGroq
-        # from langchain_google_genai import ChatGoogleGenerativeAI
-        # from langchain_anthropic import ChatAnthropic
+        from langchain_google_vertexai import ChatVertexAI
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        from langchain_anthropic import ChatAnthropic
         from langchain_community.chat_models import ChatLiteLLM
         # from langchain_cohere import ChatCohere
         from langchain_openai import ChatOpenAI as ChatOpenAI_LangchainOpenAI
@@ -359,16 +371,92 @@ class LangchainTracer(BaseCallbackHandler):
                 }
             )
 
+            # Calculate latency
             end_time = datetime.now()
-            self.additional_metadata["latency"] = (end_time - self.current_trace["start_time"]).total_seconds()
+            latency = (end_time - self.current_trace["start_time"]).total_seconds()
 
+            # Check if values are there in llm_output
+            model = ""
+            prompt_tokens = 0
+            completion_tokens = 0
+            total_tokens = 0
+            
+            # Try to get model name from llm_output first
             if response and response.llm_output:
-                self.additional_metadata["model_name"] = response.llm_output.get("model_name", "")
-                self.additional_metadata["tokens"] = {}
-                if response.llm_output.get("token_usage"):
-                    self.additional_metadata["tokens"]["total"] = response.llm_output["token_usage"].get("total_tokens", 0)
-                    self.additional_metadata["tokens"]["prompt"] = response.llm_output["token_usage"].get("prompt_tokens", 0)
-                    self.additional_metadata["tokens"]["completion"] = response.llm_output["token_usage"].get("completion_tokens", 0)
+                try:
+                    model = response.llm_output.get("model_name")
+                    if not model:
+                        model = response.llm_output.get("model", "")
+                except Exception as e:
+                    # logger.debug(f"Error getting model name: {e}")
+                    model = ""
+
+            # Add model name
+            if not model:
+                try:
+                    model = response.llm_output.get("model_name")
+                    if not model:
+                        model = response.llm_output.get("model", "")
+                except Exception as e:
+                    # logger.debug(f"Error getting model name: {e}")
+                    model = ""
+
+
+            # Add token usage
+            try:
+                token_usage = response.llm_output.get("token_usage", {})
+                if token_usage=={}:
+                    try:
+                        token_usage = response.llm_output.get("usage")
+                    except Exception as e:
+                        # logger.debug(f"Error getting token usage: {e}")
+                        token_usage = {}
+                    
+                if token_usage !={}:
+                    prompt_tokens = token_usage.get("prompt_tokens", 0)
+                    if prompt_tokens==0:
+                        prompt_tokens = token_usage.get("input_tokens", 0)
+                    completion_tokens = token_usage.get("completion_tokens", 0)
+                    if completion_tokens==0:
+                        completion_tokens = token_usage.get("output_tokens", 0)
+
+                    total_tokens = prompt_tokens + completion_tokens
+            except Exception as e:
+                # logger.debug(f"Error getting token usage: {e}")
+                prompt_tokens = 0
+                completion_tokens = 0
+                total_tokens = 0
+
+            # Check if values are there in 
+            if prompt_tokens == 0 and completion_tokens == 0:
+                try:
+                    usage_data = response.generations[0][0].message.usage_metadata
+                    prompt_tokens = usage_data.get("input_tokens", 0)
+                    completion_tokens = usage_data.get("output_tokens", 0)
+                    total_tokens = prompt_tokens + completion_tokens
+                except Exception as e:
+                    # logger.debug(f"Error getting usage data: {e}")
+                    prompt_tokens = 0
+                    completion_tokens = 0
+                    total_tokens = 0
+
+            # If no model name in llm_output, try to get it from stored model names
+            try:
+                if model == "":
+                    model = list(self.model_names.values())[0]
+            except Exception as e:
+                model=""
+            
+            self.additional_metadata = {
+                'latency': latency,
+                'model_name': model,
+                'tokens': {
+                    'prompt': prompt_tokens,
+                    'completion': completion_tokens,
+                    'total': total_tokens
+                }
+            }
+
         except Exception as e:
             self.on_error(e, context="llm_end")
 

@@ -298,10 +298,12 @@ class Tracer(AgenticTracing):
             # with open(filepath, 'r') as f:
             #     data = json.load(f)
             additional_metadata["total_tokens"] = additional_metadata["tokens"]["total"]
-            additional_metadata["total_cost"] = additional_metadata["cost"]["total_cost"]
-
             del additional_metadata["tokens"]
-            del additional_metadata["cost"]
+            if "cost" in additional_metadata:
+                additional_metadata["total_cost"] = additional_metadata["cost"]["total_cost"]
+                del additional_metadata["cost"]
+            else:
+                additional_metadata["total_cost"] = 0.0
             
             combined_metadata = user_detail['trace_user_detail']['metadata'].copy()
             combined_metadata.update(additional_metadata)
