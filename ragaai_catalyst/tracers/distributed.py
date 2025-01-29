@@ -191,6 +191,7 @@ def trace_tool(name: str = None, tool_type: str = "generic", version: str = "1.0
     """Decorator for tracing tool functions."""
     def decorator(func):
         is_async = asyncio.iscoroutinefunction(func)
+        span_name = name or func.__name__
         
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -198,15 +199,23 @@ def trace_tool(name: str = None, tool_type: str = "generic", version: str = "1.0
             if not tracer:
                 return await func(*args, **kwargs)
 
-            # Use async tool tracing
-            return await tracer._trace_tool_execution(
-                func,
-                name or func.__name__,
-                tool_type,
-                version,
-                *args,
-                **kwargs
-            )
+            # Set current tool name and store the token
+            name_token = tracer.current_tool_name.set(span_name)
+            
+            try:
+                # Use async tool tracing
+                return await tracer._trace_tool_execution(
+                    func,
+                    span_name,
+                    tool_type,
+                    version,
+                    *args,
+                    **kwargs
+                )
+            finally:
+                # Reset using the stored token
+                if name_token:
+                    tracer.current_tool_name.reset(name_token)
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
@@ -214,15 +223,23 @@ def trace_tool(name: str = None, tool_type: str = "generic", version: str = "1.0
             if not tracer:
                 return func(*args, **kwargs)
 
-            # Use synchronous tool tracing
-            return tracer._trace_sync_tool_execution(
-                func,
-                name or func.__name__,
-                tool_type,
-                version,
-                *args,
-                **kwargs
-            )
+            # Set current tool name and store the token
+            name_token = tracer.current_tool_name.set(span_name)
+            
+            try:
+                # Use synchronous tool tracing
+                return tracer._trace_sync_tool_execution(
+                    func,
+                    span_name,
+                    tool_type,
+                    version,
+                    *args,
+                    **kwargs
+                )
+            finally:
+                # Reset using the stored token
+                if name_token:
+                    tracer.current_tool_name.reset(name_token)
 
         return async_wrapper if is_async else sync_wrapper
     return decorator
@@ -278,7 +295,17 @@ def current_span():
     if not tracer:
         return None
     
-    # Get the current agent name from context
+    # First check for LLM context
+    llm_name = tracer.current_llm_call_name.get()
+    if llm_name:
+        return tracer.span(llm_name)
+    
+    # Then check for tool context
+    tool_name = tracer.current_tool_name.get()
+    if tool_name:
+        return tracer.span(tool_name)
+    
+    # Finally fall back to agent context
     agent_name = tracer.current_agent_name.get()
     if not agent_name:
         raise ValueError("No active span found. Make sure you're calling this within a traced function.")
