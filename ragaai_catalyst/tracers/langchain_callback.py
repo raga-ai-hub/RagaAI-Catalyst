@@ -177,9 +177,10 @@ class LangchainTracer(BaseCallbackHandler):
                 # Store model name if available
                 if component_name in ["OpenAI", "ChatOpenAI_LangchainOpenAI", "ChatOpenAI_ChatModels",
                                     "ChatVertexAI", "VertexAI", "ChatGoogleGenerativeAI", "ChatAnthropic", 
-                                    "ChatLiteLLM"]:
+                                    "ChatLiteLLM", "ChatBedrock"]:
                     instance = args[0] if args else None
-                    model_name = kwargs.get('model_name') or kwargs.get('model')
+                    model_name = kwargs.get('model_name') or kwargs.get('model') or kwargs.get('model_id')
+
                     if instance and model_name:
                         self.model_names[id(instance)] = model_name
                 
@@ -218,6 +219,12 @@ class LangchainTracer(BaseCallbackHandler):
             components_to_patch["OpenAI"] = (OpenAI, "__init__")
         except ImportError:
             logger.debug("OpenAI not available for patching")
+
+        try:
+            from langchain_aws import ChatBedrock
+            components_to_patch["ChatBedrock"] = (ChatBedrock, "__init__")
+        except ImportError:
+            logger.debug("ChatBedrock not available for patching")
             
         try:
             from langchain_google_vertexai import ChatVertexAI, VertexAI
@@ -509,7 +516,7 @@ class LangchainTracer(BaseCallbackHandler):
                     model = list(self.model_names.values())[0]
             except Exception as e:
                 model=""
-            
+
             self.additional_metadata = {
                 'latency': latency,
                 'model_name': model,
