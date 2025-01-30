@@ -61,13 +61,13 @@ def langchain_tracer_extraction(data):
                 if item["event"] == "retriever_end":
                     context = item["documents"][0]["page_content"].replace('\n', ' ')
                     return context
-        if "chat_model_calls" in data and data["chat_model_calls"] != []:
-            for item in data["chat_model_calls"]:
-                messages = item["messages"][0]
-                for message in messages:
-                    if message["type"]=="system":
-                        content = message["content"].strip().replace('\n', ' ')
-                        return content
+        # if "chat_model_calls" in data and data["chat_model_calls"] != []:
+        #     for item in data["chat_model_calls"]:
+        #         messages = item["messages"][0]
+        #         for message in messages:
+        #             if message["type"]=="system":
+        #                 content = message["content"].strip().replace('\n', ' ')
+        #                 return content
 
 
     prompt = get_prompt(data)
