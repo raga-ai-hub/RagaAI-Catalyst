@@ -177,7 +177,7 @@ class LangchainTracer(BaseCallbackHandler):
                 # Store model name if available
                 if component_name in ["OpenAI", "ChatOpenAI_LangchainOpenAI", "ChatOpenAI_ChatModels",
                                     "ChatVertexAI", "VertexAI", "ChatGoogleGenerativeAI", "ChatAnthropic", 
-                                    "ChatLiteLLM", "ChatBedrock"]:
+                                    "ChatLiteLLM", "ChatBedrock", "AzureChatOpenAI"]:
                     instance = args[0] if args else None
                     model_name = kwargs.get('model_name') or kwargs.get('model') or kwargs.get('model_id')
 
@@ -227,11 +227,16 @@ class LangchainTracer(BaseCallbackHandler):
             logger.debug("ChatBedrock not available for patching")
             
         try:
-            from langchain_google_vertexai import ChatVertexAI, VertexAI
+            from langchain_google_vertexai import ChatVertexAI
             components_to_patch["ChatVertexAI"] = (ChatVertexAI, "__init__")
+        except ImportError:
+            logger.debug("ChatVertexAI not available for patching")
+
+        try:
+            from langchain_google_vertexai import VertexAI
             components_to_patch["VertexAI"] = (VertexAI, "__init__")
         except ImportError:
-            logger.debug("ChatVertexAI/VertexAI not available for patching")
+            logger.debug("VertexAI not available for patching")
             
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
@@ -255,13 +260,19 @@ class LangchainTracer(BaseCallbackHandler):
             from langchain_openai import ChatOpenAI as ChatOpenAI_LangchainOpenAI
             components_to_patch["ChatOpenAI_LangchainOpenAI"] = (ChatOpenAI_LangchainOpenAI, "__init__")
         except ImportError:
-            logger.debug("ChatOpenAI_LangchainOpenAI not available for patching")
+            logger.debug("ChatOpenAI (from langchain_openai) not available for patching")
+
+        try:
+            from langchain_openai import AzureChatOpenAI
+            components_to_patch["AzureChatOpenAI"] = (AzureChatOpenAI, "__init__")
+        except ImportError:
+            logger.debug("AzureChatOpenAI (from langchain_openai) not available for patching")
             
         try:
             from langchain.chat_models import ChatOpenAI as ChatOpenAI_ChatModels
             components_to_patch["ChatOpenAI_ChatModels"] = (ChatOpenAI_ChatModels, "__init__")
         except ImportError:
-            logger.debug("ChatOpenAI_ChatModels not available for patching")
+            logger.debug("ChatOpenAI (from langchain.chat_models) not available for patching")
             
         try:
             from langchain.chains import create_retrieval_chain, RetrievalQA
