@@ -175,8 +175,9 @@ class LangchainTracer(BaseCallbackHandler):
                     kwargs_copy['callbacks'].append(self)
 
                 # Store model name if available
-                if component_name in ["OpenAI", "ChatOpenAI_LangchainOpenAI", "ChatOpenAI_ChatModels", 
-                                    "ChatVertexAI", "ChatGoogleGenerativeAI", "ChatAnthropic", "ChatLiteLLM"]:
+                if component_name in ["OpenAI", "ChatOpenAI_LangchainOpenAI", "ChatOpenAI_ChatModels",
+                                    "ChatVertexAI", "VertexAI", "ChatGoogleGenerativeAI", "ChatAnthropic", 
+                                    "ChatLiteLLM"]:
                     instance = args[0] if args else None
                     model_name = kwargs.get('model_name') or kwargs.get('model')
                     if instance and model_name:
@@ -219,10 +220,11 @@ class LangchainTracer(BaseCallbackHandler):
             logger.debug("OpenAI not available for patching")
             
         try:
-            from langchain_google_vertexai import ChatVertexAI
+            from langchain_google_vertexai import ChatVertexAI, VertexAI
             components_to_patch["ChatVertexAI"] = (ChatVertexAI, "__init__")
+            components_to_patch["VertexAI"] = (VertexAI, "__init__")
         except ImportError:
-            logger.debug("ChatVertexAI not available for patching")
+            logger.debug("ChatVertexAI/VertexAI not available for patching")
             
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
@@ -298,6 +300,9 @@ class LangchainTracer(BaseCallbackHandler):
                     elif name == "ChatVertexAI":
                         from langchain_google_vertexai import ChatVertexAI
                         imported_components[name] = ChatVertexAI
+                    elif name == "VertexAI":
+                        from langchain_google_vertexai import VertexAI
+                        imported_components[name] = VertexAI
                     elif name == "ChatGoogleGenerativeAI":
                         from langchain_google_genai import ChatGoogleGenerativeAI
                         imported_components[name] = ChatGoogleGenerativeAI
@@ -487,9 +492,16 @@ class LangchainTracer(BaseCallbackHandler):
                     total_tokens = prompt_tokens + completion_tokens
                 except Exception as e:
                     # logger.debug(f"Error getting usage data: {e}")
-                    prompt_tokens = 0
-                    completion_tokens = 0
-                    total_tokens = 0
+                    try:
+                        usage_data = response.generations[0][0].generation_info['usage_metadata']
+                        prompt_tokens = usage_data.get("prompt_token_count", 0)
+                        completion_tokens = usage_data.get("candidates_token_count", 0)
+                        total_tokens = prompt_tokens + completion_tokens
+                    except Exception as e:
+                        # logger.debug(f"Error getting token usage: {e}")
+                        prompt_tokens = 0
+                        completion_tokens = 0
+                        total_tokens = 0
 
             # If no model name in llm_output, try to get it from stored model names
             try:
