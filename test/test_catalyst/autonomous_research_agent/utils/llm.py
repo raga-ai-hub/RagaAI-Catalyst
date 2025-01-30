@@ -11,6 +11,9 @@ from openai import OpenAI, AsyncOpenAI, AzureOpenAI, AsyncAzureOpenAI
 import google.generativeai as genai
 from litellm import completion, acompletion
 import litellm
+import anthropic
+from anthropic import Anthropic, AsyncAnthropic
+from groq import Groq, AsyncGroq
 from ragaai_catalyst import trace_llm
 
 # Initialize API clients
@@ -27,6 +30,14 @@ async_azure_openai_client = AsyncAzureOpenAI(azure_endpoint=azure_endpoint, api_
 
 # Google AI setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+# Anthropic setup
+anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+async_anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+# Groq setup
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+async_groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 @trace_llm('llm response')
 async def get_llm_response(
@@ -58,6 +69,16 @@ async def get_llm_response(
             return await _get_async_google_generativeai_response(prompt, model, temperature, max_tokens)
         else:
             return _get_google_generativeai_response(prompt, model, temperature, max_tokens)
+    elif 'anthropic' in provider.lower():
+        if async_llm:
+            return await _get_async_anthropic_response(prompt, model, temperature, max_tokens, syntax)
+        else:
+            return _get_anthropic_response(prompt, model, temperature, max_tokens, syntax)
+    elif 'groq' in provider.lower():
+        if async_llm:
+            return await _get_async_groq_response(prompt, model, temperature, max_tokens)
+        else:
+            return _get_groq_response(prompt, model, temperature, max_tokens)
     elif 'litellm' in provider.lower():
         if async_llm:
             return await _get_async_litellm_response(prompt, model, temperature, max_tokens)
@@ -283,6 +304,98 @@ async def _get_async_google_generativeai_response(
         return response.text
     except Exception as e:
         print(f"Error with async Google GenerativeAI: {str(e)}")
+        return None
+
+def _get_anthropic_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens,
+    syntax='chat'
+    ):
+    try:
+        if syntax == 'chat':
+            response = anthropic_client.messages.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response.content
+        elif syntax == 'completion':
+            response = anthropic_client.completions.create(
+                model=model,
+                prompt=f'{anthropic.Human_Prompt} {prompt} {anthropic.AI_Prompt}',
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response.completion
+    except Exception as e:
+        print(f"Error with Anthropic: {str(e)}")
+        return None
+
+async def _get_async_anthropic_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens, 
+    syntax='chat'
+    ):
+    try:
+        if syntax == 'chat':
+            response = await async_anthropic_client.messages.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response.content
+        elif syntax == 'completion':
+            response = await async_anthropic_client.completions.create(
+                model=model,
+                prompt=f'{anthropic.Human_Prompt} {prompt} {anthropic.AI_Prompt}',
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response.completion
+    except Exception as e:
+        print(f"Error with async Anthropic: {str(e)}")
+        return None
+
+def _get_groq_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens
+    ):
+    try:
+        response = groq_client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error with Groq: {str(e)}")
+        return None
+
+async def _get_async_groq_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens
+    ):
+    try:
+        response = await async_groq_client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error with async Groq: {str(e)}")
         return None
 
 async def main():

@@ -49,9 +49,11 @@ def extract_information(logs: str) -> Dict:
     ("gpt-4o-mini", "openai", False, "chat"),
     ("gpt-4o-mini", "openai", True, "chat"),
     ("gpt-4o-mini", "azure", False, "chat"),
-    ("gpt-4o-mini", "chat", True, "chat"),
+    ("gpt-4o-mini", "azure", True, "chat"),
     ("gemini-1.5-pro", "google", False, ""),
     ("gemini-1.5-pro", "google", True, ""),
+    ("claude-3-sonnet-20240229", "anthropic", False, "chat"),
+    ("claude-3-sonnet-20240229", "anthropic", True, "chat"),
     ("gpt-4o-mini", "litellm", False, ""),
     ("gpt-4o-mini", "litellm", True, ""),
 ])
