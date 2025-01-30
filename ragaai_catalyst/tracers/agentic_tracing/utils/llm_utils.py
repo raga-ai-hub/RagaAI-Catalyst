@@ -9,7 +9,10 @@ import json
 import os
 import asyncio
 import psutil
+import tiktoken
+import logging
 
+logger = logging.getLogger(__name__)
 
 def extract_model_name(args, kwargs, result):
     """Extract model name from kwargs or result"""
@@ -173,6 +176,96 @@ def extract_token_usage(result):
         "total_tokens": 0
     }
 
+def num_tokens_from_messages(model="gpt-4o-mini-2024-07-18", prompt_messages=None, response_message=None):
+    """Calculate the number of tokens used by messages.
+    
+    Args:
+        messages: Optional list of messages (deprecated, use prompt_messages and response_message instead)
+        model: The model name to use for token calculation
+        prompt_messages: List of prompt messages
+        response_message: Response message from the assistant
+    
+    Returns:
+        dict: A dictionary containing:
+            - prompt_tokens: Number of tokens in the prompt
+            - completion_tokens: Number of tokens in the completion
+            - total_tokens: Total number of tokens
+    """
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        logging.warning("Warning: model not found. Using o200k_base encoding.")
+        encoding = tiktoken.get_encoding("o200k_base")
+    
+    if model in {
+        "gpt-3.5-turbo-0125",
+        "gpt-4-0314",
+        "gpt-4-32k-0314",
+        "gpt-4-0613",
+        "gpt-4-32k-0613",
+        "gpt-4o-mini-2024-07-18",
+        "gpt-4o-2024-08-06"
+        }:
+        tokens_per_message = 3
+        tokens_per_name = 1
+    elif "gpt-3.5-turbo" in model:
+        logging.warning("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0125.")
+        return num_tokens_from_messages(model="gpt-3.5-turbo-0125", 
+                                     prompt_messages=prompt_messages, response_message=response_message)
+    elif "gpt-4o-mini" in model:
+        logging.warning("Warning: gpt-4o-mini may update over time. Returning num tokens assuming gpt-4o-mini-2024-07-18.")
+        return num_tokens_from_messages(model="gpt-4o-mini-2024-07-18",
+                                     prompt_messages=prompt_messages, response_message=response_message)
+    elif "gpt-4o" in model:
+        logging.warning("Warning: gpt-4o and gpt-4o-mini may update over time. Returning num tokens assuming gpt-4o-2024-08-06.")
+        return num_tokens_from_messages(model="gpt-4o-2024-08-06",
+                                     prompt_messages=prompt_messages, response_message=response_message)
+    elif "gpt-4" in model:
+        logging.warning("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
+        return num_tokens_from_messages(model="gpt-4-0613",
+                                     prompt_messages=prompt_messages, response_message=response_message)
+    else:
+        raise NotImplementedError(
+            f"""num_tokens_from_messages() is not implemented for model {model}."""
+        )
+    
+    all_messages = []
+    if prompt_messages:
+        all_messages.extend(prompt_messages)
+    if response_message:
+        if isinstance(response_message, dict):
+            all_messages.append(response_message)
+        else:
+            all_messages.append({"role": "assistant", "content": response_message})
+    
+    prompt_tokens = 0
+    completion_tokens = 0
+    
+    for message in all_messages:
+        num_tokens = tokens_per_message
+        for key, value in message.items():
+            token_count = len(encoding.encode(str(value)))  # Convert value to string for safety
+            num_tokens += token_count
+            if key == "name":
+                num_tokens += tokens_per_name
+        
+        # Add tokens to prompt or completion based on role
+        if message.get("role") == "assistant":
+            completion_tokens += num_tokens
+        else:
+            prompt_tokens += num_tokens
+    
+    # Add the assistant message prefix tokens to completion tokens if we have a response
+    if completion_tokens > 0:
+        completion_tokens += 3  # <|start|>assistant<|message|>
+    
+    total_tokens = prompt_tokens + completion_tokens
+    
+    return {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens
+    }
 
 def extract_input_data(args, kwargs, result):
     """Extract input data from function call"""

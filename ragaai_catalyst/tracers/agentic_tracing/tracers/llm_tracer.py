@@ -20,6 +20,7 @@ from ..utils.llm_utils import (
     sanitize_api_keys,
     sanitize_input,
     extract_llm_output,
+    num_tokens_from_messages
 )
 from ..utils.trace_utils import load_model_costs
 from ..utils.unique_decorator import generate_unique_hash_simple
@@ -500,8 +501,17 @@ class LLMTracerMixin:
 
             # Extract token usage and calculate cost
             model_name = extract_model_name(args, kwargs, result)
-            token_usage = extract_token_usage(result)
-            cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
+            if 'stream' in kwargs:
+                stream = kwargs['stream']
+                if stream:
+                    prompt_messages = kwargs['messages']
+                    # Create response message for streaming case
+                    response_message = {"role": "assistant", "content": result} if result else {"role": "assistant", "content": ""}
+                    token_usage = num_tokens_from_messages(model_name, prompt_messages, response_message)
+                    cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
+                else:
+                    token_usage = extract_token_usage(result)
+                    cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
 
@@ -597,8 +607,18 @@ class LLMTracerMixin:
 
             # Extract token usage and calculate cost
             model_name = extract_model_name(args, kwargs, result)
-            token_usage = extract_token_usage(result)
-            cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
+            
+            if 'stream' in kwargs:
+                stream = kwargs['stream']
+                if stream:
+                    prompt_messages = kwargs['messages']
+                    # Create response message for streaming case
+                    response_message = {"role": "assistant", "content": result} if result else {"role": "assistant", "content": ""}
+                    token_usage = num_tokens_from_messages(model_name, prompt_messages, response_message)
+                    cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
+                else:
+                    token_usage = extract_token_usage(result)
+                    cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
 
