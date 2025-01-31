@@ -49,6 +49,7 @@ dependencies = [
     "requests~=2.32.3",
     "GPUtil~=1.4.0",
     "ipynbname",
+    "tiktoken>=0.7.0"
 ]
 
 [project.optional-dependencies]
