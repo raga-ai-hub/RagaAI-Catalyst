@@ -177,7 +177,7 @@ class LangchainTracer(BaseCallbackHandler):
                 # Store model name if available
                 if component_name in ["OpenAI", "ChatOpenAI_LangchainOpenAI", "ChatOpenAI_ChatModels",
                                     "ChatVertexAI", "VertexAI", "ChatGoogleGenerativeAI", "ChatAnthropic", 
-                                    "ChatLiteLLM", "ChatBedrock", "AzureChatOpenAI"]:
+                                    "ChatLiteLLM", "ChatBedrock", "AzureChatOpenAI", "ChatAnthropicVertex"]:
                     instance = args[0] if args else None
                     model_name = kwargs.get('model_name') or kwargs.get('model') or kwargs.get('model_id')
 
@@ -237,6 +237,12 @@ class LangchainTracer(BaseCallbackHandler):
             components_to_patch["VertexAI"] = (VertexAI, "__init__")
         except ImportError:
             logger.debug("VertexAI not available for patching")
+
+        try:
+            from langchain_google_vertexai.model_garden import ChatAnthropicVertex
+            components_to_patch["ChatAnthropicVertex"] = (ChatAnthropicVertex, "__init__")
+        except ImportError:
+            logger.debug("ChatAnthropicVertex not available for patching")
             
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
@@ -327,6 +333,15 @@ class LangchainTracer(BaseCallbackHandler):
                     elif name == "ChatAnthropic":
                         from langchain_anthropic import ChatAnthropic
                         imported_components[name] = ChatAnthropic
+                    elif name == "ChatBedrock":
+                        from langchain_aws import ChatBedrock
+                        imported_components[name] = ChatBedrock
+                    elif name == "AzureChatOpenAI":
+                        from langchain_openai import AzureChatOpenAI
+                        imported_components[name] = AzureChatOpenAI
+                    elif name == "ChatAnthropicVertex":
+                        from langchain_google_vertexai.model_garden import ChatAnthropicVertex
+                        imported_components[name] = ChatAnthropicVertex
                     elif name == "ChatLiteLLM":
                         from langchain_community.chat_models import ChatLiteLLM
                         imported_components[name] = ChatLiteLLM
