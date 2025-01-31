@@ -615,10 +615,11 @@ class LLMTracerMixin:
                     # Create response message for streaming case
                     response_message = {"role": "assistant", "content": result} if result else {"role": "assistant", "content": ""}
                     token_usage = num_tokens_from_messages(model_name, prompt_messages, response_message)
-                    cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
                 else:
                     token_usage = extract_token_usage(result)
-                    cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
+            else:
+                token_usage = extract_token_usage(result)
+            cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
 
