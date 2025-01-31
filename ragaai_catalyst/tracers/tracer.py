@@ -275,15 +275,11 @@ class Tracer(AgenticTracing):
             # self._upload_task = self._run_async(self._upload_traces())
             # self.is_active = False
             # self.dataset_name = None
-
-            # filename = f"langchain_callback_traces.json"
-            # filepath = os.path.join(tempfile.gettempdir(), filename) 
             
             user_detail = self._pass_user_data()
             data, additional_metadata = self.langchain_tracer.stop()
 
             # Add cost if possible
-            # import pdb; pdb.set_trace()
             if additional_metadata['model_name']:
                 try:
                     model_cost_data = self.model_cost_dict[additional_metadata['model_name']]
@@ -295,15 +291,13 @@ class Tracer(AgenticTracing):
                 except Exception as e:
                     logger.warning(f"Error adding cost: {e}")
 
-            # with open(filepath, 'r') as f:
-            #     data = json.load(f)
-            additional_metadata["total_tokens"] = np.float32(additional_metadata["tokens"]["total"])
+            additional_metadata["total_tokens"] = float(additional_metadata["tokens"]["total"])
             del additional_metadata["tokens"]
             if "cost" in additional_metadata:
-                additional_metadata["total_cost"] = np.float32(additional_metadata["cost"]["total_cost"])
+                additional_metadata["total_cost"] = float(additional_metadata["cost"]["total_cost"])
                 del additional_metadata["cost"]
             else:
-                additional_metadata["total_cost"] = np.float32(0.0)
+                additional_metadata["total_cost"] = float(0.0)
             
             combined_metadata = user_detail['trace_user_detail']['metadata'].copy()
             combined_metadata.update(additional_metadata)
