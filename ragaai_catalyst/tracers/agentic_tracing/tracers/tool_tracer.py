@@ -5,6 +5,8 @@ from langchain_core.tools import tool
 import psutil
 import functools
 from typing import Optional, Any, Dict, List
+
+from pydantic import tools
 from ..utils.unique_decorator import generate_unique_hash_simple
 import contextvars
 import asyncio
@@ -13,6 +15,7 @@ from ..utils.span_attributes import SpanAttributes
 import logging
 import wrapt
 import time
+import inspect
 
 logger = logging.getLogger(__name__)
 logging_level = (
@@ -38,6 +41,8 @@ class ToolTracerMixin:
         self.auto_instrument_file_io = False
         self.auto_instrument_network = False
         self._instrumented_tools = set()  # Track which tools we've instrumented
+        self._method_usage = {}  # Track which methods are actually used
+        self._active_tool_calls = set()  # Track active tool calls to prevent duplicates
 
     # take care of auto_instrument
     def instrument_tool_calls(self):
@@ -48,71 +53,45 @@ class ToolTracerMixin:
         import sys
         
         if "langchain_community.tools" in sys.modules:
-            self.patch_langchain_community_tools(sys.modules["langchain_community.tools"])
+            self.patch_langchain_tools(sys.modules["langchain_community.tools"])
             
         if "langchain.tools" in sys.modules:
-            self.patch_langchain_community_tools(sys.modules["langchain.tools"])
+            self.patch_langchain_tools(sys.modules["langchain.tools"])
             
         if "langchain_core.tools" in sys.modules:
             self.patch_langchain_core_tools(sys.modules["langchain_core.tools"])
         
         # Register hooks for future imports
         wrapt.register_post_import_hook(
-            self.patch_langchain_community_tools, "langchain_community.tools"
+            self.patch_langchain_tools, "langchain_community.tools"
         )
         wrapt.register_post_import_hook(
-            self.patch_langchain_community_tools, "langchain.tools"
+            self.patch_langchain_tools, "langchain.tools"
         )
-        
         wrapt.register_post_import_hook(
-            self.patch_langchain_core_tools, "langchain_core.tools"
+            self.patch_langchain_core_tools, "langchain_core.tools"  
         )
         
     def patch_langchain_core_tools(self, module):
-        """Patch langchain core tools by wrapping @tool decorated functions"""
+        """Patch langchain tool methods"""
         from langchain_core.tools import BaseTool, StructuredTool, Tool
-    
-        # Patch the tool decorator
-        original_tool = module.tool
         
-        def wrapped_tool(*args, **kwargs):
-            # Get the original decorated function
-            decorated = original_tool(*args, **kwargs)
-            
-            def wrapper(func):
-                tool_instance = decorated(func)
-                # Wrap the tool's run/arun methods
-                if hasattr(tool_instance, 'run'):
-                    self.wrap_tool_method(tool_instance.__class__, 'run')
-                if hasattr(tool_instance, 'arun'):
-                    self.wrap_tool_method(tool_instance.__class__, 'arun')
-                if hasattr(tool_instance, 'invoke'):
-                    self.wrap_tool_method(tool_instance.__class__, 'invoke')
-                if hasattr(tool_instance, 'ainvoke'):
-                    self.wrap_tool_method(tool_instance.__class__, 'ainvoke')
-                return tool_instance
-                
-            return wrapper
-            
-        # Replace the original decorator
-        module.tool = wrapped_tool
+        # Process tool classes in order of inheritance (base class first)
+        tool_classes = [BaseTool]  # Start with base class
+        # Add derived classes that don't inherit from already processed classes
+        for tool_class in [StructuredTool, Tool]:
+            if not any(issubclass(tool_class, processed) for processed in tool_classes):
+                tool_classes.append(tool_class)
         
-        # Patch base tool classes
-        for tool_class in [BaseTool, StructuredTool, Tool]:
+        for tool_class in tool_classes:
             if tool_class in self._instrumented_tools:
                 continue
-            if hasattr(tool_class, 'run'):
-                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.run')
-            if hasattr(tool_class, 'arun'):
-                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.arun')
-            if hasattr(tool_class, 'invoke'):
-                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.invoke')
-            if hasattr(tool_class, 'ainvoke'):
-                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.ainvoke')
+            # Create proxy instead of directly wrapping methods
+            self.ToolMethodProxy(self, tool_class, tool_class.__name__)
             self._instrumented_tools.add(tool_class)
-                
-    def patch_langchain_community_tools(self, module):
-        """Patch langchain-community tool methods"""
+                        
+    def patch_langchain_tools(self, module):
+        """Patch langchain tool methods"""
         for directory in dir(module):
             dir_class = getattr(module, directory)
             tools = getattr(dir_class, "__all__", None)
@@ -124,35 +103,97 @@ class ToolTracerMixin:
                 if tool_class in self._instrumented_tools:
                     continue
                 
-                # Prefer invoke/ainvoke over run/arun
-                if hasattr(tool_class, "invoke"):
-                    self.wrap_tool_method(tool_class, f"{tool}.invoke")
-                elif hasattr(tool_class, "run"):  # Only wrap run if invoke doesn't exist
-                    self.wrap_tool_method(tool_class, f"{tool}.run")
-                
-                if hasattr(tool_class, "ainvoke"):
-                    self.wrap_tool_method(tool_class, f"{tool}.ainvoke")
-                elif hasattr(tool_class, "arun"):  # Only wrap arun if ainvoke doesn't exist
-                    self.wrap_tool_method(tool_class, f"{tool}.arun")
-                
+                # Create proxy instead of directly wrapping methods
+                self.ToolMethodProxy(self, tool_class, tool)
                 self._instrumented_tools.add(tool_class)
            
-    def wrap_tool_method(self, obj, method_name):
-        """Wrap a method with tracing functionality"""
-        method_name = method_name.split(".")[-1]
-        tool_name = obj.__name__.split(".")[0]
-        original_method = getattr(obj, method_name)
-      
-        @functools.wraps(original_method)
-        def wrapper(*args, **kwargs):
-            name = tool_name    
-            tool_type = "langchain"
-            version = None
-            if asyncio.iscoroutinefunction(original_method):
-                return self._trace_tool_execution(original_method, name, tool_type, version, *args, **kwargs)
-            return self._trace_sync_tool_execution(original_method, name, tool_type, version, *args, **kwargs)
+    class ToolMethodProxy:
+        def __init__(self, tracer, tool_class, tool_name):
+            self.tracer = tracer
+            self.tool_class = tool_class
+            self.tool_name = tool_name
+            self._original_methods = {}
+            self._wrapped = False
             
-        setattr(obj, method_name, wrapper)
+            # Store original methods
+            for method in ['run', 'arun', 'invoke', 'ainvoke']:
+                if hasattr(tool_class, method):
+                    self._original_methods[method] = getattr(tool_class, method)
+                    setattr(tool_class, method, self._create_proxy_method(method))
+        
+        def _create_proxy_method(self, method_name):
+            original_method = self._original_methods[method_name]
+            
+            async def async_proxy_method(*args, **kwargs):
+                if not self._wrapped:
+                    self._cleanup_proxy()
+                    self.tracer._wrap_specific_method(self.tool_class, method_name, self.tool_name)
+                    self._wrapped = True
+                # Get the now-wrapped method
+                wrapped_method = getattr(self.tool_class, method_name)
+                return await wrapped_method(*args, **kwargs)
+            
+            def sync_proxy_method(*args, **kwargs):
+                if not self._wrapped:
+                    self._cleanup_proxy()
+                    self.tracer._wrap_specific_method(self.tool_class, method_name, self.tool_name)
+                    self._wrapped = True
+                # Get the now-wrapped method
+                wrapped_method = getattr(self.tool_class, method_name)
+                return wrapped_method(*args, **kwargs)
+            
+            # Use appropriate proxy based on whether original method is async
+            proxy_method = async_proxy_method if asyncio.iscoroutinefunction(original_method) else sync_proxy_method
+            proxy_method.__name__ = method_name
+            return proxy_method
+            
+        def _cleanup_proxy(self):
+            # Restore all original methods except the one that was called
+            for method, original in self._original_methods.items():
+                if not self._wrapped:
+                    setattr(self.tool_class, method, original)
+
+    def _wrap_specific_method(self, tool_class, method_name, tool_name):
+        """Wrap only the specific method that is being used"""
+        original_method = getattr(tool_class, method_name)
+        
+        async def async_wrapper(*args, **kwargs):
+            tool_call_id = kwargs.get('tool_call_id', None)
+            if tool_call_id and tool_call_id in self._active_tool_calls:
+                # Skip tracing if this tool call is already being traced
+                return await original_method(*args, **kwargs)
+            
+            if tool_call_id:
+                self._active_tool_calls.add(tool_call_id)
+            try:
+                name = tool_name    
+                tool_type = "langchain"
+                version = None
+                return await self._trace_tool_execution(original_method, name, tool_type, version, *args, **kwargs)
+            finally:
+                if tool_call_id:
+                    self._active_tool_calls.remove(tool_call_id)
+        
+        def sync_wrapper(*args, **kwargs):
+            tool_call_id = kwargs.get('tool_call_id', None)
+            if tool_call_id and tool_call_id in self._active_tool_calls:
+                # Skip tracing if this tool call is already being traced
+                return original_method(*args, **kwargs)
+            
+            if tool_call_id:
+                self._active_tool_calls.add(tool_call_id)
+            try:
+                name = tool_name    
+                tool_type = "langchain"
+                version = None
+                return self._trace_sync_tool_execution(original_method, name, tool_type, version, *args, **kwargs)
+            finally:
+                if tool_call_id:
+                    self._active_tool_calls.remove(tool_call_id)
+        
+        wrapper = async_wrapper if asyncio.iscoroutinefunction(original_method) else sync_wrapper
+        wrapper.__name__ = method_name
+        setattr(tool_class, method_name, wrapper)
 
     def instrument_user_interaction_calls(self):
         self.auto_instrument_user_interaction = True
