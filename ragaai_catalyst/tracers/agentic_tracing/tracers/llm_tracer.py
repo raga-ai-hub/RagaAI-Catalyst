@@ -10,6 +10,8 @@ from datetime import datetime
 import uuid
 import contextvars
 import traceback
+import importlib
+import sys
 
 from ..utils.llm_utils import (
     extract_model_name,
@@ -45,7 +47,6 @@ class LLMTracerMixin:
             self.model_costs = load_model_costs()
         except Exception as e:
             self.model_costs = {
-                # TODO: Default cost handling needs to be improved
                 "default": {"input_cost_per_token": 0.0, "output_cost_per_token": 0.0}
             }
         self.MAX_PARAMETERS_TO_DISPLAY = 10
@@ -59,25 +60,31 @@ class LLMTracerMixin:
         self.total_cost = 0.0
         self.llm_data = {}
 
-        # Add auto_instrument options
         self.auto_instrument_llm = False
         self.auto_instrument_user_interaction = False
         self.auto_instrument_file_io = False
         self.auto_instrument_network = False
 
+    def check_package_available(self, package_name):
+        """Check if a package is available in the environment"""
+        try:
+            importlib.import_module(package_name)
+            return True
+        except ImportError:
+            return False
+
+    def validate_openai_key(self):
+        """Validate if OpenAI API key is available"""
+        return bool(os.getenv("OPENAI_API_KEY"))
+
     def instrument_llm_calls(self):
         """Enable LLM instrumentation"""
         self.auto_instrument_llm = True
 
-        # Handle modules that are already imported
-        import sys
-
+        # Check currently loaded modules
         if "vertexai" in sys.modules:
             self.patch_vertex_ai_methods(sys.modules["vertexai"])
-        if "vertexai.generative_models" in sys.modules:
-            self.patch_vertex_ai_methods(sys.modules["vertexai.generative_models"])
-
-        if "openai" in sys.modules:
+        if "openai" in sys.modules and self.validate_openai_key():
             self.patch_openai_methods(sys.modules["openai"])
             self.patch_openai_beta_methods(sys.modules["openai"])
         if "litellm" in sys.modules:
@@ -87,32 +94,42 @@ class LLMTracerMixin:
         if "google.generativeai" in sys.modules:
             self.patch_google_genai_methods(sys.modules["google.generativeai"])
         if "langchain_google_vertexai" in sys.modules:
-            self.patch_langchain_google_methods(
-                sys.modules["langchain_google_vertexai"]
-            )
+            self.patch_langchain_google_methods(sys.modules["langchain_google_vertexai"])
         if "langchain_google_genai" in sys.modules:
             self.patch_langchain_google_methods(sys.modules["langchain_google_genai"])
 
-        # Register hooks for future imports
-        wrapt.register_post_import_hook(self.patch_vertex_ai_methods, "vertexai")
-        wrapt.register_post_import_hook(
-            self.patch_vertex_ai_methods, "vertexai.generative_models"
-        )
-        wrapt.register_post_import_hook(self.patch_openai_methods, "openai")
-        wrapt.register_post_import_hook(self.patch_openai_beta_methods, "openai")
-        wrapt.register_post_import_hook(self.patch_litellm_methods, "litellm")
-        wrapt.register_post_import_hook(self.patch_anthropic_methods, "anthropic")
-        wrapt.register_post_import_hook(
-            self.patch_google_genai_methods, "google.generativeai"
-        )
+        # Register hooks for future imports with availability checks
+        if self.check_package_available("vertexai"):
+            wrapt.register_post_import_hook(self.patch_vertex_ai_methods, "vertexai")
+            wrapt.register_post_import_hook(
+                self.patch_vertex_ai_methods, "vertexai.generative_models"
+            )
+        
+        if self.check_package_available("openai") and self.validate_openai_key():
+            wrapt.register_post_import_hook(self.patch_openai_methods, "openai")
+            wrapt.register_post_import_hook(self.patch_openai_beta_methods, "openai")
+        
+        if self.check_package_available("litellm"):
+            wrapt.register_post_import_hook(self.patch_litellm_methods, "litellm")
+        
+        if self.check_package_available("anthropic"):
+            wrapt.register_post_import_hook(self.patch_anthropic_methods, "anthropic")
+        
+        if self.check_package_available("google.generativeai"):
+            wrapt.register_post_import_hook(
+                self.patch_google_genai_methods, "google.generativeai"
+            )
 
-        # Add hooks for LangChain integrations
-        wrapt.register_post_import_hook(
-            self.patch_langchain_google_methods, "langchain_google_vertexai"
-        )
-        wrapt.register_post_import_hook(
-            self.patch_langchain_google_methods, "langchain_google_genai"
-        )
+        # Add hooks for LangChain integrations with availability checks
+        if self.check_package_available("langchain_google_vertexai"):
+            wrapt.register_post_import_hook(
+                self.patch_langchain_google_methods, "langchain_google_vertexai"
+            )
+        
+        if self.check_package_available("langchain_google_genai"):
+            wrapt.register_post_import_hook(
+                self.patch_langchain_google_methods, "langchain_google_genai"
+            )
 
     def instrument_user_interaction_calls(self):
         """Enable user interaction instrumentation for LLM calls"""
