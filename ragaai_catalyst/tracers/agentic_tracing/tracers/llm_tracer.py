@@ -20,6 +20,7 @@ from ..utils.llm_utils import (
     sanitize_api_keys,
     sanitize_input,
     extract_llm_output,
+    num_tokens_from_messages
 )
 from ..utils.trace_utils import load_model_costs
 from ..utils.unique_decorator import generate_unique_hash_simple
@@ -500,7 +501,17 @@ class LLMTracerMixin:
 
             # Extract token usage and calculate cost
             model_name = extract_model_name(args, kwargs, result)
-            token_usage = extract_token_usage(result)
+            if 'stream' in kwargs:
+                stream = kwargs['stream']
+                if stream:
+                    prompt_messages = kwargs['messages']
+                    # Create response message for streaming case
+                    response_message = {"role": "assistant", "content": result} if result else {"role": "assistant", "content": ""}
+                    token_usage = num_tokens_from_messages(model_name, prompt_messages, response_message)
+                else:
+                    token_usage = extract_token_usage(result)
+            else:
+                token_usage = extract_token_usage(result)
             cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
@@ -597,7 +608,18 @@ class LLMTracerMixin:
 
             # Extract token usage and calculate cost
             model_name = extract_model_name(args, kwargs, result)
-            token_usage = extract_token_usage(result)
+            
+            if 'stream' in kwargs:
+                stream = kwargs['stream']
+                if stream:
+                    prompt_messages = kwargs['messages']
+                    # Create response message for streaming case
+                    response_message = {"role": "assistant", "content": result} if result else {"role": "assistant", "content": ""}
+                    token_usage = num_tokens_from_messages(model_name, prompt_messages, response_message)
+                else:
+                    token_usage = extract_token_usage(result)
+            else:
+                token_usage = extract_token_usage(result)
             cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
@@ -743,7 +765,20 @@ class LLMTracerMixin:
 
                     if error_info:
                         llm_component["error"] = error_info["error"]
-
+                    
+                    self.end_component(component_id)
+                    # metrics
+                    metrics = []
+                    if name in self.span_attributes_dict:
+                        raw_metrics = self.span_attributes_dict[name].metrics or []
+                        for metric in raw_metrics:
+                            base_metric_name = metric["name"]
+                            counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
+                            metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
+                            self.visited_metrics.append(metric_name)
+                            metric["name"] = metric_name  
+                            metrics.append(metric)
+                    llm_component["metrics"] = metrics
                     if parent_agent_id:
                         children = self.agent_children.get()
                         children.append(llm_component)
@@ -751,7 +786,6 @@ class LLMTracerMixin:
                     else:
                         self.add_component(llm_component)
 
-                    self.end_component(component_id)
                     llm_component["interactions"] = self.component_user_interaction.get(
                         component_id, []
                     )
@@ -789,7 +823,6 @@ class LLMTracerMixin:
                     }
                     raise
                 finally:
-
                     llm_component = self.llm_data
                     if (name is not None) or (name != ""):
                         llm_component["name"] = name
@@ -797,6 +830,18 @@ class LLMTracerMixin:
                     if error_info:
                         llm_component["error"] = error_info["error"]
 
+                    self.end_component(component_id)
+                    metrics = []
+                    if name in self.span_attributes_dict:
+                        raw_metrics = self.span_attributes_dict[name].metrics or []
+                        for metric in raw_metrics:
+                            base_metric_name = metric["name"]
+                            counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
+                            metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
+                            self.visited_metrics.append(metric_name)
+                            metric["name"] = metric_name  
+                            metrics.append(metric)
+                    llm_component["metrics"] = metrics  
                     if parent_agent_id:
                         children = self.agent_children.get()
                         children.append(llm_component)
@@ -804,7 +849,6 @@ class LLMTracerMixin:
                     else:
                         self.add_component(llm_component)
 
-                    self.end_component(component_id)
                     llm_component["interactions"] = self.component_user_interaction.get(
                         component_id, []
                     )

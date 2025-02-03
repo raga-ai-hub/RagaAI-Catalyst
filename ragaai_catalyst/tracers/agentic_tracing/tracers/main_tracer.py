@@ -174,18 +174,6 @@ class AgenticTracing(
         self.network_tracer.activate_patches()
 
         # take care of the auto instrumentation
-        if self.auto_instrument_llm:
-            self.instrument_llm_calls()
-
-        if self.auto_instrument_tool:
-            self.instrument_tool_calls()
-
-        if self.auto_instrument_agent:
-            self.instrument_agent_calls()
-
-        if self.auto_instrument_custom:
-            self.instrument_custom_calls()
-
         if self.auto_instrument_user_interaction:
             ToolTracerMixin.instrument_user_interaction_calls(self)
             LLMTracerMixin.instrument_user_interaction_calls(self)
@@ -206,6 +194,18 @@ class AgenticTracing(
             AgentTracerMixin.instrument_file_io_calls(self)
             CustomTracerMixin.instrument_file_io_calls(self)
             builtins.open = self.user_interaction_tracer.traced_open
+            
+        if self.auto_instrument_llm:
+            self.instrument_llm_calls()
+
+        if self.auto_instrument_tool:
+            self.instrument_tool_calls()
+
+        if self.auto_instrument_agent:
+            self.instrument_agent_calls()
+
+        if self.auto_instrument_custom:
+            self.instrument_custom_calls()
 
     def stop(self):
         """Stop tracing and save results"""

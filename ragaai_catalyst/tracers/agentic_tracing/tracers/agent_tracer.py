@@ -598,27 +598,23 @@ class AgentTracerMixin:
             component_network_calls[component_id] = []
         self.component_network_calls.set(component_network_calls)
 
-    def _sanitize_input(self, args: tuple, kwargs: dict) -> str:
-        """Convert input arguments to text format.
+    def _sanitize_input(self, args: tuple, kwargs: dict) -> dict:
+            """Sanitize and format input data, including handling of nested lists and dictionaries."""
 
-        Args:
-            args: Input arguments tuple
-            kwargs: Input keyword arguments dict
+            def sanitize_value(value):
+                if isinstance(value, (int, float, bool, str)):
+                    return value
+                elif isinstance(value, list):
+                    return [sanitize_value(item) for item in value]
+                elif isinstance(value, dict):
+                    return {key: sanitize_value(val) for key, val in value.items()}
+                else:
+                    return str(value)  # Convert non-standard types to string
 
-        Returns:
-            str: Text representation of the input arguments
-        """
-
-        def _sanitize_value(value):
-            if isinstance(value, dict):
-                return str({k: _sanitize_value(v) for k, v in value.items()})
-            elif isinstance(value, (list, tuple)):
-                return str([_sanitize_value(item) for item in value])
-            return str(value)
-
-        sanitized_args = [_sanitize_value(arg) for arg in args]
-        sanitized_kwargs = {k: _sanitize_value(v) for k, v in kwargs.items()}
-        return str({"args": sanitized_args, "kwargs": sanitized_kwargs})
+            return {
+                "args": [sanitize_value(arg) for arg in args],
+                "kwargs": {key: sanitize_value(val) for key, val in kwargs.items()},
+            }
 
     def _sanitize_output(self, output: Any) -> Any:
         """Sanitize and format output data"""

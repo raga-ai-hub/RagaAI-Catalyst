@@ -1,6 +1,7 @@
 import os
 import uuid
 from datetime import datetime
+from langchain_core.tools import tool
 import psutil
 import functools
 from typing import Optional, Any, Dict, List
@@ -10,6 +11,8 @@ import asyncio
 from ..utils.file_name_tracker import TrackName
 from ..utils.span_attributes import SpanAttributes
 import logging
+import wrapt
+import time
 
 logger = logging.getLogger(__name__)
 logging_level = (
@@ -34,10 +37,122 @@ class ToolTracerMixin:
         self.auto_instrument_user_interaction = False
         self.auto_instrument_file_io = False
         self.auto_instrument_network = False
+        self._instrumented_tools = set()  # Track which tools we've instrumented
 
     # take care of auto_instrument
     def instrument_tool_calls(self):
+        """Enable tool instrumentation"""
         self.auto_instrument_tool = True
+        
+        # Handle modules that are already imported
+        import sys
+        
+        if "langchain_community.tools" in sys.modules:
+            self.patch_langchain_community_tools(sys.modules["langchain_community.tools"])
+            
+        if "langchain.tools" in sys.modules:
+            self.patch_langchain_community_tools(sys.modules["langchain.tools"])
+            
+        if "langchain_core.tools" in sys.modules:
+            self.patch_langchain_core_tools(sys.modules["langchain_core.tools"])
+        
+        # Register hooks for future imports
+        wrapt.register_post_import_hook(
+            self.patch_langchain_community_tools, "langchain_community.tools"
+        )
+        wrapt.register_post_import_hook(
+            self.patch_langchain_community_tools, "langchain.tools"
+        )
+        
+        wrapt.register_post_import_hook(
+            self.patch_langchain_core_tools, "langchain_core.tools"
+        )
+        
+    def patch_langchain_core_tools(self, module):
+        """Patch langchain core tools by wrapping @tool decorated functions"""
+        from langchain_core.tools import BaseTool, StructuredTool, Tool
+    
+        # Patch the tool decorator
+        original_tool = module.tool
+        
+        def wrapped_tool(*args, **kwargs):
+            # Get the original decorated function
+            decorated = original_tool(*args, **kwargs)
+            
+            def wrapper(func):
+                tool_instance = decorated(func)
+                # Wrap the tool's run/arun methods
+                if hasattr(tool_instance, 'run'):
+                    self.wrap_tool_method(tool_instance.__class__, 'run')
+                if hasattr(tool_instance, 'arun'):
+                    self.wrap_tool_method(tool_instance.__class__, 'arun')
+                if hasattr(tool_instance, 'invoke'):
+                    self.wrap_tool_method(tool_instance.__class__, 'invoke')
+                if hasattr(tool_instance, 'ainvoke'):
+                    self.wrap_tool_method(tool_instance.__class__, 'ainvoke')
+                return tool_instance
+                
+            return wrapper
+            
+        # Replace the original decorator
+        module.tool = wrapped_tool
+        
+        # Patch base tool classes
+        for tool_class in [BaseTool, StructuredTool, Tool]:
+            if tool_class in self._instrumented_tools:
+                continue
+            if hasattr(tool_class, 'run'):
+                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.run')
+            if hasattr(tool_class, 'arun'):
+                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.arun')
+            if hasattr(tool_class, 'invoke'):
+                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.invoke')
+            if hasattr(tool_class, 'ainvoke'):
+                self.wrap_tool_method(tool_class, f'{tool_class.__name__}.ainvoke')
+            self._instrumented_tools.add(tool_class)
+                
+    def patch_langchain_community_tools(self, module):
+        """Patch langchain-community tool methods"""
+        for directory in dir(module):
+            dir_class = getattr(module, directory)
+            tools = getattr(dir_class, "__all__", None)
+            if tools is None:
+                continue
+            for tool in tools:
+                tool_class = getattr(dir_class, tool)
+                # Skip if already instrumented
+                if tool_class in self._instrumented_tools:
+                    continue
+                
+                # Prefer invoke/ainvoke over run/arun
+                if hasattr(tool_class, "invoke"):
+                    self.wrap_tool_method(tool_class, f"{tool}.invoke")
+                elif hasattr(tool_class, "run"):  # Only wrap run if invoke doesn't exist
+                    self.wrap_tool_method(tool_class, f"{tool}.run")
+                
+                if hasattr(tool_class, "ainvoke"):
+                    self.wrap_tool_method(tool_class, f"{tool}.ainvoke")
+                elif hasattr(tool_class, "arun"):  # Only wrap arun if ainvoke doesn't exist
+                    self.wrap_tool_method(tool_class, f"{tool}.arun")
+                
+                self._instrumented_tools.add(tool_class)
+           
+    def wrap_tool_method(self, obj, method_name):
+        """Wrap a method with tracing functionality"""
+        method_name = method_name.split(".")[-1]
+        tool_name = obj.__name__.split(".")[0]
+        original_method = getattr(obj, method_name)
+      
+        @functools.wraps(original_method)
+        def wrapper(*args, **kwargs):
+            name = tool_name    
+            tool_type = "langchain"
+            version = None
+            if asyncio.iscoroutinefunction(original_method):
+                return self._trace_tool_execution(original_method, name, tool_type, version, *args, **kwargs)
+            return self._trace_sync_tool_execution(original_method, name, tool_type, version, *args, **kwargs)
+            
+        setattr(obj, method_name, wrapper)
 
     def instrument_user_interaction_calls(self):
         self.auto_instrument_user_interaction = True
@@ -362,25 +477,22 @@ class ToolTracerMixin:
     def end_component(self, component_id):
         pass
 
-    def _sanitize_input(self, args: tuple, kwargs: dict) -> Dict:
-        """Sanitize and format input data"""
+    def _sanitize_input(self, args: tuple, kwargs: dict) -> dict:
+        """Sanitize and format input data, including handling of nested lists and dictionaries."""
+
+        def sanitize_value(value):
+            if isinstance(value, (int, float, bool, str)):
+                return value
+            elif isinstance(value, list):
+                return [sanitize_value(item) for item in value]
+            elif isinstance(value, dict):
+                return {key: sanitize_value(val) for key, val in value.items()}
+            else:
+                return str(value)  # Convert non-standard types to string
+
         return {
-            "args": [
-                (
-                    str(arg)
-                    if not isinstance(arg, (int, float, bool, str, list, dict))
-                    else arg
-                )
-                for arg in args
-            ],
-            "kwargs": {
-                k: (
-                    str(v)
-                    if not isinstance(v, (int, float, bool, str, list, dict))
-                    else v
-                )
-                for k, v in kwargs.items()
-            },
+            "args": [sanitize_value(arg) for arg in args],
+            "kwargs": {key: sanitize_value(val) for key, val in kwargs.items()},
         }
 
     def _sanitize_output(self, output: Any) -> Any:
