@@ -296,13 +296,13 @@ class Tracer(AgenticTracing):
             
             # Safely get total tokens and cost
             if 'tokens' in additional_metadata and 'total' in additional_metadata['tokens']:
-                additional_metadata["total_tokens"] = additional_metadata["tokens"]["total"]
+                additional_metadata["total_tokens"] = float(additional_metadata["tokens"]["total"])
             else:
-                additional_metadata["total_tokens"] = 0
+                additional_metadata["total_tokens"] = 0.0
                 logger.warning("Total tokens information not available")
 
             if 'cost' in additional_metadata and 'total_cost' in additional_metadata['cost']:
-                additional_metadata["total_cost"] = additional_metadata["cost"]["total_cost"]
+                additional_metadata["total_cost"] = float(additional_metadata["cost"]["total_cost"])
             else:
                 additional_metadata["total_cost"] = 0.0
                 logger.warning("Total cost information not available")
