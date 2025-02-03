@@ -188,21 +188,32 @@ class BaseTracer:
             self.trace.metadata.resources.cpu.values = self.cpu_usage_list
 
             #track network and disk usage
-            network_upoloads, network_downloads = 0, 0
+            network_uploads, network_downloads = 0, 0
             disk_read, disk_write = 0, 0
-            for network_usage, disk_usage in zip(self.network_usage_list, self.disk_usage_list):
-                network_upoloads += network_usage['uploads']
-                network_downloads += network_usage['downloads']
-                disk_read += disk_usage['disk_read']
-                disk_write += disk_usage['disk_write']
+            
+            # Handle cases where lists might have different lengths
+            min_len = min(len(self.network_usage_list), len(self.disk_usage_list))
+            for i in range(min_len):
+                network_usage = self.network_usage_list[i]
+                disk_usage = self.disk_usage_list[i]
+                
+                # Safely get network usage values with defaults of 0
+                network_uploads += network_usage.get('uploads', 0) or 0
+                network_downloads += network_usage.get('downloads', 0) or 0
+                
+                # Safely get disk usage values with defaults of 0
+                disk_read += disk_usage.get('disk_read', 0) or 0
+                disk_write += disk_usage.get('disk_write', 0) or 0
 
             #track disk usage
-            self.trace.metadata.resources.disk.read = [disk_read / len(self.disk_usage_list)]
-            self.trace.metadata.resources.disk.write = [disk_write / len(self.disk_usage_list)]
+            disk_list_len = len(self.disk_usage_list)
+            self.trace.metadata.resources.disk.read = [disk_read / disk_list_len if disk_list_len > 0 else 0]
+            self.trace.metadata.resources.disk.write = [disk_write / disk_list_len if disk_list_len > 0 else 0]
 
             #track network usage
-            self.trace.metadata.resources.network.uploads = [network_upoloads / len(self.network_usage_list)]
-            self.trace.metadata.resources.network.downloads = [network_downloads / len(self.network_usage_list)]
+            network_list_len = len(self.network_usage_list)
+            self.trace.metadata.resources.network.uploads = [network_uploads / network_list_len if network_list_len > 0 else 0]
+            self.trace.metadata.resources.network.downloads = [network_downloads / network_list_len if network_list_len > 0 else 0]
 
             # update interval time
             self.trace.metadata.resources.cpu.interval = float(self.interval_time)
