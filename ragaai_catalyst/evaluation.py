@@ -7,6 +7,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Job status constants
+JOB_STATUS_FAILED = "failed"
+JOB_STATUS_IN_PROGRESS = "in_progress"
+JOB_STATUS_COMPLETED = "success"
+
 class Evaluation:
 
     def __init__(self, project_name, dataset_name):
@@ -366,22 +371,36 @@ class Evaluation:
             response.raise_for_status()
             if response.json()["success"]:
                 status_json = [item["status"] for item in response.json()["data"]["content"] if item["id"]==self.jobId][0]
-            if status_json == "Failed":
-                return print("Job failed. No results to fetch.")
-            elif status_json == "In Progress":
-                return print(f"Job in progress. Please wait while the job completes.\nVisit Job Status: {self.base_url.removesuffix('/api')}/projects/job-status?projectId={self.project_id} to track")
-            elif status_json == "Completed":
-                print(f"Job completed. Fetching results.\nVisit Job Status: {self.base_url.removesuffix('/api')}/projects/job-status?projectId={self.project_id} to check")
+                if status_json == "Failed":
+                    print("Job failed. No results to fetch.")
+                    return JOB_STATUS_FAILED
+                elif status_json == "In Progress":
+                    print(f"Job in progress. Please wait while the job completes.\nVisit Job Status: {self.base_url.removesuffix('/api')}/projects/job-status?projectId={self.project_id} to track")
+                    return JOB_STATUS_IN_PROGRESS
+                elif status_json == "Completed":
+                    print(f"Job completed. Fetching results.\nVisit Job Status: {self.base_url.removesuffix('/api')}/projects/job-status?projectId={self.project_id} to check")
+                    return JOB_STATUS_COMPLETED
+                else:
+                    logger.error(f"Unknown status received: {status_json}")
+                    return JOB_STATUS_FAILED
+            else:
+                logger.error("Request was not successful")
+                return JOB_STATUS_FAILED
         except requests.exceptions.HTTPError as http_err:
             logger.error(f"HTTP error occurred: {http_err}")
+            return JOB_STATUS_FAILED
         except requests.exceptions.ConnectionError as conn_err:
             logger.error(f"Connection error occurred: {conn_err}")
+            return JOB_STATUS_FAILED
         except requests.exceptions.Timeout as timeout_err:
             logger.error(f"Timeout error occurred: {timeout_err}")
+            return JOB_STATUS_FAILED
         except requests.exceptions.RequestException as req_err:
             logger.error(f"An error occurred: {req_err}")
+            return JOB_STATUS_FAILED
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
+            return JOB_STATUS_FAILED
 
     def get_results(self):
 
