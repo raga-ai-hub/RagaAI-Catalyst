@@ -6,6 +6,7 @@ import uuid
 import os
 import builtins
 from pathlib import Path
+import logging
 
 from .base import BaseTracer
 from .llm_tracer import LLMTracerMixin
@@ -57,10 +58,12 @@ class AgenticTracing(
 
         self.project_name = user_detail["project_name"]
         self.project_id = user_detail["project_id"]
-        # self.dataset_name = user_detail["dataset_name"]
         self.trace_user_detail = user_detail["trace_user_detail"]
         self.base_url = f"{RagaAICatalyst.BASE_URL}"
         self.timeout = 10
+        
+        # Add warning flag
+        self._warning_shown = False
 
         BaseTracer.__init__(self, user_detail)
 
@@ -309,6 +312,47 @@ class AgenticTracing(
                 "error",
             ]
         }
+
+        if component_data == None or component_data == {} or component_data.get("type", None) == None:
+            # Only show warning if it hasn't been shown before
+            if not self._warning_shown:
+                import toml
+                import os
+                from pathlib import Path
+
+                # Load supported LLM calls from TOML file
+                current_dir = Path(__file__).parent
+                toml_path = current_dir / "../utils/supported_llm_provider.toml"
+                try:
+                    with open(toml_path, "r") as f:
+                        config = toml.load(f)
+                        supported_calls = ", ".join(config["supported_llm_calls"])
+                except Exception as e:
+                    supported_calls = "Error loading supported LLM calls"
+
+                # ANSI escape codes for colors and formatting
+                RED = "\033[91m"
+                BOLD = "\033[1m"
+                RESET = "\033[0m"
+                BIG = "\033[1;2m"  # Makes text slightly larger in supported terminals
+
+                warning_msg = f"""{RED}{BOLD}{BIG}
+╔════════════════════════ COMPONENT DATA INCOMPLETE ════════════════════════╗
+║                                                                          ║
+║  Please ensure these requirements:                                       ║
+║  ✗ trace_llm decorator must have a stand alone llm call                 ║
+║  ✗ trace_tool decorator must be a stand alone tool/function call        ║
+║  ✗ trace_agent decorator can have multiple/nested llm/tool/agent calls  ║
+║                                                                          ║
+║  Supported LLM calls:                                                    ║
+║  {supported_calls}                                                       ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+{RESET}"""
+                # Use logger.warning for the message
+                logging.warning(warning_msg)
+                self._warning_shown = True
+            return
 
         if component_data["type"] == "llm":
             component = LLMComponent(**filtered_data)

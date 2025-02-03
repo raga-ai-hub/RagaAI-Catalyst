@@ -15,7 +15,7 @@ from ragaai_catalyst.tracers.utils.langchain_tracer_extraction_logic import lang
 from ragaai_catalyst.tracers.upload_traces import UploadTraces
 import tempfile
 import json
-
+import numpy as np
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from ragaai_catalyst.tracers.exporters.file_span_exporter import FileSpanExporter
@@ -275,56 +275,69 @@ class Tracer(AgenticTracing):
             # self._upload_task = self._run_async(self._upload_traces())
             # self.is_active = False
             # self.dataset_name = None
-
-            # filename = f"langchain_callback_traces.json"
-            # filepath = os.path.join(tempfile.gettempdir(), filename) 
             
             user_detail = self._pass_user_data()
             data, additional_metadata = self.langchain_tracer.stop()
 
             # Add cost if possible
-            # import pdb; pdb.set_trace()
-            if additional_metadata['model_name']:
+            if additional_metadata.get('model_name'):
                 try:
                     model_cost_data = self.model_cost_dict[additional_metadata['model_name']]
-                    prompt_cost = additional_metadata["tokens"]["prompt"]*model_cost_data["input_cost_per_token"]
-                    completion_cost = additional_metadata["tokens"]["completion"]*model_cost_data["output_cost_per_token"]
-                    # additional_metadata.setdefault('cost', {})["prompt_cost"] = prompt_cost
-                    # additional_metadata.setdefault('cost', {})["completion_cost"] = completion_cost
-                    additional_metadata.setdefault('cost', {})["total_cost"] = prompt_cost + completion_cost 
+                    if 'tokens' in additional_metadata and all(k in additional_metadata['tokens'] for k in ['prompt', 'completion']):
+                        prompt_cost = additional_metadata["tokens"]["prompt"]*model_cost_data["input_cost_per_token"]
+                        completion_cost = additional_metadata["tokens"]["completion"]*model_cost_data["output_cost_per_token"]
+                        additional_metadata.setdefault('cost', {})["total_cost"] = prompt_cost + completion_cost 
+                    else:
+                        logger.warning("Token information missing in additional_metadata")
                 except Exception as e:
                     logger.warning(f"Error adding cost: {e}")
+            else:
+                logger.debug("Model name not available in additional_metadata, skipping cost calculation")
+            
+            # Safely get total tokens and cost
+            if 'tokens' in additional_metadata and 'total' in additional_metadata['tokens']:
+                additional_metadata["total_tokens"] = float(additional_metadata["tokens"]["total"])
+            else:
+                additional_metadata["total_tokens"] = 0.0
+                logger.warning("Total tokens information not available")
 
-            # with open(filepath, 'r') as f:
-            #     data = json.load(f)
-            additional_metadata["total_tokens"] = additional_metadata["tokens"]["total"]
-            del additional_metadata["tokens"]
-            if "cost" in additional_metadata:
-                additional_metadata["total_cost"] = additional_metadata["cost"]["total_cost"]
-                del additional_metadata["cost"]
+            if 'cost' in additional_metadata and 'total_cost' in additional_metadata['cost']:
+                additional_metadata["total_cost"] = float(additional_metadata["cost"]["total_cost"])
             else:
                 additional_metadata["total_cost"] = 0.0
+                logger.warning("Total cost information not available")
+
+            # Safely remove tokens and cost dictionaries if they exist
+            additional_metadata.pop("tokens", None)
+            additional_metadata.pop("cost", None)
             
-            combined_metadata = user_detail['trace_user_detail']['metadata'].copy()
-            combined_metadata.update(additional_metadata)
-            combined_metadata
+            # Safely merge metadata
+            combined_metadata = {}
+            if user_detail.get('trace_user_detail', {}).get('metadata'):
+                combined_metadata.update(user_detail['trace_user_detail']['metadata'])
+            if additional_metadata:
+                combined_metadata.update(additional_metadata)
 
             langchain_traces = langchain_tracer_extraction(data)
             final_result = convert_langchain_callbacks_output(langchain_traces)
-            final_result[0]['project_name'] = user_detail['project_name']
-            final_result[0]['trace_id'] = str(uuid.uuid4())
-            final_result[0]['session_id'] = None
-            final_result[0]['metadata'] = combined_metadata
-            final_result[0]['pipeline'] = user_detail['trace_user_detail']['pipeline']
-
-            filepath_3 = os.path.join(os.getcwd(), "final_result.json")
-            with open(filepath_3, 'w') as f:
-                json.dump(final_result, f, indent=2)
             
-            
-            print(filepath_3)
+            # Safely set required fields in final_result
+            if final_result and isinstance(final_result, list) and len(final_result) > 0:
+                final_result[0]['project_name'] = user_detail.get('project_name', '')
+                final_result[0]['trace_id'] = str(uuid.uuid4())
+                final_result[0]['session_id'] = None
+                final_result[0]['metadata'] = combined_metadata
+                final_result[0]['pipeline'] = user_detail.get('trace_user_detail', {}).get('pipeline')
 
-            additional_metadata_keys = additional_metadata.keys() if additional_metadata else None
+                filepath_3 = os.path.join(os.getcwd(), "final_result.json")
+                with open(filepath_3, 'w') as f:
+                    json.dump(final_result, f, indent=2)
+                
+                print(filepath_3)
+            else:
+                logger.warning("No valid langchain traces found in final_result")
+
+            additional_metadata_keys = list(additional_metadata.keys()) if additional_metadata else None
 
             UploadTraces(json_file_path=filepath_3,
                          project_name=self.project_name,
