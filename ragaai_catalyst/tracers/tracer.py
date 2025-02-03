@@ -15,7 +15,7 @@ from ragaai_catalyst.tracers.utils.langchain_tracer_extraction_logic import lang
 from ragaai_catalyst.tracers.upload_traces import UploadTraces
 import tempfile
 import json
-
+import numpy as np
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from ragaai_catalyst.tracers.exporters.file_span_exporter import FileSpanExporter
@@ -275,9 +275,6 @@ class Tracer(AgenticTracing):
             # self._upload_task = self._run_async(self._upload_traces())
             # self.is_active = False
             # self.dataset_name = None
-
-            # filename = f"langchain_callback_traces.json"
-            # filepath = os.path.join(tempfile.gettempdir(), filename) 
             
             user_detail = self._pass_user_data()
             data, additional_metadata = self.langchain_tracer.stop()
