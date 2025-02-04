@@ -128,7 +128,7 @@ class Tracer(AgenticTracing):
         self.num_projects = 100
         self.start_time = datetime.datetime.now().astimezone().isoformat()
         self.model_cost_dict = load_model_costs()
-        self.user_context = {}  # Initialize user_context to store context from add_context
+        self.user_context = ""  # Initialize user_context to store context from add_context
 
         if update_llm_cost:
             # First update the model costs file from GitHub
