@@ -8,11 +8,15 @@ from typing import Any, Dict, Optional
 import asyncio
 
 from openai import OpenAI, AsyncOpenAI, AzureOpenAI, AsyncAzureOpenAI
+import vertexai
 import google.generativeai as genai
 from litellm import completion, acompletion
 import litellm
 import anthropic
 from anthropic import Anthropic, AsyncAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai import ChatVertexAI
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from groq import Groq, AsyncGroq
 from ragaai_catalyst import trace_llm
 
@@ -31,13 +35,16 @@ async_azure_openai_client = AsyncAzureOpenAI(azure_endpoint=azure_endpoint, api_
 # Google AI setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+# Vertex AI setup
+vertexai.init(project="gen-lang-client-0655603261", location="us-central1")
+
 # Anthropic setup
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 async_anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 # Groq setup
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-async_groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
+# groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+# async_groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 @trace_llm('llm response')
 async def get_llm_response(
@@ -58,17 +65,29 @@ async def get_llm_response(
             return await _get_async_azure_openai_response(prompt, model, temperature, max_tokens, syntax)
         else:
             return _get_azure_openai_response(prompt, model, temperature, max_tokens, syntax)
-    elif 'openai' in provider.lower():
+    if 'openai_beta' in provider.lower():
+        return _get_openai_beta_response(prompt, model, temperature, max_tokens)
+    if 'openai' in provider.lower():
         syntax = kwargs.get("syntax", "completion")
         if async_llm:
             return await _get_async_openai_response(prompt, model, temperature, max_tokens, syntax)
         else:
             return _get_openai_response(prompt, model, temperature, max_tokens, syntax)
+    elif 'chat_google' in provider.lower():
+        if async_llm:
+            return await _get_async_chat_google_response(prompt, model, temperature, max_tokens)
+        else:
+            return _get_chat_google_response(prompt, model, temperature, max_tokens)
     elif 'google' in provider.lower():
         if async_llm:
-            return await _get_async_google_generativeai_response(prompt, model, temperature, max_tokens)
+            return await _get_async_chat_google_generativeai_response(prompt, model, temperature, max_tokens)
         else:
-            return _get_google_generativeai_response(prompt, model, temperature, max_tokens)
+            return _get_chat_google_generativeai_response(prompt, model, temperature, max_tokens)
+    elif 'chat_vertexai' in provider.lower():
+        if async_llm:
+            return await _get_async_chat_vertexai_response(prompt, model, temperature, max_tokens)
+        else:
+            return _get_chat_vertexai_response(prompt, model, temperature, max_tokens)
     elif 'anthropic' in provider.lower():
         if async_llm:
             return await _get_async_anthropic_response(prompt, model, temperature, max_tokens, syntax)
@@ -151,6 +170,30 @@ async def _get_async_openai_response(
     except Exception as e:
         print(f"Error with async OpenAI API: {str(e)}")
         return None
+
+def _get_openai_beta_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens
+    ):
+    assistant = openai_client.beta.assistants.create(model=model)
+    thread = openai_client.beta.threads.create()
+    message = openai_client.beta.threads.messages.create(
+        thread_id=thread.id,
+        role="user",
+        content=prompt
+    )
+    run = openai_client.beta.threads.run.create_and_poll(
+        thread_id=thread.id,
+        assistant_id=assistant.id,
+        temperature=temperature,
+        max_completion_tokens=max_tokens
+    )
+    if run.status != 'completed':
+        messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
+        return messages.data[0].content[0].text.value
+
 
 def _get_azure_openai_response(
     prompt,
@@ -360,6 +403,86 @@ async def _get_async_anthropic_response(
             return response.completion
     except Exception as e:
         print(f"Error with async Anthropic: {str(e)}")
+        return None
+
+def _get_chat_google_generativeai_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens
+    ):
+    try:
+        model = ChatGoogleGenerativeAI(model)
+        response = model._generate(
+            [HumanMessage(content=prompt)],
+            generation_config=dict(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
+        )
+        return response.generations[0].text
+    except Exception as e:
+        print(f"Error with Google GenerativeAI: {str(e)}")
+        return None
+
+async def _get_async_chat_google_generativeai_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens
+    ):
+    try:
+        model = ChatGoogleGenerativeAI(model)
+        response = await model._agenerate(
+            [HumanMessage(content=prompt)],
+            generation_config=dict(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
+        )
+        return response.generations[0].text
+    except Exception as e:
+        print(f"Error with async Google GenerativeAI: {str(e)}")
+        return None
+
+def _get_chat_vertexai_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens
+    ):
+    try:
+        model = ChatVertexAI(model)
+        response = model._generate(
+            [HumanMessage(content=prompt)],
+            generation_config=dict(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
+        )
+        return response.generations[0].text
+    except Exception as e:
+        print(f"Error with VertexAI: {str(e)}")
+        return None
+
+async def _get_async_chat_vertexai_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens
+    ):
+    try:
+        model = ChatVertexAI(model)
+        response = await model._agenerate(
+            [HumanMessage(content=prompt)],
+            generation_config=dict(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
+        )
+        return response.generations[0].text
+    except Exception as e:
+        print(f"Error with async VertexAI: {str(e)}")
         return None
 
 def _get_groq_response(
