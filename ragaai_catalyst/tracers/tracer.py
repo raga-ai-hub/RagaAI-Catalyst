@@ -128,6 +128,7 @@ class Tracer(AgenticTracing):
         self.num_projects = 100
         self.start_time = datetime.datetime.now().astimezone().isoformat()
         self.model_cost_dict = load_model_costs()
+        self.user_context = {}  # Initialize user_context to store context from add_context
 
         if update_llm_cost:
             # First update the model costs file from GitHub
@@ -318,7 +319,7 @@ class Tracer(AgenticTracing):
             if additional_metadata:
                 combined_metadata.update(additional_metadata)
 
-            langchain_traces = langchain_tracer_extraction(data)
+            langchain_traces = langchain_tracer_extraction(data, self.user_context)
             final_result = convert_langchain_callbacks_output(langchain_traces)
             
             # Safely set required fields in final_result
@@ -460,7 +461,27 @@ class Tracer(AgenticTracing):
                     "llm_model": (getattr(self, "pipeline", {}) or {}).get("llm_model", ""),
                     "vector_store": (getattr(self, "pipeline", {}) or {}).get("vector_store", ""),
                     "embed_model": (getattr(self, "pipeline", {}) or {}).get("embed_model", "")
-                    }
+                    },
+                "user_context": self.user_context
                 }
             }
         return user_detail
+
+    def add_context(self, context):
+        """
+        Add context information to the trace. This method is only supported for 'langchain' and 'llamaindex' tracer types.
+
+        Args:
+            context: Additional context information to be added to the trace. Can be a string.
+
+        Raises:
+            ValueError: If tracer_type is not 'langchain' or 'llamaindex'.
+        """
+        if self.tracer_type not in ["langchain", "llamaindex"]:
+            raise ValueError("add_context is only supported for 'langchain' and 'llamaindex' tracer types")
+        
+        # Convert string context to string if needed
+        if isinstance(context, str):
+            self.user_context = context
+        else:
+            raise TypeError("context must be a string")
