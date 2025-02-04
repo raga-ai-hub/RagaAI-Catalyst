@@ -161,8 +161,7 @@ class AgenticTracing(
 
     def start(self):
         """Start tracing"""
-        if not self.is_active:
-            return
+        self.is_active = True
 
         # Setup user interaction tracing
         self.user_interaction_tracer.project_id.set(self.project_id)
