@@ -461,8 +461,7 @@ class Tracer(AgenticTracing):
                     "llm_model": (getattr(self, "pipeline", {}) or {}).get("llm_model", ""),
                     "vector_store": (getattr(self, "pipeline", {}) or {}).get("vector_store", ""),
                     "embed_model": (getattr(self, "pipeline", {}) or {}).get("embed_model", "")
-                    },
-                "user_context": self.user_context
+                    }
                 }
             }
         return user_detail
