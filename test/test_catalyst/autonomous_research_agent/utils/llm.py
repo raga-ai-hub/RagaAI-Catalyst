@@ -1,6 +1,3 @@
-
-
-
 import sys
 import os
 import json
@@ -21,16 +18,16 @@ from groq import Groq, AsyncGroq
 from ragaai_catalyst import trace_llm
 
 # Initialize API clients
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-async_openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# async_openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Azure OpenAI setup
 azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 azure_api_key = os.getenv("AZURE_OPENAI_KEY")
 azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
 
-azure_openai_client = AzureOpenAI(azure_endpoint=azure_endpoint, api_key=azure_api_key, api_version=azure_api_version)
-async_azure_openai_client = AsyncAzureOpenAI(azure_endpoint=azure_endpoint, api_key=azure_api_key, api_version=azure_api_version)
+# azure_openai_client = AzureOpenAI(azure_endpoint=azure_endpoint, api_key=azure_api_key, api_version=azure_api_version)
+# async_azure_openai_client = AsyncAzureOpenAI(azure_endpoint=azure_endpoint, api_key=azure_api_key, api_version=azure_api_version)
 
 # Google AI setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -39,8 +36,8 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 vertexai.init(project="gen-lang-client-0655603261", location="us-central1")
 
 # Anthropic setup
-anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-async_anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+# anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+# async_anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 # Groq setup
 # groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -62,37 +59,45 @@ async def get_llm_response(
     if 'azure' in provider.lower():
         syntax = kwargs.get("syntax", "completion")
         if async_llm:
-            return await _get_async_azure_openai_response(prompt, model, temperature, max_tokens, syntax)
+            async_azure_openai_client = AsyncAzureOpenAI(azure_endpoint=azure_endpoint, api_key=azure_api_key, api_version=azure_api_version)
+            return await _get_async_azure_openai_response(async_azure_openai_client, prompt, model, temperature, max_tokens, syntax)
         else:
-            return _get_azure_openai_response(prompt, model, temperature, max_tokens, syntax)
-    if 'openai_beta' in provider.lower():
-        return _get_openai_beta_response(prompt, model, temperature, max_tokens)
-    if 'openai' in provider.lower():
+            azure_openai_client = AzureOpenAI(azure_endpoint=azure_endpoint, api_key=azure_api_key, api_version=azure_api_version)
+            return _get_azure_openai_response(azure_openai_client, prompt, model, temperature, max_tokens, syntax)
+    elif 'openai_beta' in provider.lower():
+        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        return _get_openai_beta_response(openai_client, prompt, model, temperature, max_tokens)
+    elif 'openai' in provider.lower():
         syntax = kwargs.get("syntax", "completion")
         if async_llm:
-            return await _get_async_openai_response(prompt, model, temperature, max_tokens, syntax)
+            async_openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            return await _get_async_openai_response(async_openai_client, prompt, model, temperature, max_tokens, syntax)
         else:
-            return _get_openai_response(prompt, model, temperature, max_tokens, syntax)
+            openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            return _get_openai_response(openai_client, prompt, model, temperature, max_tokens, syntax)
     elif 'chat_google' in provider.lower():
-        if async_llm:
-            return await _get_async_chat_google_response(prompt, model, temperature, max_tokens)
-        else:
-            return _get_chat_google_response(prompt, model, temperature, max_tokens)
-    elif 'google' in provider.lower():
         if async_llm:
             return await _get_async_chat_google_generativeai_response(prompt, model, temperature, max_tokens)
         else:
             return _get_chat_google_generativeai_response(prompt, model, temperature, max_tokens)
+    elif 'google' in provider.lower():
+        if async_llm:
+            return await _get_async_google_generativeai_response(prompt, model, temperature, max_tokens)
+        else:
+            return _get_google_generativeai_response(prompt, model, temperature, max_tokens)
     elif 'chat_vertexai' in provider.lower():
         if async_llm:
             return await _get_async_chat_vertexai_response(prompt, model, temperature, max_tokens)
         else:
             return _get_chat_vertexai_response(prompt, model, temperature, max_tokens)
     elif 'anthropic' in provider.lower():
+        syntax = kwargs.get("syntax", "chat")
         if async_llm:
-            return await _get_async_anthropic_response(prompt, model, temperature, max_tokens, syntax)
+            async_anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            return await _get_async_anthropic_response(async_anthropic_client, prompt, model, temperature, max_tokens, syntax)
         else:
-            return _get_anthropic_response(prompt, model, temperature, max_tokens, syntax)
+            anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+            return _get_anthropic_response(anthropic_client, prompt, model, temperature, max_tokens, syntax)
     elif 'groq' in provider.lower():
         if async_llm:
             return await _get_async_groq_response(prompt, model, temperature, max_tokens)
@@ -106,6 +111,7 @@ async def get_llm_response(
 
 
 def _get_openai_response(
+    openai_client,
     prompt,
     model, 
     temperature,
@@ -139,6 +145,7 @@ def _get_openai_response(
         return None
 
 async def _get_async_openai_response(
+    async_openai_client,
     prompt,
     model, 
     temperature,
@@ -172,6 +179,7 @@ async def _get_async_openai_response(
         return None
 
 def _get_openai_beta_response(
+    openai_client,
     prompt,
     model, 
     temperature,
@@ -184,18 +192,19 @@ def _get_openai_beta_response(
         role="user",
         content=prompt
     )
-    run = openai_client.beta.threads.run.create_and_poll(
+    run = openai_client.beta.threads.runs.create_and_poll(
         thread_id=thread.id,
         assistant_id=assistant.id,
         temperature=temperature,
         max_completion_tokens=max_tokens
     )
-    if run.status != 'completed':
+    if run.status == 'completed':
         messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
         return messages.data[0].content[0].text.value
 
 
 def _get_azure_openai_response(
+    azure_openai_client,
     prompt,
     model, 
     temperature,
@@ -229,6 +238,7 @@ def _get_azure_openai_response(
         return None
 
 async def _get_async_azure_openai_response(
+    async_azure_openai_client,
     prompt,
     model, 
     temperature,
@@ -350,6 +360,7 @@ async def _get_async_google_generativeai_response(
         return None
 
 def _get_anthropic_response(
+    anthropic_client,
     prompt,
     model, 
     temperature,
@@ -364,7 +375,7 @@ def _get_anthropic_response(
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            return response.content
+            return response.content[0].text
         elif syntax == 'completion':
             response = anthropic_client.completions.create(
                 model=model,
@@ -378,6 +389,7 @@ def _get_anthropic_response(
         return None
 
 async def _get_async_anthropic_response(
+    async_anthropic_client,
     prompt,
     model, 
     temperature,
@@ -392,7 +404,7 @@ async def _get_async_anthropic_response(
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            return response.content
+            return response.content[0].text
         elif syntax == 'completion':
             response = await async_anthropic_client.completions.create(
                 model=model,
@@ -412,7 +424,7 @@ def _get_chat_google_generativeai_response(
     max_tokens
     ):
     try:
-        model = ChatGoogleGenerativeAI(model)
+        model = ChatGoogleGenerativeAI(model=model)
         response = model._generate(
             [HumanMessage(content=prompt)],
             generation_config=dict(
@@ -432,7 +444,7 @@ async def _get_async_chat_google_generativeai_response(
     max_tokens
     ):
     try:
-        model = ChatGoogleGenerativeAI(model)
+        model = ChatGoogleGenerativeAI(model=model)
         response = await model._agenerate(
             [HumanMessage(content=prompt)],
             generation_config=dict(
@@ -452,7 +464,10 @@ def _get_chat_vertexai_response(
     max_tokens
     ):
     try:
-        model = ChatVertexAI(model)
+        model = ChatVertexAI(
+            model=model, 
+            google_api_key=os.getenv("GOOGLE_API_KEY")
+            )
         response = model._generate(
             [HumanMessage(content=prompt)],
             generation_config=dict(
@@ -472,7 +487,10 @@ async def _get_async_chat_vertexai_response(
     max_tokens
     ):
     try:
-        model = ChatVertexAI(model)
+        model = ChatVertexAI(
+            model=model, 
+            google_api_key=os.getenv("GOOGLE_API_KEY")
+            )
         response = await model._agenerate(
             [HumanMessage(content=prompt)],
             generation_config=dict(
@@ -525,8 +543,10 @@ async def main():
     response = await get_llm_response(
         prompt="Hello, how are you?",
         # model="davinci-002",
-        model = "gemini-1.5-pro",
-        provider="google",
+        # model = "claude-3-5-sonnet-20241022",
+        model = 'gpt-4o-mini',
+        # model = 'gemini-1.5-pro',
+        provider="azure",
         temperature=0.7,
         max_tokens=100,
         async_llm=True, 
