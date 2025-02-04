@@ -2,10 +2,8 @@ from ..data.data_structure import LLMCall
 from .trace_utils import (
     calculate_cost,
     convert_usage_to_dict,
-    # load_model_costs,
 )
 from importlib import resources
-from litellm import model_cost
 import json
 import os
 import asyncio
@@ -518,7 +516,7 @@ def extract_llm_data(args, kwargs, result):
     token_usage = extract_token_usage(result)
 
     # Load model costs
-    # model_costs = load_model_costs()
+    from litellm import model_cost
     model_costs = model_cost
 
     # Calculate cost

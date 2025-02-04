@@ -12,7 +12,6 @@ import contextvars
 import traceback
 import importlib
 import sys
-from litellm import model_cost
 
 from ..utils.llm_utils import (
     extract_model_name,
@@ -25,7 +24,6 @@ from ..utils.llm_utils import (
     extract_llm_output,
     num_tokens_from_messages
 )
-# from ..utils.trace_utils import load_model_costs
 from ..utils.unique_decorator import generate_unique_hash_simple
 from ..utils.file_name_tracker import TrackName
 from ..utils.span_attributes import SpanAttributes
@@ -45,7 +43,7 @@ class LLMTracerMixin:
         self.file_tracker = TrackName()
         self.patches = []
         try:
-            # self.model_costs = load_model_costs()
+            from litellm import model_cost
             self.model_costs = model_cost
         except Exception as e:
             self.model_costs = {
