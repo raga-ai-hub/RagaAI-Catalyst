@@ -16,6 +16,7 @@ class SpanAttributes:
         self.tags = []
         self.metadata = {}
         self.metrics = []
+        self.local_metrics = []
         self.feedback = None
         self.trace_attributes = ["tags", "metadata", "metrics"]
 
@@ -58,7 +59,21 @@ class SpanAttributes:
         self.feedback = feedback
         logger.debug(f"Added feedback: {self.feedback}")
 
-
     # TODO: Add execute metrics
+    def execute_metrics(self,
+                        name: str,
+                        cost: float = None,
+                        latency: float = None,
+                        config: Dict[str, Any] = {}
+                        ):
+        self.local_metrics.append({
+            "name": name,
+            "cost": cost,
+            "latency": latency,
+            "config": config
+        })
+        logger.debug(f"Added metrics: {self.local_metrics}")
+
+
 
     
