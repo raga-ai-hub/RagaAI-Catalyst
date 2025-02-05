@@ -51,52 +51,6 @@ class DiscoveryAgent(BaseAgent):
             "findings": summarized_findings
         }
     
-    # async def _generate_search_queries(self, research_question: str) -> List[str]:
-    #     """Generate specific search queries from the research question.
-        
-    #     Args:
-    #         research_question: Original research question
-            
-    #     Returns:
-    #         List of specific search queries
-    #     """
-    #     prompt = f"""
-    #     Break down this research question into specific search queries:
-    #     Question: {research_question}
-    #     Generate 3-5 specific search queries that would help gather comprehensive information.
-    #     """
-        
-    #     response = await get_llm_response(prompt)
-    #     # Process response to extract queries
-    #     # This is a placeholder - actual implementation would parse LLM response
-    #     return [query.strip() for query in response.split('\n') if query.strip()]
-    
-    # async def _search_academic_sources(self, query: str) -> List[Dict[str, Any]]:
-    #     """Search academic sources for relevant information.
-        
-    #     Args:
-    #         query: Search query
-            
-    #     Returns:
-    #         List of findings from academic sources
-    #     """
-    #     # Placeholder for actual implementation
-    #     # Would integrate with academic APIs (e.g., arXiv, Semantic Scholar)
-    #     return []
-    
-    # async def _search_tech_sources(self, query: str) -> List[Dict[str, Any]]:
-    #     """Search technical blogs and forums for relevant information.
-        
-    #     Args:
-    #         query: Search query
-            
-    #     Returns:
-    #         List of findings from technical sources
-    #     """
-    #     # Placeholder for actual implementation
-    #     # Would integrate with tech blog APIs and forum searches
-    #     return []
-    
     async def _summarize_findings(self, findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Summarize and organize the gathered findings.
         
@@ -140,24 +94,7 @@ class DiscoveryAgent(BaseAgent):
                 grouped[source_type] = []
             grouped[source_type].append(finding)
         return grouped
-    
-#     async def _generate_summary(self, findings: List[Dict[str, Any]]) -> str:
-#         """Generate a summary of findings using LLM.
-        
-#         Args:
-#             findings: List of findings to summarize
-            
-#         Returns:
-#             Summarized text
-#         """
-#         # Placeholder for actual implementation
-#         # Would use LLM to generate coherent summary
-#         return "Summary of findings"
 
-
-# class DiscoveryAgent(BaseAgent):
-#     """Agent responsible for discovering and gathering relevant information."""
-    
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
         self.session = None
@@ -172,11 +109,6 @@ class DiscoveryAgent(BaseAgent):
 
     async def _generate_search_queries(self, research_question: str) -> List[str]:
         """Generate specific search queries from the research question."""
-        # response_format = {
-        #     "queries": [
-        #         {"query": "string", "focus": "string"}
-        #     ]
-        # }
         
         prompt = f"""
         Break down this research question into specific search queries:
@@ -186,14 +118,7 @@ class DiscoveryAgent(BaseAgent):
         For each query, provide a focus area that explains what aspect of the research
         question this query addresses.
         """
-        
-        # response = await get_structured_llm_response(
-        #     prompt=prompt,
-        #     response_format=response_format,
-        #     temperature=0.2
-        # )
-        
-        # return [item["query"] for item in response.get("queries", [])]
+
         model = self.config.get("model", "gpt-4o-mini")
         provider = self.config.get("provider", "openai")
         temperature = self.config.get("temperature", 0.7)
@@ -202,7 +127,6 @@ class DiscoveryAgent(BaseAgent):
         syntax = self.config.get("syntax", "completion")  
         response = await get_llm_response(prompt, model=model, provider=provider, temperature=temperature, max_tokens=max_tokens, async_llm=async_llm, syntax=syntax)
         # Process response to extract queries
-        # This is a placeholder - actual implementation would parse LLM response
         return [query.strip() for query in response.split('\n') if query.strip()]
 
 

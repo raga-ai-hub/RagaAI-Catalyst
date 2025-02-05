@@ -1,43 +1,38 @@
+import os
 import sys
 import asyncio
 import json
 from typing import Dict, Any
 from argparse import ArgumentParser
-# sys.path.append("/Users/ragaai_user/work/ragaai-catalyst")
 from dotenv import load_dotenv
 load_dotenv()
 
 from agents.coordinator import CoordinatorAgent
 
-from ragaai_catalyst import Tracer, RagaAICatalyst, init_tracing
+from ragaai_catalyst import (
+    Tracer, 
+    RagaAICatalyst, 
+    init_tracing, 
+    trace_agent, 
+    trace_tool, 
+
+)
 
 catalyst = RagaAICatalyst(
-    access_key="saLy6KmMVlfAzunuQGS9",
-    secret_key="lm39fd4KXffM6gzLjnY9G7QReffhH4RGZPursp3A",
-    base_url="http://52.172.168.127/api"
-    # access_key="yKmaYjirGa6xoaLZQnCL",
-    # secret_key="nXPYVEndpMkxLWJI8KllgRrx7DHkSRbtq1a0U9yO",
-    # base_url="https://llm-dev5.ragaai.ai/api"
+    access_key=os.getenv("RAGAAICATALYST_ACCESS_KEY"),
+    secret_key=os.getenv("RAGAAICATALYST_SECRET_KEY"),
+    base_url=os.getenv("RAGAAICATALYST_BASE_URL")
 )
 # Initialize tracer
 tracer = Tracer(
-    project_name="testing-multi-file-tracing",
-    dataset_name="trial_01",
-    tracer_type="Agentic",
-    metadata={
-        "model": "gpt-3.5-turbo",
-        "environment": "production"
-    },
-    pipeline={
-        "llm_model": "gpt-3.5-turbo",
-        "vector_store": "faiss",
-        "embed_model": "text-embedding-ada-002",
-    }
+    project_name=os.getenv("RAGAAICATALYST_TRACER_PROJECT_NAME"),
+    dataset_name=os.getenv("RAGAAICATALYST_TRACER_DATASET_NAME"),
+    tracer_type=os.getenv("RAGAAICATALYST_TRACER_TYPE"),
 )
 
 init_tracing(tracer=tracer, catalyst=catalyst)
 
-@tracer.trace_agent('Conduct Research')
+@trace_agent('Conduct Research')
 async def conduct_research(research_question: str, parameters: Dict[str, Any] = None, config: Dict[str, Any] = None) -> Dict[str, Any]:
     """Conduct research using the autonomous research agent system.
     
@@ -61,13 +56,13 @@ async def conduct_research(research_question: str, parameters: Dict[str, Any] = 
     results = await process_research(coordinator, input_data)
     return results
 
-@tracer.trace_agent('Process Research')
+@trace_agent('Process Research')
 async def process_research(coordinator: CoordinatorAgent, input_data: Dict[str, Any]) -> Dict[str, Any]:
     # Run research process
     results = await coordinator.process(input_data)
     return results
 
-@tracer.trace_tool('Display Results')
+@trace_tool('Display Results')
 def display_results(results: Dict[str, Any]) -> None:
     """Display research results in a formatted manner.
     
@@ -86,7 +81,7 @@ def display_results(results: Dict[str, Any]) -> None:
     for recommendation in results.get("recommendations", []):
         print(f"- {recommendation.get('recommendation', '')}")
 
-@tracer.trace_agent('Main')
+@trace_agent('Main')
 async def main():
     # Load environment variables
     parser = ArgumentParser()
@@ -105,9 +100,7 @@ async def main():
         "async_llm": args.async_llm,
         "syntax": args.syntax
     }
-    # if args.config:
-    #     with open(args.config, "r") as f:
-    #         config.update(json.load(f))
+
     
     # Define research question and parameters
     research_question = "What are the latest developments in few-shot learning for NLP tasks?"
@@ -138,5 +131,3 @@ if __name__ == "__main__":
     with tracer:
         # Run main function
         asyncio.run(main())
-
-    # asyncio.run(main())

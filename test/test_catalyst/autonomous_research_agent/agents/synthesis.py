@@ -82,7 +82,6 @@ class SynthesisAgent(BaseAgent):
         syntax = self.config.get("syntax", "completion")
         response = await get_llm_response(prompt, model=model, provider=provider, temperature=temperature, max_tokens=max_tokens, async_llm=async_llm, syntax=syntax)
         # Process response to extract patterns
-        # This is a placeholder - actual implementation would parse LLM response
         return [{"type": "pattern", "description": response}]
     
     async def _generate_hypotheses(self, patterns: List[Dict[str, Any]], research_question: str) -> List[Dict[str, Any]]:
@@ -150,7 +149,6 @@ class SynthesisAgent(BaseAgent):
             syntax = self.config.get("syntax", "completion")
             response = await get_llm_response(prompt, model=model, provider=provider, temperature=temperature, max_tokens=max_tokens, async_llm=async_llm, syntax=syntax)
             # Process response to extract evaluation
-            # This is a placeholder - actual implementation would parse LLM response
             evaluated_hypotheses.append({
                 **hypothesis,
                 "evaluation": response,

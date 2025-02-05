@@ -1,7 +1,7 @@
-from abc import ABC, abstractmethod
+
 from typing import Any, Dict, Optional
 
-class BaseAgent(ABC):
+class BaseAgent:
     """Base class for all agents in the system."""
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
@@ -12,8 +12,7 @@ class BaseAgent(ABC):
         """
         self.config = config or {}
         self.memory: Dict[str, Any] = {}
-    
-    @abstractmethod
+
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process the input data and return results.
         

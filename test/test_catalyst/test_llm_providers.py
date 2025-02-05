@@ -51,14 +51,16 @@ def extract_information(logs: str) -> Dict:
     ("gpt-4o-mini", "azure", False, "chat"),
     ("gpt-4o-mini", "azure", True, "chat"),
     ("gpt-4o-mini", "openai_beta", False, ""),
-    ("gemini-1.5-pro", "google", False, ""),
-    ("gemini-1.5-pro", "google", True, ""),
-    ('gemini-1.5-pro', 'chat_google', False, ''),
-    ('gemini-1.5-pro', 'chat_google', True, ''),
-    # ('gemini-1.5-pro', 'chat_vertexai', False, ''),
-    # ('gemini-1.5-pro', 'chat_vertexai', True, ''),
-    ("claude-3-sonnet-20240229", "anthropic", False, "chat"),
-    ("claude-3-sonnet-20240229", "anthropic", True, "chat"),
+    ("gemini-1.5-flash", "google", False, ""),
+    ("gemini-1.5-flash", "google", True, ""),
+    ('gemini-1.5-flash', 'chat_google', False, ''),
+    ('gemini-1.5-flash', 'chat_google', True, ''),
+    ('gemini-1.5-flash', 'vertexai', False, ''), 
+    ('gemini-1.5-flash', 'vertexai', True, '')
+    ('gemini-1.5-flash', 'chat_vertexai', False, ''),
+    ('gemini-1.5-flash', 'chat_vertexai', True, ''),
+    ("claude-3-5-sonnet-20241022", "anthropic", False, "chat"),
+    ("claude-3-5-sonnet-20241022", "anthropic", True, "chat"),
     ("gpt-4o-mini", "litellm", False, ""),
     ("gpt-4o-mini", "litellm", True, ""),
 ])
@@ -100,9 +102,3 @@ def test_llm_providers(model: str, provider: str, async_llm: bool, syntax: str):
             break
     assert len([child for child in process_discovery_children if child['name'] == 'llm response']) >= 2, f"Expected at least 2 llm response children, got {len([child for child in process_discovery_children if child['name'] == 'llm response'])}"
     assert len([child for child in process_synthesis_children if child['name'] == 'llm response']) == 5, f"Expected 5 llm response children, got {len([child for child in process_synthesis_children if child['name'] == 'llm response'])}"
-
-# if __name__ == '__main__':
-#     command = 'python test/test_catalyst/autonomous_research_agent/research_script.py --provider azure --async_llm True'
-#     cwd = ''
-#     output = run_command(command)
-#     print(output)

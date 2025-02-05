@@ -6,6 +6,7 @@ import asyncio
 
 from openai import OpenAI, AsyncOpenAI, AzureOpenAI, AsyncAzureOpenAI
 import vertexai
+from vertexai.generative_models import GenerativeModel, GenerationConfig
 import google.generativeai as genai
 from litellm import completion, acompletion
 import litellm
@@ -17,17 +18,11 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from groq import Groq, AsyncGroq
 from ragaai_catalyst import trace_llm
 
-# Initialize API clients
-# openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-# async_openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Azure OpenAI setup
 azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 azure_api_key = os.getenv("AZURE_OPENAI_KEY")
 azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
-
-# azure_openai_client = AzureOpenAI(azure_endpoint=azure_endpoint, api_key=azure_api_key, api_version=azure_api_version)
-# async_azure_openai_client = AsyncAzureOpenAI(azure_endpoint=azure_endpoint, api_key=azure_api_key, api_version=azure_api_version)
 
 # Google AI setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -35,13 +30,6 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 # Vertex AI setup
 vertexai.init(project="gen-lang-client-0655603261", location="us-central1")
 
-# Anthropic setup
-# anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-# async_anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
-# Groq setup
-# groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-# async_groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 @trace_llm('llm response')
 async def get_llm_response(
@@ -90,6 +78,11 @@ async def get_llm_response(
             return await _get_async_chat_vertexai_response(prompt, model, temperature, max_tokens)
         else:
             return _get_chat_vertexai_response(prompt, model, temperature, max_tokens)
+    elif 'vertexai' in provider.lower():
+        if async_llm:
+            return await _get_async_vertexai_response(prompt, model, temperature, max_tokens)
+        else:
+            return _get_vertexai_response(prompt, model, temperature, max_tokens)
     elif 'anthropic' in provider.lower():
         syntax = kwargs.get("syntax", "chat")
         if async_llm:
@@ -202,7 +195,6 @@ def _get_openai_beta_response(
         messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
         return messages.data[0].content[0].text.value
 
-
 def _get_azure_openai_response(
     azure_openai_client,
     prompt,
@@ -311,6 +303,57 @@ async def _get_async_litellm_response(
         return response.choices[0].message.content
     except Exception as e:
         print(f"Error with async LiteLLM: {str(e)}")
+        return None
+
+def _get_vertexai_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens
+    ):
+    """
+    Get response from VertexAI
+    """
+    try:
+        # vertexai.init(project="gen-lang-client-0655603261", location="us-central1")
+        model = GenerativeModel(
+            model_name=model
+            )
+        response = model.generate_content(
+            prompt,
+            generation_config=GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
+        )
+        return response.text
+    except Exception as e:
+        print(f"Error with VertexAI: {str(e)}")
+        return None
+
+async def _get_async_vertexai_response(
+    prompt,
+    model, 
+    temperature,
+    max_tokens
+    ):
+    """
+    Get async response from VertexAI
+    """
+    try:
+        model = GenerativeModel(
+            model_name=model
+            )
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
+        )
+        return response.text
+    except Exception as e:
+        print(f"Error with async VertexAI: {str(e)}")
         return None
 
 def _get_google_generativeai_response(
@@ -544,9 +587,9 @@ async def main():
         prompt="Hello, how are you?",
         # model="davinci-002",
         # model = "claude-3-5-sonnet-20241022",
-        model = 'gpt-4o-mini',
-        # model = 'gemini-1.5-pro',
-        provider="azure",
+        # model = 'gpt-4o-mini',
+        model = 'gemini-1.5-flash',
+        provider="vertexai",
         temperature=0.7,
         max_tokens=100,
         async_llm=True, 
