@@ -268,10 +268,21 @@ def num_tokens_from_messages(model="gpt-4o-mini-2024-07-18", prompt_messages=Non
     }
 
 def extract_input_data(args, kwargs, result):
-    """Extract input data from function call"""
+    """Sanitize and format input data, including handling of nested lists and dictionaries."""
+
+    def sanitize_value(value):
+        if isinstance(value, (int, float, bool, str)):
+            return value
+        elif isinstance(value, list):
+            return [sanitize_value(item) for item in value]
+        elif isinstance(value, dict):
+            return {key: sanitize_value(val) for key, val in value.items()}
+        else:
+            return str(value)  # Convert non-standard types to string
+
     return {
-        'args': args,
-        'kwargs': kwargs
+        "args": [sanitize_value(arg) for arg in args],
+        "kwargs": {key: sanitize_value(val) for key, val in kwargs.items()},
     }
 
 
@@ -369,6 +380,13 @@ def extract_llm_output(result):
                             "finish_reason": getattr(candidate, "finish_reason", None)
                         })
         return OutputResponse(output)
+    
+    # Handle AIMessage Format
+    if hasattr(result, "content"):
+        return OutputResponse([{
+            "content": result.content,
+            "role": getattr(result.content, "role", "assistant")
+        }])
     
     # Handle Vertex AI format
     # format1

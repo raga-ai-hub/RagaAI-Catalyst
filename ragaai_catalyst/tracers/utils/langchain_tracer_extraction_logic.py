@@ -49,7 +49,6 @@ def langchain_tracer_extraction(data):
     def get_response(data):
         for item in data["llm_calls"]:
             if item["event"] == "llm_end":
-                # import pdb; pdb.set_trace()
                 llm_end_responses = item["response"]["generations"][0]
                 for llm_end_response in llm_end_responses:
                     response = llm_end_response["text"]
