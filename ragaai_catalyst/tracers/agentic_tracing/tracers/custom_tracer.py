@@ -290,14 +290,13 @@ class CustomTracerMixin:
             "interactions": interactions
         }
 
-        if name in self.span_attributes_dict:
-            span_gt = self.span_attributes_dict[name].gt
+        if kwargs["name"] in self.span_attributes_dict:
+            span_gt = self.span_attributes_dict[kwargs["name"]].gt
             if span_gt is not None:
                 component["data"]["gt"] = span_gt
-            span_context = self.span_attributes_dict[name].context
+            span_context = self.span_attributes_dict[kwargs["name"]].context
             if span_context:
                 component["data"]["context"] = span_context
-
         return component
 
     def start_component(self, component_id):
