@@ -12,6 +12,7 @@ import contextvars
 import traceback
 import importlib
 import sys
+from litellm import model_cost
 
 from ..utils.llm_utils import (
     extract_model_name,
@@ -43,7 +44,6 @@ class LLMTracerMixin:
         self.file_tracker = TrackName()
         self.patches = []
         try:
-            from litellm import model_cost
             self.model_costs = model_cost
         except Exception as e:
             self.model_costs = {

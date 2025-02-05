@@ -4,6 +4,7 @@ from .trace_utils import (
     convert_usage_to_dict,
 )
 from importlib import resources
+from litellm import model_cost
 import json
 import os
 import asyncio
@@ -516,7 +517,6 @@ def extract_llm_data(args, kwargs, result):
     token_usage = extract_token_usage(result)
 
     # Load model costs
-    from litellm import model_cost
     model_costs = model_cost
 
     # Calculate cost
