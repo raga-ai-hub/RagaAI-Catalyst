@@ -385,7 +385,7 @@ def extract_llm_output(result):
     if hasattr(result, "content"):
         return OutputResponse([{
             "content": result.content,
-            "role": getattr(result.content, "role", "assistant")
+            "role": getattr(result, "role", "assistant")
         }])
     
     # Handle Vertex AI format
