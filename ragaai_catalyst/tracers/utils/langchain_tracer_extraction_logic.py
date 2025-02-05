@@ -1,7 +1,7 @@
 import json
 import uuid
 
-def langchain_tracer_extraction(data):
+def langchain_tracer_extraction(data, user_context=""):
     trace_aggregate = {}
     import uuid
 
@@ -54,7 +54,9 @@ def langchain_tracer_extraction(data):
                     response = llm_end_response["text"]
                 return response.strip()
 
-    def get_context(data):
+    def get_context(data, user_context):
+        if user_context:
+            return user_context
         if "retriever_actions" in data and data["retriever_actions"] != []:
             for item in data["retriever_actions"]:
                 if item["event"] == "retriever_end":
@@ -71,7 +73,7 @@ def langchain_tracer_extraction(data):
 
     prompt = get_prompt(data)
     response = get_response(data)
-    context = get_context(data)
+    context = get_context(data, user_context)
 
     trace_aggregate["data"]["prompt"]=prompt
     trace_aggregate["data"]["response"]=response
