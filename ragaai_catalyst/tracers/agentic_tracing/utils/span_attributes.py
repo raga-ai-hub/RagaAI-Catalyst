@@ -57,3 +57,8 @@ class SpanAttributes:
     def add_feedback(self, feedback: Any):
         self.feedback = feedback
         logger.debug(f"Added feedback: {self.feedback}")
+
+
+    # TODO: Add execute metrics
+
+    

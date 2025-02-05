@@ -855,6 +855,8 @@ class BaseTracer:
 
         return {"workflow": sorted_interactions}
 
+    # TODO: Add support for execute metrics. Maintain list of all metrics to be added for this span
+
     def add_metrics(
         self,
         name: str | List[Dict[str, Any]] | Dict[str, Any] = None,
