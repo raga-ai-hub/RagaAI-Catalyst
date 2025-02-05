@@ -83,6 +83,7 @@ class BaseTracer:
         self.tracking_thread = None
         self.tracking = False
         self.system_monitor = None
+        self.gt = None
 
     def _get_system_info(self) -> SystemInfo:
         return self.system_monitor.get_system_info()
