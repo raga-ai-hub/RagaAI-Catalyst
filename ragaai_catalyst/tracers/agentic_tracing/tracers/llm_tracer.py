@@ -13,6 +13,7 @@ import traceback
 import importlib
 import sys
 
+from ..upload.upload_local_metric import calculate_metric
 from ..utils.llm_utils import (
     extract_model_name,
     extract_parameters,
@@ -59,6 +60,7 @@ class LLMTracerMixin:
         self.total_tokens = 0
         self.total_cost = 0.0
         self.llm_data = {}
+        # self.local_metrics =
 
         self.auto_instrument_llm = False
         self.auto_instrument_user_interaction = False
@@ -104,17 +106,17 @@ class LLMTracerMixin:
             wrapt.register_post_import_hook(
                 self.patch_vertex_ai_methods, "vertexai.generative_models"
             )
-        
+
         if self.check_package_available("openai") and self.validate_openai_key():
             wrapt.register_post_import_hook(self.patch_openai_methods, "openai")
             wrapt.register_post_import_hook(self.patch_openai_beta_methods, "openai")
-        
+
         if self.check_package_available("litellm"):
             wrapt.register_post_import_hook(self.patch_litellm_methods, "litellm")
-        
+
         if self.check_package_available("anthropic"):
             wrapt.register_post_import_hook(self.patch_anthropic_methods, "anthropic")
-        
+
         if self.check_package_available("google.generativeai"):
             wrapt.register_post_import_hook(
                 self.patch_google_genai_methods, "google.generativeai"
@@ -125,7 +127,7 @@ class LLMTracerMixin:
             wrapt.register_post_import_hook(
                 self.patch_langchain_google_methods, "langchain_google_vertexai"
             )
-        
+
         if self.check_package_available("langchain_google_genai"):
             wrapt.register_post_import_hook(
                 self.patch_langchain_google_methods, "langchain_google_genai"
@@ -138,7 +140,7 @@ class LLMTracerMixin:
     def instrument_network_calls(self):
         """Enable network instrumentation for LLM calls"""
         self.auto_instrument_network = True
-        
+
     def instrument_file_io_calls(self):
         """Enable file IO instrumentation for LLM calls"""
         self.auto_instrument_file_io = True
@@ -189,7 +191,6 @@ class LLMTracerMixin:
                 for method_name in ["create", "retrieve", "list"]:
                     if hasattr(runs_obj, method_name):
                         self.wrap_method(runs_obj, method_name)
-
 
     def patch_anthropic_methods(self, module):
         if hasattr(module, "Anthropic"):
@@ -370,20 +371,20 @@ class LLMTracerMixin:
             self.patches.append((obj, method_name, original_method))
 
     def create_llm_component(
-        self,
-        component_id,
-        hash_id,
-        name,
-        llm_type,
-        version,
-        memory_used,
-        start_time,
-        input_data,
-        output_data,
-        cost={},
-        usage={},
-        error=None,
-        parameters={},
+            self,
+            component_id,
+            hash_id,
+            name,
+            llm_type,
+            version,
+            memory_used,
+            start_time,
+            input_data,
+            output_data,
+            cost={},
+            usage={},
+            error=None,
+            parameters={},
     ):
         # Update total metrics
         self.total_tokens += usage.get("total_tokens", 0)
@@ -399,7 +400,7 @@ class LLMTracerMixin:
             for interaction in self.component_user_interaction.get(component_id, []):
                 if interaction["interaction_type"] in ["input", "output"]:
                     input_output_interactions.append(interaction)
-            interactions.extend(input_output_interactions) 
+            interactions.extend(input_output_interactions)
         if self.auto_instrument_file_io:
             file_io_interactions = []
             for interaction in self.component_user_interaction.get(component_id, []):
@@ -440,10 +441,61 @@ class LLMTracerMixin:
                 counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
                 metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
                 self.visited_metrics.append(metric_name)
-                metric["name"] = metric_name  
+                metric["name"] = metric_name
                 metrics.append(metric)
 
+        # TODO TO check i/p and o/p is according or not
+        input = input_data["args"] if hasattr(input_data, "args") else input_data
+        output = output_data.output_response if output_data else None
+
         # TODO: Execute & Add the User requested metrics here
+        if name in self.span_attributes_dict:
+            local_metrics = self.span_attributes_dict[name].local_metrics or []
+            for metric in local_metrics:
+                try:
+                    result = calculate_metric(project_id=metric.get("project_id"),
+                                              metric_name=metric.get("name"),
+                                              model=metric.get("model"),
+                                              org_domain="raga",
+                                              provider=metric.get("provider"),
+                                              user_id="1",
+                                              prompt=input,
+                                              context=context,
+                                              response=output,
+                                              expected_response=self.gt
+                                              )
+
+                    result = result['data']['data'][0]
+                    config = result['metric_config']
+                    metric_config = {
+                        "job_id": config.get("job_id"),
+                        "metric_name": config.get("metric_name"),
+                        "model": config.get("model"),
+                        "org_domain": config.get("orgDomain"),
+                        "provider": config.get("provider"),
+                        "reason": config.get("reason"),
+                        "request_id": config.get("request_id"),
+                        "user_id": config.get("user_id"),
+                        "threshold": {
+                            "is_editable": config.get("threshold").get("isEditable"),
+                            "lte": config.get("threshold").get("lte")
+                        }
+                    }
+                    formatted_metric = {
+                        "name": metric.get("name"),
+                        "score": result.get("score"),
+                        "reason": result.get("reason", ""),
+                        "source": "user",
+                        "cost": result.get("cost"),
+                        "latency": result.get("latency"),
+                        "mappings": [],
+                        "config": metric_config
+                    }
+                    metrics.append(formatted_metric)
+                except ValueError as e:
+                    logger.error(f"Validation Error: {e}")
+                except Exception as e:
+                    logger.error(f"Error executing metric: {e}")
 
         component = {
             "id": component_id,
@@ -466,10 +518,8 @@ class LLMTracerMixin:
             },
             "extra_info": parameters,
             "data": {
-                "input": (
-                    input_data["args"] if hasattr(input_data, "args") else input_data
-                ),
-                "output": output_data.output_response if output_data else None,
+                "input": input,
+                "output": output,
                 "memory_used": memory_used,
             },
             "metrics": metrics,
@@ -525,7 +575,8 @@ class LLMTracerMixin:
                 if stream:
                     prompt_messages = kwargs['messages']
                     # Create response message for streaming case
-                    response_message = {"role": "assistant", "content": result} if result else {"role": "assistant", "content": ""}
+                    response_message = {"role": "assistant", "content": result} if result else {"role": "assistant",
+                                                                                                "content": ""}
                     token_usage = num_tokens_from_messages(model_name, prompt_messages, response_message)
                 else:
                     token_usage = extract_token_usage(result)
@@ -627,13 +678,14 @@ class LLMTracerMixin:
 
             # Extract token usage and calculate cost
             model_name = extract_model_name(args, kwargs, result)
-            
+
             if 'stream' in kwargs:
                 stream = kwargs['stream']
                 if stream:
                     prompt_messages = kwargs['messages']
                     # Create response message for streaming case
-                    response_message = {"role": "assistant", "content": result} if result else {"role": "assistant", "content": ""}
+                    response_message = {"role": "assistant", "content": result} if result else {"role": "assistant",
+                                                                                                "content": ""}
                     token_usage = num_tokens_from_messages(model_name, prompt_messages, response_message)
                 else:
                     token_usage = extract_token_usage(result)
@@ -706,12 +758,12 @@ class LLMTracerMixin:
             raise
 
     def trace_llm(
-        self,
-        name: str = None,
-        tags: List[str] = [],
-        metadata: Dict[str, Any] = {},
-        metrics: List[Dict[str, Any]] = [],
-        feedback: Optional[Any] = None,
+            self,
+            name: str = None,
+            tags: List[str] = [],
+            metadata: Dict[str, Any] = {},
+            metrics: List[Dict[str, Any]] = [],
+            feedback: Optional[Any] = None,
     ):
         if name not in self.span_attributes_dict:
             self.span_attributes_dict[name] = SpanAttributes(name)
@@ -737,7 +789,7 @@ class LLMTracerMixin:
                 logger.error(f"Validation Error: {e}")
             except Exception as e:
                 logger.error(f"Error adding metric: {e}")
-                
+
         if feedback:
             self.span(name).add_feedback(feedback)
 
@@ -784,7 +836,7 @@ class LLMTracerMixin:
 
                     if error_info:
                         llm_component["error"] = error_info["error"]
-                    
+
                     self.end_component(component_id)
                     # metrics
                     metrics = []
@@ -795,7 +847,7 @@ class LLMTracerMixin:
                             counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
                             metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
                             self.visited_metrics.append(metric_name)
-                            metric["name"] = metric_name  
+                            metric["name"] = metric_name
                             metrics.append(metric)
                     llm_component["metrics"] = metrics
                     if parent_agent_id:
@@ -858,9 +910,9 @@ class LLMTracerMixin:
                             counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
                             metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
                             self.visited_metrics.append(metric_name)
-                            metric["name"] = metric_name  
+                            metric["name"] = metric_name
                             metrics.append(metric)
-                    llm_component["metrics"] = metrics  
+                    llm_component["metrics"] = metrics
                     if parent_agent_id:
                         children = self.agent_children.get()
                         children.append(llm_component)

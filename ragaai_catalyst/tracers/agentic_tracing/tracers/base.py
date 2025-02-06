@@ -1012,5 +1012,5 @@ class BaseTracer:
 
     def span(self, span_name):
         if span_name not in self.span_attributes_dict:
-            self.span_attributes_dict[span_name] = SpanAttributes(span_name)
+            self.span_attributes_dict[span_name] = SpanAttributes(span_name, self.project_id)
         return self.span_attributes_dict[span_name]

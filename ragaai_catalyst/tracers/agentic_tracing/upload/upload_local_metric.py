@@ -1,15 +1,14 @@
 import os
+from typing import Optional
 
 import requests
 
-from ragaai_catalyst import RagaAICatalyst
-
 
 def calculate_metric(project_id, metric_name, model, org_domain, provider, user_id,
-                     prompt, response, context):
+                     prompt, response, context, expected_response:Optional[int] = None):
     headers = {
         "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
-        "X-Project-Id": str(project_id),
+        "X-Project-Id": str(project_id), #TODO to change it to project_id
         "Content-Type": "application/json"
     }
 
@@ -32,12 +31,12 @@ def calculate_metric(project_id, metric_name, model, org_domain, provider, user_
                 },
                 "trace_object": {
                     "Data": {
-                        "DocId": "",
+                        "DocId": "doc-1",
                         "Prompt": prompt,
                         "Response": response,
                         "Context": context,
                         "ExpectedResponse": "",
-                        "ExpectedContext": "",
+                        "ExpectedContext": expected_response,
                         "Chat": "",
                         "Instructions": "",
                         "SystemPrompt": "",
@@ -46,8 +45,6 @@ def calculate_metric(project_id, metric_name, model, org_domain, provider, user_
                     "claims": {},
                     "last_computed_metrics": {
                         metric_name: {
-                            "score": None,
-                            "reason": None
                         }
                     }
                 }
@@ -56,7 +53,7 @@ def calculate_metric(project_id, metric_name, model, org_domain, provider, user_
     }
 
     try:
-        BASE_URL = RagaAICatalyst.BASE_URL
+        BASE_URL = "http://74.225.145.109/api" #RagaAICatalyst.BASE_URL
         response = requests.post(f"{BASE_URL}/v1/llm/calculate-metric", headers=headers, json=payload, timeout=10)
         response.raise_for_status()
         return response.json()
