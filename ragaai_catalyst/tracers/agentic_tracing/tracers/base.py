@@ -238,7 +238,8 @@ class BaseTracer:
 
             # Format interactions and add to trace
             interactions = self.format_interactions()
-            trace_data["workflow"] = interactions["workflow"]
+            # trace_data["workflow"] = interactions["workflow"]
+            cleaned_trace_data["workflow"] = interactions["workflow"]
 
             with open(filepath, "w") as f:
                 json.dump(cleaned_trace_data, f, cls=TracerJSONEncoder, indent=2)
