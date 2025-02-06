@@ -45,7 +45,7 @@ class CustomTracerMixin:
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 async_wrapper.metadata = metadata
-                gt = kwargs.get('gt', None) if kwargs else None
+                gt = kwargs.get('gt') if kwargs else None
                 if gt is not None:
                     span = self.span(name)
                     span.add_gt(gt)
@@ -57,7 +57,7 @@ class CustomTracerMixin:
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 sync_wrapper.metadata = metadata
-                gt = kwargs.get('gt', None) if kwargs else None
+                gt = kwargs.get('gt') if kwargs else None
                 if gt is not None:
                     span = self.span(name)
                     span.add_gt(gt)
