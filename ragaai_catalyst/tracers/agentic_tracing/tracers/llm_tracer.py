@@ -80,7 +80,6 @@ class LLMTracerMixin:
     def instrument_llm_calls(self):
         """Enable LLM instrumentation"""
         self.auto_instrument_llm = True
-
         # Check currently loaded modules
         if "vertexai" in sys.modules:
             self.patch_vertex_ai_methods(sys.modules["vertexai"])
@@ -97,6 +96,8 @@ class LLMTracerMixin:
             self.patch_langchain_google_methods(sys.modules["langchain_google_vertexai"])
         if "langchain_google_genai" in sys.modules:
             self.patch_langchain_google_methods(sys.modules["langchain_google_genai"])
+        if "llama_index" in sys.modules:
+            self.patch_llama_index_methods(sys.modules["llama_index"])
 
         # Register hooks for future imports with availability checks
         if self.check_package_available("vertexai"):
@@ -125,6 +126,9 @@ class LLMTracerMixin:
             wrapt.register_post_import_hook(
                 self.patch_langchain_google_methods, "langchain_google_vertexai"
             )
+
+        # Add hooks for llama-index
+        wrapt.register_post_import_hook(self.patch_llama_index_methods, "llama_index")
         
         if self.check_package_available("langchain_google_genai"):
             wrapt.register_post_import_hook(
@@ -142,6 +146,26 @@ class LLMTracerMixin:
     def instrument_file_io_calls(self):
         """Enable file IO instrumentation for LLM calls"""
         self.auto_instrument_file_io = True
+
+    def patch_llama_index_methods(self, module):
+        """Patch llama-index LLM methods"""
+        try:
+            # Handle OpenAI LLM from llama-index
+            if hasattr(module, "llms") and hasattr(module.llms, "openai"):
+                openai_module = module.llms.openai
+                if hasattr(openai_module, "OpenAI"):
+                    llm_class = getattr(openai_module, "OpenAI")
+                    self.wrap_method(llm_class, "complete")
+                    self.wrap_method(llm_class, "acomplete")
+                    self.wrap_method(llm_class, "chat")
+                    self.wrap_method(llm_class, "achat")
+                    self.wrap_method(llm_class, "stream_chat")
+                    self.wrap_method(llm_class, "stream_achat")
+                    self.wrap_method(llm_class, "stream_complete")
+                    self.wrap_method(llm_class, "stream_acomplete")
+        except Exception as e:
+            # Log the error but continue execution
+            print(f"Warning: Failed to patch llama-index methods: {str(e)}")
 
     def patch_openai_methods(self, module):
         try:
