@@ -6,6 +6,8 @@ import logging
 import asyncio
 import aiohttp
 import requests
+from litellm import model_cost
+
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 from ragaai_catalyst.tracers.langchain_callback import LangchainTracer
@@ -30,7 +32,6 @@ from ragaai_catalyst.tracers.utils import get_unique_key
 from ragaai_catalyst import RagaAICatalyst
 from ragaai_catalyst.tracers.agentic_tracing import AgenticTracing, TrackName
 from ragaai_catalyst.tracers.agentic_tracing.tracers.llm_tracer import LLMTracerMixin
-from ragaai_catalyst.tracers.agentic_tracing.utils.trace_utils import load_model_costs, update_model_costs_from_github
 
 logger = logging.getLogger(__name__)
 
@@ -127,12 +128,8 @@ class Tracer(AgenticTracing):
         self.timeout = 30
         self.num_projects = 100
         self.start_time = datetime.datetime.now().astimezone().isoformat()
-        self.model_cost_dict = load_model_costs()
+        self.model_cost_dict = model_cost
         self.user_context = ""  # Initialize user_context to store context from add_context
-
-        if update_llm_cost:
-            # First update the model costs file from GitHub
-            update_model_costs_from_github()
         
         try:
             response = requests.get(

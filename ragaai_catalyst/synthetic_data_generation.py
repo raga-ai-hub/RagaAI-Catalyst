@@ -9,6 +9,7 @@ import pandas as pd
 import json
 from litellm import completion
 from tqdm import tqdm
+import tiktoken
 # import internal_api_completion
 # import proxy_call
 from .internal_api_completion import api_completion as internal_api_completion
@@ -48,6 +49,10 @@ class SyntheticDataGeneration:
         Raises:
             ValueError: If an invalid provider is specified or API key is missing.
         """
+        text_validity = self.validate_input(text)
+        if text_validity:
+            raise ValueError(text_validity)
+
         BATCH_SIZE = 5  # Optimal batch size for maintaining response quality
         provider = model_config.get("provider")
         model = model_config.get("model")
@@ -189,7 +194,15 @@ class SyntheticDataGeneration:
             kwargs=kwargs
         )
 
+    def validate_input(self,text):
 
+        if not text.strip():
+            return 'Empty Text provided for qna generation. Please provide valid text'
+        encoding = tiktoken.encoding_for_model("gpt-4")
+        tokens = encoding.encode(text)
+        if len(tokens)<5:
+            return 'Very Small Text provided for qna generation. Please provide longer text'
+        return False
         
           
     def _get_system_message(self, question_type, n):

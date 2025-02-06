@@ -20,6 +20,8 @@ class SpanAttributes:
         self.feedback = None
         self.project_id = project_id
         self.trace_attributes = ["tags", "metadata", "metrics"]
+        self.gt = None
+        self.context = []
 
     def add_tags(self, tags: str | List[str]):
         if isinstance(tags, str):
@@ -92,3 +94,15 @@ class SpanAttributes:
                 "project_id": self.project_id
             }
             self.local_metrics.append(new_metric)
+
+    def add_gt(self, gt: Any):
+        if self.gt:
+            logger.warning(f"GT already exists: {self.gt} \n Overwriting...")
+        self.gt = gt
+        logger.debug(f"Added gt: {self.gt}")
+
+    def add_context(self, context: str|List[str]):
+        if isinstance(context, str):
+            context = [context]
+        self.context = context
+        logger.debug(f"Added context: {self.context}")

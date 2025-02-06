@@ -101,7 +101,10 @@ class AgentTracerMixin:
                 original_init = target.__init__
 
                 def wrapped_init(self, *args, **kwargs):
-                    self.gt = kwargs.get("gt", None) if kwargs else None
+                    gt = kwargs.get("gt", None) if kwargs else None
+                    if gt is not None:
+                        span = self.span(name)
+                        span.add_gt(gt)
                     # Set agent context before initializing
                     component_id = str(uuid.uuid4())
                     hash_id = top_level_hash_id
@@ -159,7 +162,10 @@ class AgentTracerMixin:
                                 @self.file_tracker.trace_decorator
                                 @functools.wraps(method)
                                 def wrapped_method(self, *args, **kwargs):
-                                    self.gt = kwargs.get("gt", None) if kwargs else None
+                                    gt = kwargs.get("gt", None) if kwargs else None
+                                    if gt is not None:
+                                        span = tracer.span(name)
+                                        span.add_gt(gt)
                                     # Set this agent as current during method execution
                                     token = tracer.current_agent_id.set(
                                         self._agent_component_id
@@ -276,6 +282,9 @@ class AgentTracerMixin:
 
         # Extract ground truth if present
         ground_truth = kwargs.pop("gt", None) if kwargs else None
+        if ground_truth is not None:
+            span = self.span(name)
+            span.add_gt(ground_truth)
 
         # Get parent agent ID if exists
         parent_agent_id = self.current_agent_id.get()
@@ -320,9 +329,6 @@ class AgentTracerMixin:
                 children=children,
                 parent_id=parent_agent_id,
             )
-            # Add ground truth to component data if present
-            if ground_truth is not None:
-                agent_component["data"]["gt"] = ground_truth
 
             # Add this component as a child to parent's children list
             parent_children.append(agent_component)
@@ -399,6 +405,9 @@ class AgentTracerMixin:
 
         # Extract ground truth if present
         ground_truth = kwargs.pop("gt", None) if kwargs else None
+        if ground_truth is not None:
+            span = self.span(name)
+            span.add_gt(ground_truth)
 
         # Get parent agent ID if exists
         parent_agent_id = self.current_agent_id.get()
@@ -440,10 +449,6 @@ class AgentTracerMixin:
                 children=children,
                 parent_id=parent_agent_id,
             )
-
-            # Add ground truth to component data if present
-            if ground_truth is not None:
-                agent_component["data"]["gt"] = ground_truth
 
             # Add this component as a child to parent's children list
             parent_children.append(agent_component)
@@ -576,8 +581,13 @@ class AgentTracerMixin:
             "interactions": interactions,
         }
 
-        if self.gt:
-            component["data"]["gt"] = self.gt
+        if name in self.span_attributes_dict:
+            span_gt = self.span_attributes_dict[name].gt
+            if span_gt is not None:
+                component["data"]["gt"] = span_gt
+            span_context = self.span_attributes_dict[name].context
+            if span_context:
+                component["data"]["context"] = span_context
 
         # Reset the SpanAttributes context variable
         self.span_attributes_dict[kwargs["name"]] = SpanAttributes(kwargs["name"])
