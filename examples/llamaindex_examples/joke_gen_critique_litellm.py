@@ -6,7 +6,7 @@ from llama_index.core.workflow import (
     step,
 )
 
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.litellm import LiteLLM
 from dotenv import load_dotenv
 import os
 import sys
@@ -26,7 +26,7 @@ catalyst = RagaAICatalyst(
 # Initialize tracer
 tracer = Tracer(
     project_name="Llama-index_testing",
-    dataset_name="joke_generation_workflow_dedup",
+    dataset_name="litellm",
     tracer_type="Agentic",
 )
 
@@ -37,7 +37,7 @@ class JokeEvent(Event):
 
 
 class JokeFlow(Workflow):
-    llm = OpenAI()
+    llm = LiteLLM("gpt-3.5-turbo")
 
     @step
     @trace_llm("generate joke")

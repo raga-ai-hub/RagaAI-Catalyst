@@ -1,3 +1,4 @@
+#pip install llama-index-llms-azure-openai
 from llama_index.core.workflow import (
     Event,
     StartEvent,
@@ -6,7 +7,7 @@ from llama_index.core.workflow import (
     step,
 )
 
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.azure_openai import AzureOpenAI
 from dotenv import load_dotenv
 import os
 import sys
@@ -26,7 +27,7 @@ catalyst = RagaAICatalyst(
 # Initialize tracer
 tracer = Tracer(
     project_name="Llama-index_testing",
-    dataset_name="joke_generation_workflow_dedup",
+    dataset_name="azureopenai",
     tracer_type="Agentic",
 )
 
@@ -34,10 +35,17 @@ init_tracing(catalyst=catalyst, tracer=tracer)
 
 class JokeEvent(Event):
     joke: str
-
+endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+deployment = os.getenv("AZURE_DEPLOYMENT")
+subscription_key = os.getenv("AZURE_SUBSCRIPTION_KEY")
 
 class JokeFlow(Workflow):
-    llm = OpenAI()
+    llm = AzureOpenAI(  
+    azure_endpoint=endpoint,  
+    api_key=subscription_key,  
+    api_version="2024-05-01-preview", 
+    engine=deployment 
+)
 
     @step
     @trace_llm("generate joke")

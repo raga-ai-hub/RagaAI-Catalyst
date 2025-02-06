@@ -1,3 +1,4 @@
+# !pip install llama-index-llms-anthropic
 from llama_index.core.workflow import (
     Event,
     StartEvent,
@@ -6,7 +7,7 @@ from llama_index.core.workflow import (
     step,
 )
 
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.anthropic import Anthropic
 from dotenv import load_dotenv
 import os
 import sys
@@ -26,7 +27,7 @@ catalyst = RagaAICatalyst(
 # Initialize tracer
 tracer = Tracer(
     project_name="Llama-index_testing",
-    dataset_name="joke_generation_workflow_dedup",
+    dataset_name="anthropic",
     tracer_type="Agentic",
 )
 
@@ -37,10 +38,10 @@ class JokeEvent(Event):
 
 
 class JokeFlow(Workflow):
-    llm = OpenAI()
+    llm = Anthropic()
 
     @step
-    @trace_llm("generate joke")
+    #@trace_llm("generate joke")
     async def generate_joke(self, ev: StartEvent) -> JokeEvent:
         topic = ev.topic
         prompt = f"Write your best joke about {topic}."
@@ -48,7 +49,7 @@ class JokeFlow(Workflow):
         return JokeEvent(joke=str(response))
 
     @step
-    @trace_llm("criticise joke")
+    #@trace_llm("criticise joke")
     async def critique_joke(self, ev: JokeEvent) -> StopEvent:
         joke = ev.joke
         prompt = f"Give a thorough analysis and critique of the following joke: {joke}"

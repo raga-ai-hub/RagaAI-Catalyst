@@ -1,3 +1,4 @@
+# pip install llama-index-llms-gemini
 from llama_index.core.workflow import (
     Event,
     StartEvent,
@@ -6,7 +7,7 @@ from llama_index.core.workflow import (
     step,
 )
 
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.gemini import Gemini
 from dotenv import load_dotenv
 import os
 import sys
@@ -26,7 +27,7 @@ catalyst = RagaAICatalyst(
 # Initialize tracer
 tracer = Tracer(
     project_name="Llama-index_testing",
-    dataset_name="joke_generation_workflow_dedup",
+    dataset_name="gemini_test",
     tracer_type="Agentic",
 )
 
@@ -37,7 +38,7 @@ class JokeEvent(Event):
 
 
 class JokeFlow(Workflow):
-    llm = OpenAI()
+    llm = Gemini()
 
     @step
     @trace_llm("generate joke")
@@ -58,7 +59,7 @@ class JokeFlow(Workflow):
 
 async def main():
     w = JokeFlow(timeout=60, verbose=False)
-    result = await w.run(topic="climate change")
+    result = await w.run(topic="antarctica")
     print(str(result))
 
 if __name__ == "__main__":
