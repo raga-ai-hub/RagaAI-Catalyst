@@ -151,18 +151,75 @@ class LLMTracerMixin:
         """Patch llama-index LLM methods"""
         try:
             # Handle OpenAI LLM from llama-index
-            if hasattr(module, "llms") and hasattr(module.llms, "openai"):
-                openai_module = module.llms.openai
-                if hasattr(openai_module, "OpenAI"):
-                    llm_class = getattr(openai_module, "OpenAI")
-                    self.wrap_method(llm_class, "complete")
-                    self.wrap_method(llm_class, "acomplete")
-                    self.wrap_method(llm_class, "chat")
-                    self.wrap_method(llm_class, "achat")
-                    self.wrap_method(llm_class, "stream_chat")
-                    self.wrap_method(llm_class, "stream_achat")
-                    self.wrap_method(llm_class, "stream_complete")
-                    self.wrap_method(llm_class, "stream_acomplete")
+            if hasattr(module, "llms"):
+                # OpenAI
+                if hasattr(module.llms, "openai"):
+                    openai_module = module.llms.openai
+                    if hasattr(openai_module, "OpenAI"):
+                        llm_class = getattr(openai_module, "OpenAI")
+                        self.wrap_method(llm_class, "complete")
+                        self.wrap_method(llm_class, "acomplete")
+                        self.wrap_method(llm_class, "chat")
+                        self.wrap_method(llm_class, "achat")
+                        self.wrap_method(llm_class, "stream_chat")
+                        self.wrap_method(llm_class, "stream_achat")
+                        self.wrap_method(llm_class, "stream_complete")
+                        self.wrap_method(llm_class, "stream_acomplete")
+
+                # Anthropic
+                if hasattr(module.llms, "anthropic"):
+                    anthropic_module = module.llms.anthropic
+                    if hasattr(anthropic_module, "Anthropic"):
+                        llm_class = getattr(anthropic_module, "Anthropic")
+                        self.wrap_method(llm_class, "complete")
+                        self.wrap_method(llm_class, "acomplete")
+                        self.wrap_method(llm_class, "chat")
+                        self.wrap_method(llm_class, "achat")
+                        self.wrap_method(llm_class, "stream_chat")
+                        self.wrap_method(llm_class, "stream_achat")
+
+                # Azure OpenAI
+                if hasattr(module.llms, "azure_openai"):
+                    azure_module = module.llms.azure_openai
+                    if hasattr(azure_module, "AzureOpenAI"):
+                        llm_class = getattr(azure_module, "AzureOpenAI")
+                        self.wrap_method(llm_class, "complete")
+                        self.wrap_method(llm_class, "acomplete")
+                        self.wrap_method(llm_class, "chat")
+                        self.wrap_method(llm_class, "achat")
+                        self.wrap_method(llm_class, "stream_chat")
+                        self.wrap_method(llm_class, "stream_achat")
+
+                # LiteLLM
+                if hasattr(module.llms, "litellm"):
+                    litellm_module = module.llms.litellm
+                    if hasattr(litellm_module, "LiteLLM"):
+                        llm_class = getattr(litellm_module, "LiteLLM")
+                        self.wrap_method(llm_class, "complete")
+                        self.wrap_method(llm_class, "acomplete")
+                        self.wrap_method(llm_class, "chat")
+                        self.wrap_method(llm_class, "achat")
+
+                # Vertex AI
+                if hasattr(module.llms, "vertex"):
+                    vertex_module = module.llms.vertex
+                    if hasattr(vertex_module, "Vertex"):
+                        llm_class = getattr(vertex_module, "Vertex")
+                        self.wrap_method(llm_class, "complete")
+                        self.wrap_method(llm_class, "acomplete")
+                        self.wrap_method(llm_class, "chat")
+                        self.wrap_method(llm_class, "achat")
+
+                # Gemini
+                if hasattr(module.llms, "gemini"):
+                    gemini_module = module.llms.gemini
+                    if hasattr(gemini_module, "Gemini"):
+                        llm_class = getattr(gemini_module, "Gemini")
+                        self.wrap_method(llm_class, "complete")
+                        self.wrap_method(llm_class, "acomplete")
+                        self.wrap_method(llm_class, "chat")
+                        self.wrap_method(llm_class, "achat")
+
         except Exception as e:
             # Log the error but continue execution
             print(f"Warning: Failed to patch llama-index methods: {str(e)}")
