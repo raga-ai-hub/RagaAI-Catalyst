@@ -8,6 +8,7 @@ def upload_trace_metric(json_file_path, dataset_name, project_name):
     try:
         with open(json_file_path, "r") as f:
             traces = json.load(f)
+                    
         metrics = get_trace_metrics_from_trace(traces)
         metrics = _change_metrics_format_for_payload(metrics)
 
@@ -21,7 +22,6 @@ def upload_trace_metric(json_file_path, dataset_name, project_name):
                     metricConfig = next((user_metric["metricConfig"] for user_metric in user_trace_metrics if user_metric["displayName"] == metric["displayName"]), None)
                     if not metricConfig or metricConfig.get("Metric Source", {}).get("value") != "user":
                         raise ValueError(f"Metrics {metric['displayName']} already exist in dataset {dataset_name} of project {project_name}.")
-
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
@@ -68,13 +68,14 @@ def get_trace_metrics_from_trace(traces):
     # get span level metrics
     for span in traces["data"][0]["spans"]:
         if span["type"] == "agent":
+            # Add children metrics of agent
             children_metric = _get_children_metrics_of_agent(span["data"]["children"])
             if children_metric:
                 metrics.extend(children_metric)
-        else:
-            metric = span.get("metrics", [])
-            if metric:
-                metrics.extend(metric)
+
+        metric = span.get("metrics", [])
+        if metric:
+            metrics.extend(metric)
     return metrics
 
 def _change_metrics_format_for_payload(metrics):
