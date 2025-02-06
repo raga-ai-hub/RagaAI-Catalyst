@@ -475,8 +475,13 @@ class LLMTracerMixin:
             "interactions": interactions,
         }
 
-        if self.gt:
-            component["data"]["gt"] = self.gt
+        if name in self.span_attributes_dict:
+            span_gt = self.span_attributes_dict[name].gt
+            if span_gt is not None:
+                component["data"]["gt"] = span_gt
+            span_context = self.span_attributes_dict[name].context
+            if span_context:
+                component["data"]["context"] = span_context
 
         # Reset the SpanAttributes context variable
         self.span_attributes_dict[name] = SpanAttributes(name)
@@ -745,7 +750,10 @@ class LLMTracerMixin:
             @self.file_tracker.trace_decorator
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
-                self.gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt", None) if kwargs else None
+                if gt is not None:
+                    span = self.span(name)
+                    span.add_gt(gt)
                 self.current_llm_call_name.set(name)
                 if not self.is_active:
                     return await func(*args, **kwargs)
@@ -777,8 +785,13 @@ class LLMTracerMixin:
                     if (name is not None) or (name != ""):
                         llm_component["name"] = name
 
-                    if self.gt:
-                        llm_component["data"]["gt"] = self.gt
+                    if name in self.span_attributes_dict:
+                        span_gt = self.span_attributes_dict[name].gt
+                        if span_gt is not None:
+                            llm_component["data"]["gt"] = span_gt
+                        span_context = self.span_attributes_dict[name].context
+                        if span_context:
+                            llm_component["data"]["context"] = span_context
 
                     if error_info:
                         llm_component["error"] = error_info["error"]
@@ -811,7 +824,10 @@ class LLMTracerMixin:
             @self.file_tracker.trace_decorator
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
-                self.gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt", None) if kwargs else None
+                if gt is not None:
+                    span = self.span(name)
+                    span.add_gt(gt)
                 self.current_llm_call_name.set(name)
                 if not self.is_active:
                     return func(*args, **kwargs)
