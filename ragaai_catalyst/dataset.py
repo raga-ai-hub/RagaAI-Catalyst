@@ -1,5 +1,7 @@
 import os
+import csv
 import json
+import tempfile
 import requests
 from .utils import response_checker
 from typing import Union
@@ -654,3 +656,43 @@ class Dataset:
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
             return JOB_STATUS_FAILED
+
+    def create_from_jsonl(self, jsonl_path, dataset_name, schema_mapping):
+        def jsonl_to_csv(jsonl_file, csv_file):
+            """Convert a JSONL file to a CSV file."""
+            with open(jsonl_file, 'r', encoding='utf-8') as infile:
+                data = [json.loads(line) for line in infile]
+            
+            if not data:
+                print("Empty JSONL file.")
+                return
+            
+            with open(csv_file, 'w', newline='', encoding='utf-8') as outfile:
+                writer = csv.DictWriter(outfile, fieldnames=data[0].keys())
+                writer.writeheader()
+                writer.writerows(data)
+            
+            print(f"Converted {jsonl_file} to {csv_file}")
+        tmp_csv_path = os.path.join(tempfile.gettempdir(), f"{dataset_name}.csv")
+        jsonl_to_csv(jsonl_path, tmp_csv_path)
+        self.create_from_csv(tmp_csv_path, dataset_name, schema_mapping)
+
+    def add_rows_from_jsonl(self, jsonl_path, dataset_name):
+        def jsonl_to_csv(jsonl_file, csv_file):
+            """Convert a JSONL file to a CSV file."""
+            with open(jsonl_file, 'r', encoding='utf-8') as infile:
+                data = [json.loads(line) for line in infile]
+            
+            if not data:
+                print("Empty JSONL file.")
+                return
+            
+            with open(csv_file, 'w', newline='', encoding='utf-8') as outfile:
+                writer = csv.DictWriter(outfile, fieldnames=data[0].keys())
+                writer.writeheader()
+                writer.writerows(data)
+            
+            print(f"Converted {jsonl_file} to {csv_file}")
+        tmp_csv_path = os.path.join(tempfile.gettempdir(), f"{dataset_name}.csv")
+        jsonl_to_csv(jsonl_path, tmp_csv_path)
+        self.add_rows(tmp_csv_path, dataset_name)
