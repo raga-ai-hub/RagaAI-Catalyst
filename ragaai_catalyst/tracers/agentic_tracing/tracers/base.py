@@ -83,6 +83,7 @@ class BaseTracer:
         self.tracking_thread = None
         self.tracking = False
         self.system_monitor = None
+        self.gt = None
 
     def _get_system_info(self) -> SystemInfo:
         return self.system_monitor.get_system_info()
@@ -249,7 +250,8 @@ class BaseTracer:
 
             # Format interactions and add to trace
             interactions = self.format_interactions()
-            trace_data["workflow"] = interactions["workflow"]
+            # trace_data["workflow"] = interactions["workflow"]
+            cleaned_trace_data["workflow"] = interactions["workflow"]
 
             with open(filepath, "w") as f:
                 json.dump(cleaned_trace_data, f, cls=TracerJSONEncoder, indent=2)

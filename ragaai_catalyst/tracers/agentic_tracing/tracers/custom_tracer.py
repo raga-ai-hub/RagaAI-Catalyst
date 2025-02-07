@@ -45,7 +45,10 @@ class CustomTracerMixin:
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 async_wrapper.metadata = metadata
-                self.gt = kwargs.get('gt', None) if kwargs else None
+                gt = kwargs.get('gt') if kwargs else None
+                if gt is not None:
+                    span = self.span(name)
+                    span.add_gt(gt)
                 return await self._trace_custom_execution(
                     func, name or func.__name__, custom_type, version, trace_variables, *args, **kwargs
                 )
@@ -54,7 +57,10 @@ class CustomTracerMixin:
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 sync_wrapper.metadata = metadata
-                self.gt = kwargs.get('gt', None) if kwargs else None
+                gt = kwargs.get('gt') if kwargs else None
+                if gt is not None:
+                    span = self.span(name)
+                    span.add_gt(gt)
                 return self._trace_sync_custom_execution(
                     func, name or func.__name__, custom_type, version, trace_variables, *args, **kwargs
                 )
@@ -98,7 +104,7 @@ class CustomTracerMixin:
 
         try:
             # Execute the function
-            result = func(*args, **kwargs)
+            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_time = datetime.now().astimezone().isoformat()
@@ -186,7 +192,7 @@ class CustomTracerMixin:
 
         try:
             # Execute the function
-            result = await func(*args, **kwargs)
+            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_time = datetime.now().astimezone().isoformat()
@@ -284,9 +290,13 @@ class CustomTracerMixin:
             "interactions": interactions
         }
 
-        if self.gt:
-            component["data"]["gt"] = self.gt
-
+        if kwargs["name"] in self.span_attributes_dict:
+            span_gt = self.span_attributes_dict[kwargs["name"]].gt
+            if span_gt is not None:
+                component["data"]["gt"] = span_gt
+            span_context = self.span_attributes_dict[kwargs["name"]].context
+            if span_context:
+                component["data"]["context"] = span_context
         return component
 
     def start_component(self, component_id):

@@ -258,7 +258,10 @@ class ToolTracerMixin:
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 async_wrapper.metadata = metadata
-                self.gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt") if kwargs else None
+                if gt is not None:
+                    span = self.span(name)
+                    span.add_gt(gt)
                 return await self._trace_tool_execution(
                     func, name, tool_type, version, *args, **kwargs
                 )
@@ -267,7 +270,10 @@ class ToolTracerMixin:
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 sync_wrapper.metadata = metadata
-                self.gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt") if kwargs else None
+                if gt is not None:
+                    span = self.span(name)
+                    span.add_gt(gt)
                 return self._trace_sync_tool_execution(
                     func, name, tool_type, version, *args, **kwargs
                 )
@@ -302,7 +308,7 @@ class ToolTracerMixin:
 
         try:
             # Execute the tool
-            result = func(*args, **kwargs)
+            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
@@ -384,7 +390,7 @@ class ToolTracerMixin:
         self.start_component(component_id)
         try:
             # Execute the tool
-            result = await func(*args, **kwargs)
+            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
@@ -504,8 +510,13 @@ class ToolTracerMixin:
             "interactions": interactions,
         }
 
-        if self.gt:
-            component["data"]["gt"] = self.gt
+        if name in self.span_attributes_dict:
+            span_gt = self.span_attributes_dict[name].gt
+            if span_gt is not None:
+                component["data"]["gt"] = span_gt
+            span_context = self.span_attributes_dict[name].context
+            if span_context:
+                component["data"]["context"] = span_context
 
         # Reset the SpanAttributes context variable
         self.span_attributes_dict[kwargs["name"]] = SpanAttributes(kwargs["name"])

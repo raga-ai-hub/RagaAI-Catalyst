@@ -8,7 +8,9 @@ import markdown
 import pandas as pd
 import json
 from litellm import completion
+import litellm
 from tqdm import tqdm
+import tiktoken
 # import internal_api_completion
 # import proxy_call
 from .internal_api_completion import api_completion as internal_api_completion
@@ -48,13 +50,18 @@ class SyntheticDataGeneration:
         Raises:
             ValueError: If an invalid provider is specified or API key is missing.
         """
+        text_validity = self.validate_input(text)
+        if text_validity:
+            raise ValueError(text_validity)
+
         BATCH_SIZE = 5  # Optimal batch size for maintaining response quality
         provider = model_config.get("provider")
         model = model_config.get("model")
         api_base = model_config.get("api_base")
+        api_version = model_config.get("api_version")
 
         # Initialize the appropriate client based on provider
-        self._initialize_client(provider, api_key, api_base, internal_llm_proxy=kwargs.get("internal_llm_proxy", None))
+        self._initialize_client(provider, api_key, api_base, api_version, internal_llm_proxy=kwargs.get("internal_llm_proxy", None))
 
         # Initialize progress bar
         pbar = tqdm(total=n, desc="Generating QA pairs")
@@ -88,7 +95,7 @@ class SyntheticDataGeneration:
                     pbar.update(len(batch_df))
                     
             except Exception as e:
-                print(f"Batch generation failed.")
+                print(f"Batch generation failed:{str(e)}")
 
                 if any(error in str(e) for error in FAILURE_CASES):
                     raise Exception(f"{e}")
@@ -139,7 +146,7 @@ class SyntheticDataGeneration:
         
         return final_df
 
-    def _initialize_client(self, provider, api_key, api_base=None, internal_llm_proxy=None):
+    def _initialize_client(self, provider, api_key, api_base=None, api_version=None, internal_llm_proxy=None):
         """Initialize the appropriate client based on provider."""
         if not provider:
             raise ValueError("Model configuration must be provided with a valid provider and model.")
@@ -158,7 +165,17 @@ class SyntheticDataGeneration:
             if api_key is None and os.getenv("OPENAI_API_KEY") is None and internal_llm_proxy is None:
                 raise ValueError("API key must be provided for OpenAI.")
             openai.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        
+
+        elif provider == "azure":
+            if api_key is None and os.getenv("AZURE_API_KEY") is None and internal_llm_proxy is None:
+                raise ValueError("API key must be provided for Azure.")
+            litellm.api_key = api_key or os.getenv("AZURE_API_KEY")
+            if api_base is None and os.getenv("AZURE_API_BASE") is None and internal_llm_proxy is None:
+                raise ValueError("API Base must be provided for Azure.")
+            litellm.api_base = api_base or os.getenv("AZURE_API_BASE")
+            if api_version is None and os.getenv("AZURE_API_VERSION") is None and internal_llm_proxy is None:
+                raise ValueError("API version must be provided for Azure.")
+            litellm.api_version = api_version or os.getenv("AZURE_API_VERSION")
         else:
             raise ValueError(f"Provider is not recognized.")
 
@@ -189,7 +206,15 @@ class SyntheticDataGeneration:
             kwargs=kwargs
         )
 
+    def validate_input(self,text):
 
+        if not text.strip():
+            return 'Empty Text provided for qna generation. Please provide valid text'
+        encoding = tiktoken.encoding_for_model("gpt-4")
+        tokens = encoding.encode(text)
+        if len(tokens)<5:
+            return 'Very Small Text provided for qna generation. Please provide longer text'
+        return False
         
           
     def _get_system_message(self, question_type, n):
@@ -274,10 +299,14 @@ class SyntheticDataGeneration:
         # Add optional parameters if they exist in model_config
         if "api_base" in model_config:
             completion_params["api_base"] = model_config["api_base"]
+        if "api_version" in model_config:
+            completion_params["api_version"] = model_config["api_version"]
         if "max_tokens" in model_config:
             completion_params["max_tokens"] = model_config["max_tokens"]
         if "temperature" in model_config:
             completion_params["temperature"] = model_config["temperature"]
+        if 'provider' in model_config:
+            completion_params['model'] = f'{model_config["provider"]}/{model_config["model"]}'
 
         # Make the API call using LiteLLM
         try:
@@ -318,9 +347,13 @@ class SyntheticDataGeneration:
             list_start_index = data.find('[')  # Find the index of the first '['
             substring_data = data[list_start_index:] if list_start_index != -1 else data  # Slice from the list start
             data = substring_data
-
+        elif provider == "azure":
+            data = response.choices[0].message.content.replace('\n', '')
+            list_start_index = data.find('[')  # Find the index of the first '['
+            substring_data = data[list_start_index:] if list_start_index != -1 else data  # Slice from the list start
+            data = substring_data
         else:
-            raise ValueError("Invalid provider. Choose 'groq', 'gemini', or 'openai'.")
+            raise ValueError("Invalid provider. Choose 'groq', 'gemini', 'azure' or 'openai'.")
         try:
             json_data = json.loads(data)
             return pd.DataFrame(json_data)
