@@ -262,10 +262,9 @@ class AgentTracerMixin:
         return decorator
 
     def _trace_sync_agent_execution(
-        self, func, name, agent_type, version, capabilities, *args, **kwargs
+        self, func, name, agent_type, version, capabilities, top_level_hash_id, *args, **kwargs
     ):
-        # Generate a unique hash_id for this execution context
-        hash_id = str(uuid.uuid4())
+        hash_id = top_level_hash_id
 
         """Synchronous version of agent tracing"""
         if not self.is_active:
