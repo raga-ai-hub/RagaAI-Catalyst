@@ -62,7 +62,6 @@ class SpanAttributes:
         self.feedback = feedback
         logger.debug(f"Added feedback: {self.feedback}")
 
-    # TODO: Add execute metrics
     def execute_metrics(self,
                         name: str,
                         model: str,
@@ -103,7 +102,7 @@ class SpanAttributes:
         self.gt = gt
         logger.debug(f"Added gt: {self.gt}")
 
-    def add_context(self, context: str|List[str]):
+    def add_context(self, context: Any):
         if isinstance(context, str):
             if not context.strip():
                 logger.warning("Empty or whitespace-only context string provided")

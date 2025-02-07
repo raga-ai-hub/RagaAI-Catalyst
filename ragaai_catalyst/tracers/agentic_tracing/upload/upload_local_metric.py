@@ -1,11 +1,11 @@
 import os
-from typing import Optional
-
 import requests
 
 
-def calculate_metric(project_id, metric_name, model, org_domain, provider, user_id,
-                     prompt, response, context, expected_response:Optional[int] = None):
+def calculate_metric(project_id, metric_name, model, provider,prompt, response, context, expected_response = None):
+    user_id = "1"
+    org_domain = "raga"
+                
     headers = {
         "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
         "X-Project-Id": str(project_id), #TODO to change it to project_id

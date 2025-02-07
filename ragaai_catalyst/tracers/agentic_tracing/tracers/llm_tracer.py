@@ -60,7 +60,6 @@ class LLMTracerMixin:
         self.total_tokens = 0
         self.total_cost = 0.0
         self.llm_data = {}
-        # self.local_metrics =
 
         self.auto_instrument_llm = False
         self.auto_instrument_user_interaction = False
@@ -503,13 +502,24 @@ class LLMTracerMixin:
             list(parameters_to_display.items())[: self.MAX_PARAMETERS_TO_DISPLAY]
         )
 
-        # Get tags, metrics
-        # tags
+        # Set the Context and GT
+        if name in self.span_attributes_dict:
+            span_gt = self.span_attributes_dict[name].gt
+            if span_gt is not None:
+                component["data"]["gt"] = span_gt
+            span_context = self.span_attributes_dict[name].context
+            if span_context:
+                component["data"]["context"] = span_context
+
+        # Tags
         tags = []
         if name in self.span_attributes_dict:
             tags = self.span_attributes_dict[name].tags or []
 
-        # metrics
+        # Get End Time
+        end_time = datetime.now().astimezone().isoformat()
+
+        # Metrics
         metrics = []
         if name in self.span_attributes_dict:
             raw_metrics = self.span_attributes_dict[name].metrics or []
@@ -527,19 +537,19 @@ class LLMTracerMixin:
 
         # TODO: Execute & Add the User requested metrics here
         if name in self.span_attributes_dict:
+            context = self.span_attributes_dict[name].context or None 
+            gt = self.span_attributes_dict[name].gt or None
             local_metrics = self.span_attributes_dict[name].local_metrics or []
             for metric in local_metrics:
                 try:
                     result = calculate_metric(project_id=metric.get("project_id"),
                                               metric_name=metric.get("name"),
                                               model=metric.get("model"),
-                                              org_domain="raga",
                                               provider=metric.get("provider"),
-                                              user_id="1",
                                               prompt=input,
                                               context=context,
                                               response=output,
-                                              expected_response=self.gt
+                                              expected_response=gt
                                               )
 
                     result = result['data']['data'][0]
@@ -580,8 +590,8 @@ class LLMTracerMixin:
             "source_hash_id": None,
             "type": "llm",
             "name": name,
-            "start_time": start_time.isoformat(),
-            "end_time": datetime.now().astimezone().isoformat(),
+            "start_time": start_time,
+            "end_time": end_time,
             "error": error,
             "parent_id": self.current_agent_id.get(),
             "info": {
@@ -603,14 +613,6 @@ class LLMTracerMixin:
             "network_calls": network_calls,
             "interactions": interactions,
         }
-
-        if name in self.span_attributes_dict:
-            span_gt = self.span_attributes_dict[name].gt
-            if span_gt is not None:
-                component["data"]["gt"] = span_gt
-            span_context = self.span_attributes_dict[name].context
-            if span_context:
-                component["data"]["context"] = span_context
 
         # Reset the SpanAttributes context variable
         self.span_attributes_dict[name] = SpanAttributes(name)
@@ -634,7 +636,7 @@ class LLMTracerMixin:
         if not self.auto_instrument_llm:
             return await original_func(*args, **kwargs)
 
-        start_time = datetime.now().astimezone()
+        start_time = datetime.now().astimezone().isoformat()
         start_memory = psutil.Process().memory_info().rss
         component_id = str(uuid.uuid4())
         hash_id = generate_unique_hash(original_func, args, kwargs)
@@ -738,7 +740,7 @@ class LLMTracerMixin:
         if not self.auto_instrument_llm:
             return original_func(*args, **kwargs)
 
-        start_time = datetime.now().astimezone()
+        start_time = datetime.now().astimezone().isoformat()
         component_id = str(uuid.uuid4())
         hash_id = generate_unique_hash(original_func, args, kwargs)
 
@@ -927,6 +929,7 @@ class LLMTracerMixin:
                         llm_component["error"] = error_info["error"]
 
                     self.end_component(component_id)
+
                     # metrics
                     metrics = []
                     if name in self.span_attributes_dict:
