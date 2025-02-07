@@ -293,7 +293,7 @@ class AgentTracerMixin:
 
         try:
             # Execute the agent
-            result = func(*args, **kwargs)
+            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
@@ -414,7 +414,7 @@ class AgentTracerMixin:
 
         try:
             # Execute the agent
-            result = await func(*args, **kwargs)
+            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
