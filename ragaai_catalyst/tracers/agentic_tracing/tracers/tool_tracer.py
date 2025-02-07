@@ -384,7 +384,7 @@ class ToolTracerMixin:
         self.start_component(component_id)
         try:
             # Execute the tool
-            result = await self.file_tracker.trace_wrapper(func(*args, **kwargs))
+            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
