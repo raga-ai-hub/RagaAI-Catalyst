@@ -4,6 +4,7 @@ import json
 from ....ragaai_catalyst import RagaAICatalyst
 from ..utils.get_user_trace_metrics import get_user_trace_metrics
 
+
 def upload_trace_metric(json_file_path, dataset_name, project_name):
     try:
         with open(json_file_path, "r") as f:
@@ -15,13 +16,15 @@ def upload_trace_metric(json_file_path, dataset_name, project_name):
         user_trace_metrics = get_user_trace_metrics(project_name, dataset_name)
         if user_trace_metrics:
             user_trace_metrics_list = [metric["displayName"] for metric in user_trace_metrics]
-        
+
         if user_trace_metrics:
             for metric in metrics:
                 if metric["displayName"] in user_trace_metrics_list:
-                    metricConfig = next((user_metric["metricConfig"] for user_metric in user_trace_metrics if user_metric["displayName"] == metric["displayName"]), None)
+                    metricConfig = next((user_metric["metricConfig"] for user_metric in user_trace_metrics if
+                                         user_metric["displayName"] == metric["displayName"]), None)
                     if not metricConfig or metricConfig.get("Metric Source", {}).get("value") != "user":
-                        raise ValueError(f"Metrics {metric['displayName']} already exist in dataset {dataset_name} of project {project_name}.")
+                        raise ValueError(
+                            f"Metrics {metric['displayName']} already exist in dataset {dataset_name} of project {project_name}.")
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
@@ -31,9 +34,9 @@ def upload_trace_metric(json_file_path, dataset_name, project_name):
             "datasetName": dataset_name,
             "metrics": metrics
         })
-        response = requests.request("POST", 
-                                    f"{RagaAICatalyst.BASE_URL}/v1/llm/trace/metrics", 
-                                    headers=headers, 
+        response = requests.request("POST",
+                                    f"{RagaAICatalyst.BASE_URL}/v1/llm/trace/metrics",
+                                    headers=headers,
                                     data=payload,
                                     timeout=10)
         if response.status_code != 200:

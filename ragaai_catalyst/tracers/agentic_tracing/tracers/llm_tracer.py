@@ -535,9 +535,12 @@ class LLMTracerMixin:
         input = input_data["args"] if hasattr(input_data, "args") else input_data
         output = output_data.output_response if output_data else None
 
+        prompt = self.convert_to_content(input)
+        response = self.convert_to_content(output)
+
         # TODO: Execute & Add the User requested metrics here
         if name in self.span_attributes_dict:
-            context = self.span_attributes_dict[name].context or None 
+            context = self.span_attributes_dict[name].context or None
             gt = self.span_attributes_dict[name].gt or None
             local_metrics = self.span_attributes_dict[name].local_metrics or []
             for metric in local_metrics:
@@ -546,9 +549,9 @@ class LLMTracerMixin:
                                               metric_name=metric.get("name"),
                                               model=metric.get("model"),
                                               provider=metric.get("provider"),
-                                              prompt=input,
+                                              prompt=prompt,
                                               context=context,
-                                              response=output,
+                                              response=response,
                                               expected_response=gt
                                               )
 
@@ -618,6 +621,15 @@ class LLMTracerMixin:
         self.span_attributes_dict[name] = SpanAttributes(name)
 
         return component
+
+    def convert_to_content(self, input_data):
+        if isinstance(input_data, dict):
+            messages = input_data.get("kwargs", {}).get("messages", [])
+        elif isinstance(input_data, list):
+            messages = input_data
+        else:
+            return ""
+        return "\n".join(msg.get("content", "") for msg in messages)
 
     def start_component(self, component_id):
         """Start tracking network calls for a component"""

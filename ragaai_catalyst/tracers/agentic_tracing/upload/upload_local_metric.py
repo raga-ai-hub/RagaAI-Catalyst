@@ -2,13 +2,13 @@ import os
 import requests
 
 
-def calculate_metric(project_id, metric_name, model, provider,prompt, response, context, expected_response = None):
+def calculate_metric(project_id, metric_name, model, provider, prompt, response, context, expected_response=None):
     user_id = "1"
     org_domain = "raga"
-                
+
     headers = {
         "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
-        "X-Project-Id": str(project_id), #TODO to change it to project_id
+        "X-Project-Id": str(project_id),  # TODO to change it to project_id
         "Content-Type": "application/json"
     }
 
@@ -53,7 +53,7 @@ def calculate_metric(project_id, metric_name, model, provider,prompt, response, 
     }
 
     try:
-        BASE_URL = "http://74.225.145.109/api" #RagaAICatalyst.BASE_URL
+        BASE_URL = "http://74.225.145.109/api"  # RagaAICatalyst.BASE_URL
         response = requests.post(f"{BASE_URL}/v1/llm/calculate-metric", headers=headers, json=payload, timeout=10)
         response.raise_for_status()
         return response.json()

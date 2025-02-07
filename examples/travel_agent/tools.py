@@ -20,6 +20,14 @@ def llm_call(prompt, max_tokens=512, model="gpt-4o-mini", name="default"):
         latency=0.002
     )
 
+    current_span().add_context(context="travel agency")
+
+    current_span().execute_metrics(
+        name="Hallucination",
+        model="gpt-4o-mini",
+        provider="openai"
+    )
+
     response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
