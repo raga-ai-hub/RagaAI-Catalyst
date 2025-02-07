@@ -827,7 +827,7 @@ class LLMTracerMixin:
             @self.file_tracker.trace_decorator
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
-                gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt") if kwargs else None
                 if gt is not None:
                     span = self.span(name)
                     span.add_gt(gt)
@@ -901,7 +901,7 @@ class LLMTracerMixin:
             @self.file_tracker.trace_decorator
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
-                gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt") if kwargs else None
                 if gt is not None:
                     span = self.span(name)
                     span.add_gt(gt)
