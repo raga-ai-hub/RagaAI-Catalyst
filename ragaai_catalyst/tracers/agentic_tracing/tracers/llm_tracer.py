@@ -26,7 +26,7 @@ from ..utils.llm_utils import (
     extract_llm_output,
     num_tokens_from_messages
 )
-from ..utils.unique_decorator import generate_unique_hash_simple
+from ..utils.unique_decorator import generate_unique_hash
 from ..utils.file_name_tracker import TrackName
 from ..utils.span_attributes import SpanAttributes
 import logging
@@ -637,7 +637,7 @@ class LLMTracerMixin:
         start_time = datetime.now().astimezone()
         start_memory = psutil.Process().memory_info().rss
         component_id = str(uuid.uuid4())
-        hash_id = generate_unique_hash_simple(original_func)
+        hash_id = generate_unique_hash(original_func, args, kwargs)
 
         # Start tracking network calls for this component
         self.start_component(component_id)
@@ -740,7 +740,7 @@ class LLMTracerMixin:
 
         start_time = datetime.now().astimezone()
         component_id = str(uuid.uuid4())
-        hash_id = generate_unique_hash_simple(original_func)
+        hash_id = generate_unique_hash(original_func, args, kwargs)
 
         # Start tracking network calls for this component
         self.start_component(component_id)
@@ -881,7 +881,7 @@ class LLMTracerMixin:
             @self.file_tracker.trace_decorator
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
-                gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt") if kwargs else None
                 if gt is not None:
                     span = self.span(name)
                     span.add_gt(gt)
@@ -889,7 +889,6 @@ class LLMTracerMixin:
                 if not self.is_active:
                     return await func(*args, **kwargs)
 
-                hash_id = generate_unique_hash_simple(func)
                 component_id = str(uuid.uuid4())
                 parent_agent_id = self.current_agent_id.get()
                 self.start_component(component_id)
@@ -955,15 +954,13 @@ class LLMTracerMixin:
             @self.file_tracker.trace_decorator
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
-                gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt") if kwargs else None
                 if gt is not None:
                     span = self.span(name)
                     span.add_gt(gt)
                 self.current_llm_call_name.set(name)
                 if not self.is_active:
                     return func(*args, **kwargs)
-
-                hash_id = generate_unique_hash_simple(func)
 
                 component_id = str(uuid.uuid4())
                 parent_agent_id = self.current_agent_id.get()

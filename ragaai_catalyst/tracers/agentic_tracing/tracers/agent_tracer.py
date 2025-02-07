@@ -101,7 +101,7 @@ class AgentTracerMixin:
                 original_init = target.__init__
 
                 def wrapped_init(self, *args, **kwargs):
-                    gt = kwargs.get("gt", None) if kwargs else None
+                    gt = kwargs.get("gt") if kwargs else None
                     if gt is not None:
                         span = self.span(name)
                         span.add_gt(gt)
@@ -162,7 +162,7 @@ class AgentTracerMixin:
                                 @self.file_tracker.trace_decorator
                                 @functools.wraps(method)
                                 def wrapped_method(self, *args, **kwargs):
-                                    gt = kwargs.get("gt", None) if kwargs else None
+                                    gt = kwargs.get("gt") if kwargs else None
                                     if gt is not None:
                                         span = tracer.span(name)
                                         span.add_gt(gt)
@@ -262,10 +262,9 @@ class AgentTracerMixin:
         return decorator
 
     def _trace_sync_agent_execution(
-        self, func, name, agent_type, version, capabilities, *args, **kwargs
+        self, func, name, agent_type, version, capabilities, top_level_hash_id, *args, **kwargs
     ):
-        # Generate a unique hash_id for this execution context
-        hash_id = str(uuid.uuid4())
+        hash_id = top_level_hash_id
 
         """Synchronous version of agent tracing"""
         if not self.is_active:
@@ -281,7 +280,7 @@ class AgentTracerMixin:
         component_id = str(uuid.uuid4())
 
         # Extract ground truth if present
-        ground_truth = kwargs.pop("gt", None) if kwargs else None
+        ground_truth = kwargs.pop("gt") if kwargs else None
         if ground_truth is not None:
             span = self.span(name)
             span.add_gt(ground_truth)
@@ -302,7 +301,7 @@ class AgentTracerMixin:
 
         try:
             # Execute the agent
-            result = func(*args, **kwargs)
+            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
@@ -404,7 +403,7 @@ class AgentTracerMixin:
         component_id = str(uuid.uuid4())
 
         # Extract ground truth if present
-        ground_truth = kwargs.pop("gt", None) if kwargs else None
+        ground_truth = kwargs.pop("gt") if kwargs else None
         if ground_truth is not None:
             span = self.span(name)
             span.add_gt(ground_truth)
@@ -423,7 +422,7 @@ class AgentTracerMixin:
 
         try:
             # Execute the agent
-            result = await func(*args, **kwargs)
+            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss

@@ -8,13 +8,32 @@ class TrackName:
     def trace_decorator(self, func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            file_name = self._get_file_name()
+            file_name = self._get_decorated_file_name()
             self.files.add(file_name)
 
             return func(*args, **kwargs)
         return wrapper
+    
+    def trace_wrapper(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            file_name = self._get_wrapped_file_name()
+            self.files.add(file_name)
+            return func(*args, **kwargs)
+        return wrapper
+    
+    def _get_wrapped_file_name(self):
+        try:
+            from IPython import get_ipython
+            if 'IPKernelApp' in get_ipython().config:
+                return self._get_notebook_name()
+        except Exception:
+            pass
 
-    def _get_file_name(self):
+        frame = inspect.stack()[4]
+        return frame.filename
+
+    def _get_decorated_file_name(self):
         # Check if running in a Jupyter notebook
         try:
             from IPython import get_ipython

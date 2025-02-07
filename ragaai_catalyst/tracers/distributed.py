@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, List
 from functools import wraps
 from contextlib import contextmanager
 import uuid
+from ..utils.hashing import generate_unique_hash_simple
 from datetime import datetime
 import asyncio
 
@@ -86,6 +87,8 @@ def trace_agent(name: str = None, agent_type: str = "generic", version: str = "1
     def decorator(func):
         is_async = asyncio.iscoroutinefunction(func)
         span_name = name or func.__name__
+        # Generate hash based on the decorated function
+        top_level_hash_id = generate_unique_hash_simple(func)
         
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -104,7 +107,7 @@ def trace_agent(name: str = None, agent_type: str = "generic", version: str = "1
                     agent_type,
                     version,
                     None,  # capabilities
-                    str(uuid.uuid4()),  # hash_id
+                    top_level_hash_id, 
                     *args,
                     **kwargs
                 )
@@ -130,6 +133,7 @@ def trace_agent(name: str = None, agent_type: str = "generic", version: str = "1
                     agent_type,
                     version,
                     None,  # capabilities
+                    top_level_hash_id,  # Using hash of decorated function
                     *args,
                     **kwargs
                 )
@@ -158,7 +162,7 @@ def trace_llm(name: str = None, model: str = None, **kwargs):
             
             try:
                 # Just execute the function within the current span
-                result = await func(*args, **kwargs)
+                result = await tracer.file_tracker.trace_wrapper(func)(*args, **kwargs)
                 return result
             finally:
                 # Reset using the stored token
@@ -176,7 +180,7 @@ def trace_llm(name: str = None, model: str = None, **kwargs):
             
             try:
                 # Just execute the function within the current span
-                result = func(*args, **kwargs)
+                result = tracer.file_tracker.trace_wrapper(func)(*args, **kwargs)
                 return result
             finally:
                 # Reset using the stored token

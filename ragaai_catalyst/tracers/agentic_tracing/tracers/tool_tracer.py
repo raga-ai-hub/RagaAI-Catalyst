@@ -258,7 +258,7 @@ class ToolTracerMixin:
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 async_wrapper.metadata = metadata
-                gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt") if kwargs else None
                 if gt is not None:
                     span = self.span(name)
                     span.add_gt(gt)
@@ -270,7 +270,7 @@ class ToolTracerMixin:
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 sync_wrapper.metadata = metadata
-                gt = kwargs.get("gt", None) if kwargs else None
+                gt = kwargs.get("gt") if kwargs else None
                 if gt is not None:
                     span = self.span(name)
                     span.add_gt(gt)
@@ -308,7 +308,7 @@ class ToolTracerMixin:
 
         try:
             # Execute the tool
-            result = func(*args, **kwargs)
+            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
@@ -390,7 +390,7 @@ class ToolTracerMixin:
         self.start_component(component_id)
         try:
             # Execute the tool
-            result = await func(*args, **kwargs)
+            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
