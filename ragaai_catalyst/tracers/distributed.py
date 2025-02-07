@@ -133,7 +133,7 @@ def trace_agent(name: str = None, agent_type: str = "generic", version: str = "1
                     agent_type,
                     version,
                     None,  # capabilities
-                    top_level_hash_id,  # Using hash of decorated function
+                    top_level_hash_id,   
                     *args,
                     **kwargs
                 )
