@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 from functools import wraps
 from contextlib import contextmanager
 import uuid
-from ..utils.hashing import generate_unique_hash_simple
+from .agentic_tracing.utils.unique_decorator import generate_unique_hash_simple
 from datetime import datetime
 import asyncio
 
