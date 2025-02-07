@@ -21,7 +21,7 @@ class SpanAttributes:
         self.project_id = project_id
         self.trace_attributes = ["tags", "metadata", "metrics"]
         self.gt = None
-        self.context = []
+        self.context = None
 
     def add_tags(self, tags: str | List[str]):
         if isinstance(tags, str):
@@ -106,23 +106,10 @@ class SpanAttributes:
         if isinstance(context, str):
             if not context.strip():
                 logger.warning("Empty or whitespace-only context string provided")
-            fin_context = [context]
-        elif isinstance(context, list):
-            fin_context = []
-            for cntxt in context:
-                if not isinstance(cntxt, str):
-                    try:
-                        cntxt = str(cntxt)
-                    except Exception as e:
-                        logger.warning('Cannot cast an element to string... Skipping')
-                fin_context.append(cntxt)
-            if not any(c for c in fin_context if c and c.strip()):
-                logger.warning("No valid context strings provided")
+            self.context = str(context)
         else:
-            fin_context = []
             try:
-                fin_context = [str(context)]
+                self.context = str(context)
             except Exception as e:
                 logger.warning('Cannot cast the context to string... Skipping')
-        self.context = fin_context
         logger.debug(f"Added context: {self.context}")

@@ -135,7 +135,7 @@ class LLMTracerMixin:
             wrapt.register_post_import_hook(
                 self.patch_langchain_google_methods, "langchain_google_genai"
             )
-            
+
         if self.check_package_available("langchain_openai"):
             wrapt.register_post_import_hook(
                 self.patch_langchain_openai_methods, "langchain_openai"
@@ -168,12 +168,12 @@ class LLMTracerMixin:
         except Exception as e:
             # Log the error but continue execution
             print(f"Warning: Failed to patch OpenAI methods: {str(e)}")
-            
+
     def patch_langchain_openai_methods(self, module):
         try:
             if hasattr(module, 'ChatOpenAI'):
                 client_class = getattr(module, "ChatOpenAI")
-                
+
                 if hasattr(client_class, "invoke"):
                     self.wrap_langchain_openai_method(client_class, f"{client_class.__name__}.invoke")
                 elif hasattr(client_class, "run"):
@@ -186,7 +186,7 @@ class LLMTracerMixin:
         except Exception as e:
             # Log the error but continue execution
             print(f"Warning: Failed to patch OpenAI methods: {str(e)}")
-            
+
     def patch_langchain_anthropic_methods(self, module):
         try:
             if hasattr(module, 'ChatAnthropic'):
@@ -342,6 +342,7 @@ class LLMTracerMixin:
                         return await self.trace_llm_call(
                             original_create, *args, **kwargs
                         )
+
                     client_self.chat.completions.create = wrapped_create
             else:
                 # Patch sync methods for OpenAI
@@ -353,10 +354,11 @@ class LLMTracerMixin:
                         return self.trace_llm_call_sync(
                             original_create, *args, **kwargs
                         )
+
                     client_self.chat.completions.create = wrapped_create
 
         setattr(client_class, "__init__", patched_init)
-        
+
     def wrap_langchain_openai_method(self, client_class, method_name):
         method = method_name.split(".")[-1]
         original_init = getattr(client_class, method)
@@ -372,14 +374,14 @@ class LLMTracerMixin:
                 return self.trace_llm_call_sync(original_init, *args, **kwargs)
 
         setattr(client_class, method, patched_init)
-        
+
     def wrap_langchain_anthropic_method(self, client_class, method_name):
         original_init = getattr(client_class, method_name)
 
         @functools.wraps(original_init)
         def patched_init(*args, **kwargs):
             is_async = "AsyncChatAnthropic" in client_class.__name__
-            
+
             if is_async:
                 return self.trace_llm_call(original_init, *args, **kwargs)
             else:
@@ -503,13 +505,13 @@ class LLMTracerMixin:
         )
 
         # Set the Context and GT
+        span_gt = None
+        span_context = None
         if name in self.span_attributes_dict:
             span_gt = self.span_attributes_dict[name].gt
-            if span_gt is not None:
-                component["data"]["gt"] = span_gt
             span_context = self.span_attributes_dict[name].context
-            if span_context:
-                component["data"]["context"] = span_context
+
+            logger.debug(f"span context {span_context}, span_gt {span_gt}")
 
         # Tags
         tags = []
@@ -540,8 +542,6 @@ class LLMTracerMixin:
 
         # TODO: Execute & Add the User requested metrics here
         if name in self.span_attributes_dict:
-            context = self.span_attributes_dict[name].context or None
-            gt = self.span_attributes_dict[name].gt or None
             local_metrics = self.span_attributes_dict[name].local_metrics or []
             for metric in local_metrics:
                 try:
@@ -550,9 +550,9 @@ class LLMTracerMixin:
                                               model=metric.get("model"),
                                               provider=metric.get("provider"),
                                               prompt=prompt,
-                                              context=context,
+                                              context=span_context,
                                               response=response,
-                                              expected_response=gt
+                                              expected_response=span_gt
                                               )
 
                     result = result['data']['data'][0]
@@ -617,6 +617,10 @@ class LLMTracerMixin:
             "interactions": interactions,
         }
 
+        # Assign context and gt if available
+        component["data"]["gt"] = span_gt
+        component["data"]["context"] = span_context
+
         # Reset the SpanAttributes context variable
         self.span_attributes_dict[name] = SpanAttributes(name)
 
@@ -629,7 +633,7 @@ class LLMTracerMixin:
             messages = input_data
         else:
             return ""
-        return "\n".join(msg.get("content", "") for msg in messages)
+        return "\n".join(msg.get("content", "").strip() for msg in messages if msg.get("content"))
 
     def start_component(self, component_id):
         """Start tracking network calls for a component"""
