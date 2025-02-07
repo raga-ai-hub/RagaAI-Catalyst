@@ -104,7 +104,7 @@ class CustomTracerMixin:
 
         try:
             # Execute the function
-            result = func(*args, **kwargs)
+            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_time = datetime.now().astimezone().isoformat()
@@ -192,7 +192,7 @@ class CustomTracerMixin:
 
         try:
             # Execute the function
-            result = await func(*args, **kwargs)
+            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
 
             # Calculate resource usage
             end_time = datetime.now().astimezone().isoformat()
