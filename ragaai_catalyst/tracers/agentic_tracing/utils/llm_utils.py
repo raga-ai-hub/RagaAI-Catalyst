@@ -38,7 +38,13 @@ def extract_model_name(args, kwargs, result):
                 metadata = manager.metadata
                 model_name = metadata.get('ls_model_name', None)
                 if model_name:
-                    model = model_name         
+                    model = model_name       
+                    
+    if not model:
+        if 'to_dict' in dir(result):
+            result = result.to_dict()
+            if 'model_version' in result:
+                model = result['model_version']  
     
     
     # Normalize Google model names
@@ -50,11 +56,6 @@ def extract_model_name(args, kwargs, result):
             return "gemini-1.5-pro"
         if "gemini-pro" in model:
             return "gemini-pro"
-
-    if 'to_dict' in dir(result):
-        result = result.to_dict()
-        if 'model_version' in result:
-            model = result['model_version']
     
     return model or "default"
 

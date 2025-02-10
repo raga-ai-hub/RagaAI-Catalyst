@@ -249,7 +249,7 @@ sdg = SyntheticDataGeneration()
 text = sdg.process_document(input_data="file_path")
 
 # Generate results
-result = sdg.generate_qna(text, question_type ='complex',model_config={"provider":"openai","model":"openai/gpt-3.5-turbo"},n=5)
+result = sdg.generate_qna(text, question_type ='complex',model_config={"provider":"openai","model":"gpt-4o-mini"},n=5)
 
 print(result.head())
 

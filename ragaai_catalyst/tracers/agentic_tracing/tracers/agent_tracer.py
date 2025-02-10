@@ -253,6 +253,7 @@ class AgentTracerMixin:
                             agent_type,
                             version,
                             capabilities,
+                            top_level_hash_id,
                             *args,
                             **kwargs,
                         )

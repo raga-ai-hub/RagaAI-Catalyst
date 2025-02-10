@@ -475,7 +475,7 @@ class SyntheticDataGeneration:
         Returns:
             list: A list of supported AI providers.
         """
-        return ['gemini', 'openai']
+        return ['gemini', 'openai','azure']
 
 # Usage:
 # from synthetic_data_generation import SyntheticDataGeneration
