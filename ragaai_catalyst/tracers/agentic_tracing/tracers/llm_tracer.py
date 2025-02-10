@@ -546,7 +546,7 @@ class LLMTracerMixin:
             local_metrics = self.span_attributes_dict[name].local_metrics or []
             for metric in local_metrics:
                 try:
-                    result = calculate_metric(project_id=metric.get("project_id"),
+                    result = calculate_metric(project_id=self.project_id,
                                               metric_name=metric.get("name"),
                                               model=metric.get("model"),
                                               provider=metric.get("provider"),

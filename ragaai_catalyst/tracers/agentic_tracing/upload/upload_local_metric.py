@@ -66,4 +66,5 @@ def calculate_metric(project_id, metric_name, model, provider, prompt, response,
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        return {"error": str(e)}
+        logger.debug(f"Error in calculate-metric api: {e}")
+        raise e
