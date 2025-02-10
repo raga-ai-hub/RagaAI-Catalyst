@@ -2,6 +2,8 @@ import logging
 import os
 import requests
 
+from ragaai_catalyst import RagaAICatalyst
+
 logger = logging.getLogger(__name__)
 logging_level = (
     logger.setLevel(logging.DEBUG)
@@ -60,7 +62,7 @@ def calculate_metric(project_id, metric_name, model, provider, prompt, response,
     }
 
     try:
-        BASE_URL = "http://74.225.145.109/api"  # RagaAICatalyst.BASE_URL
+        BASE_URL = RagaAICatalyst.BASE_URL
         response = requests.post(f"{BASE_URL}/v1/llm/calculate-metric", headers=headers, json=payload, timeout=10)
         logger.debug(f"Metric calculation response status {response.status_code}")
         response.raise_for_status()
