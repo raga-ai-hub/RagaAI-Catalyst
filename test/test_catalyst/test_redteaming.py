@@ -1,6 +1,10 @@
-import pytest
-import pandas as pd
+import sys
 from unittest.mock import Mock
+
+import pandas as pd
+import pytest
+
+sys.path.append("/Users/ragaai_user/Documents/RagaAI-Catalyst")
 from ragaai_catalyst import RedTeaming
 
 
@@ -12,25 +16,12 @@ class TestRedTeaming:
         monkeypatch.setenv("GISKARD_API_KEY", "test_api_key")
         return RedTeaming()
 
-    def test_invalid_model_type(self, red_teaming):
-        """Test that an invalid model_type raises a ValueError."""
-        with pytest.raises(ValueError, match="Invalid model_type"):
-            red_teaming.run_scan(
-                model=Mock(),
-                model_type="invalid_type",
-                name="Test Model",
-                description="A test model"
-            )
-
     def test_invalid_scan_metric(self, red_teaming):
         """Test that an invalid scan metric raises a ValueError."""
         with pytest.raises(ValueError, match="Invalid scan metrics"):
             red_teaming.run_scan(
                 model=Mock(),
-                model_type="text_generation",
-                name="Test Model",
-                description="A test model",
-                only=["invalid_metric"]
+                evaluators=["invalid_metric"]
             )
 
     def test_successful_scan(self, red_teaming, monkeypatch):
@@ -43,10 +34,7 @@ class TestRedTeaming:
         monkeypatch.setattr("giskard.scan", mock_giskard.scan)
 
         df = red_teaming.run_scan(
-            model=Mock(),
-            model_type="text_generation",
-            name="Test Model",
-            description="A test model"
+            model=Mock()
         )
 
         assert isinstance(df, pd.DataFrame)
@@ -62,10 +50,7 @@ class TestRedTeaming:
 
         red_teaming = RedTeaming()
         scan_df = red_teaming.run_scan(
-            model=model_predict,
-            model_type="text_generation",
-            name="demo_name",
-            description="demo_description"
+            model=model_predict
         )
 
         assert not scan_df.empty, "The scan DataFrame should not be empty."

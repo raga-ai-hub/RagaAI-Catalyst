@@ -1,85 +1,143 @@
 import logging
-from enum import Enum
-from typing import Callable, Optional, List, Union, Literal
+import os
+from typing import Callable, Optional, List
 
 import giskard
 import pandas as pd
 
-# Disable Giskard logging
 logging.getLogger("giskard").disabled = True
 
 
+def get_supported_evaluators():
+    """Contains tags corresponding to the 'llm' and 'robustness' directories in the giskard > scanner library"""
+    return {'classification',
+            'control_chars_injection',
+            'discrimination',
+            'ethical_bias',
+            'ethics',
+            'faithfulness',
+            'generative',
+            'hallucination',
+            'harmfulness',
+            'implausible_output',
+            'information_disclosure',
+            'jailbreak',
+            'llm',
+            'llm_harmful_content',
+            'llm_stereotypes_detector',
+            'misinformation',
+            'output_formatting',
+            'prompt_injection',
+            'regression',
+            'robustness',
+            'stereotypes',
+            'sycophancy',
+            'text_generation',
+            'text_perturbation'}
+
+
+def set_giskard_llm_model(provider, model=None):
+    """
+    Sets the LLM model for Giskard based on the provider.
+
+    :param provider: The LLM provider (e.g., "openai", "gemini", "azure").
+    :param model: The specific model name to use (optional).
+    :raises ValueError: If the provider is "azure" and no model is provided.
+    """
+    default_models = {
+        "openai": "gpt-4o",
+        "gemini": "gemini-1.5-pro"
+    }
+
+    if provider == "azure" and model is None:
+        raise ValueError("Model must be provided for Azure.")
+
+    selected_model = model if model is not None else default_models.get(provider)
+
+    if selected_model is None:
+        raise ValueError(f"Unsupported provider: {provider}")
+
+    giskard.llm.set_llm_model(selected_model)
+
+
 class RedTeaming:
-    class SupportedModelTypes(Enum):
-        TEXT_GENERATION = "text_generation"
-        CLASSIFICATION = "classification"
-        REGRESSION = "regression"
 
-    ModelType = Union[SupportedModelTypes, Literal["classification", "regression", "text_generation"]]
-
-    class ScanMetric(Enum):
-        HALLUCINATION = "hallucination"
-        PERFORMANCE = "performance"
-        # Add other scan metrics as needed
-
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize RedTeaming instance with optional API key."""
-        # self.api_key = api_key or os.getenv("GISKARD_API_KEY")
-        # if not self.api_key: raise ValueError( "API key is required. Please set GISKARD_API_KEY as an environment
-        # variable or pass it as a parameter.")
+    def __init__(self,
+                 provider: Optional[str] = "openai",
+                 model: Optional[str] = None,
+                 api_key: Optional[str] = None,
+                 api_base: Optional[str] = None,
+                 api_version: Optional[str] = None):
+        self.provider = provider.lower()
+        self.model = model
+        if not self.provider:
+            raise ValueError("Model configuration must be provided with a valid provider and model.")
+        if self.provider == "openai":
+            if api_key is not None:
+                os.environ["OPENAI_API_KEY"] = api_key
+            if os.getenv("OPENAI_API_KEY") is None:
+                raise ValueError("API key must be provided for OpenAI.")
+        elif self.provider == "gemini":
+            if api_key is not None:
+                os.environ["GEMINI_API_KEY"] = api_key
+            if os.getenv("GEMINI_API_KEY") is None:
+                raise ValueError("API key must be provided for Gemini.")
+        elif self.provider == "azure":
+            if api_key is not None:
+                os.environ["AZURE_API_KEY"] = api_key
+            if api_base is not None:
+                os.environ["AZURE_API_BASE"] = api_base
+            if api_version is not None:
+                os.environ["AZURE_API_VERSION"] = api_version
+            if os.getenv("AZURE_API_KEY") is None:
+                raise ValueError("API key must be provided for Azure.")
+            if os.getenv("AZURE_API_BASE") is None:
+                raise ValueError("API base must be provided for Azure.")
+            if os.getenv("AZURE_API_VERSION") is None:
+                raise ValueError("API version must be provided for Azure.")
+        else:
+            raise ValueError(f"Provider is not recognized.")
 
     def run_scan(
             self,
             model: Callable,
-            model_type: ModelType,
-            name: str,
-            description: str,
-            only: Optional[List[Union[str, ScanMetric]]] = None  # Replaced `|` with `Union`
+            evaluators: Optional[List[str]] = None,
+            to_save: bool = True
     ) -> pd.DataFrame:
         """
         Runs red teaming on the provided model and returns a DataFrame of the results.
 
         :param model: The model function provided by the user.
-        :param model_type: The type of the model (Enum restricted or predefined literals).
-        :param name: Name of the model.
-        :param description: Description of the model.
-        :param only: Optional list of scan metrics to run.
+        :param evaluators: Optional list of scan metrics to run.
+        :param to_save: Boolean flag indicating whether to save the scan report as a CSV file.
         :return: A DataFrame containing the scan report.
         """
-        valid_model_types = {e.value for e in self.SupportedModelTypes}.union(
-            {"classification", "regression", "text_generation"}
-        )
-        if model_type not in valid_model_types:
-            raise ValueError(f"Invalid model_type: {model_type}. Allowed values: {valid_model_types}")
 
-        if only:
-            invalid_metrics = [metric for metric in only if
-                               not isinstance(metric, (str, self.ScanMetric))]  # Adjusted type checking
-            if invalid_metrics:
-                raise ValueError(
-                    f"Invalid scan metrics: {invalid_metrics}. Allowed values: {[e.value for e in self.ScanMetric]}")
+        set_giskard_llm_model(self.provider, self.model)
+
+        supported_evaluators = get_supported_evaluators()
+        if evaluators:
+            invalid_evaluators = [evaluator for evaluator in evaluators if evaluator not in supported_evaluators]
+            if invalid_evaluators:
+                raise ValueError(f"Invalid evaluators: {invalid_evaluators}. "
+                                 f"Allowed evaluators: {supported_evaluators}.")
 
         model_instance = giskard.Model(
             model=model,
-            model_type=model_type,
-            name=name,
-            description=description,
+            model_type="text_generation",
+            name="RagaAI RedTeaming Scan",
+            description=None,
             feature_names=["question"],
         )
 
         try:
-            # Run the scan
-            if only:
-                report = giskard.scan(model_instance,
-                                      only=[metric.value if isinstance(metric, self.ScanMetric) else metric for metric
-                                            in only])
-            else:
-                report = giskard.scan(model_instance)
+            report = giskard.scan(model_instance, only=evaluators) if evaluators else giskard.scan(model_instance)
         except Exception as e:
             raise RuntimeError(f"Error occurred during model scan: {str(e)}")
 
-        # Convert the report to a DataFrame and save it as CSV
-        df = report.to_dataframe()
-        df.to_csv('final_report.csv', index=False)
+        report_df = report.to_dataframe()
 
-        return df
+        if to_save:
+            report_df.to_csv("raga-ai_red-teaming_scan.csv", index=False)
+
+        return report_df
