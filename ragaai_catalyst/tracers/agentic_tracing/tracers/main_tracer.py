@@ -119,9 +119,6 @@ class AgenticTracing(
         self.component_network_calls = {}  # Store network calls per component
         self.component_user_interaction = {}
 
-        # Create output directory if it doesn't exist
-        self.output_dir = Path("./traces")  # Using default traces directory
-        self.output_dir.mkdir(exist_ok=True)
 
     def start_component(self, component_id: str):
         """Start tracking network calls for a component"""
