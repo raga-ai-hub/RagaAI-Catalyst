@@ -316,9 +316,7 @@ class TraceDependencyTracker:
             pass
 
     def get_env_location(self):
-        python_executable = sys.executable
-        env_location = os.path.dirname(os.path.dirname(python_executable))
-        return env_location
+        return sys.prefix
     
     def get_catalyst_location(self):
         imorted_module = importlib.import_module("ragaai_catalyst")
