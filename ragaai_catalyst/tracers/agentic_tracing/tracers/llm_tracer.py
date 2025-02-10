@@ -164,7 +164,7 @@ class LLMTracerMixin:
                         self.wrap_method(llm_class, "stream_chat")
                         # self.wrap_method(llm_class, "stream_achat")
                         self.wrap_method(llm_class, "stream_complete")
-                        self.wrap_method(llm_class, "stream_acomplete")
+                        # self.wrap_method(llm_class, "stream_acomplete")
 
                 # Anthropic
                 if hasattr(module.llms, "anthropic"):

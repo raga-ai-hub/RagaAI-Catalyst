@@ -8,22 +8,22 @@ import sys
 import tempfile
 import threading
 import time
-from ....ragaai_catalyst import RagaAICatalyst
-from ..data.data_structure import (
+from ragaai_catalyst import RagaAICatalyst
+from ragaai_catalyst.tracers.agentic_tracing.data.data_structure import (
     Trace,
     Metadata,
     SystemInfo,
     Resources,
     Component,
 )
-from ..upload.upload_agentic_traces import UploadAgenticTraces
-from ..upload.upload_code import upload_code
-from ..upload.upload_trace_metric import upload_trace_metric
-from ..utils.file_name_tracker import TrackName
-from ..utils.zip_list_of_unique_files import zip_list_of_unique_files
-from ..utils.span_attributes import SpanAttributes
-from ..utils.create_dataset_schema import create_dataset_schema_with_trace
-from ..utils.system_monitor import SystemMonitor
+from ragaai_catalyst.tracers.agentic_tracing.upload.upload_agentic_traces import UploadAgenticTraces
+from ragaai_catalyst.tracers.agentic_tracing.upload.upload_code import upload_code
+from ragaai_catalyst.tracers.agentic_tracing.upload.upload_trace_metric import upload_trace_metric
+from ragaai_catalyst.tracers.agentic_tracing.utils.file_name_tracker import TrackName
+from ragaai_catalyst.tracers.agentic_tracing.utils.zip_list_of_unique_files import zip_list_of_unique_files
+from ragaai_catalyst.tracers.agentic_tracing.utils.span_attributes import SpanAttributes
+from ragaai_catalyst.tracers.agentic_tracing.utils.create_dataset_schema import create_dataset_schema_with_trace
+from ragaai_catalyst.tracers.agentic_tracing.utils.system_monitor import SystemMonitor
 
 import logging
 
@@ -450,6 +450,7 @@ class BaseTracer:
                                 ):
                                     unique_spans[i] = span
                                     break
+                
                 else:
                     # For non-LLM spans, process their children if they exist
                     if "data" in span_dict and "children" in span_dict["data"]:
@@ -460,8 +461,44 @@ class BaseTracer:
                             span["data"]["children"] = filtered_children
                         else:
                             span.data["children"] = filtered_children
-                    unique_spans.append(span)
+                    unique_spans.append(span)                    
 
+            # Process spans to update model information for LLM spans with same name
+            llm_spans_by_name = {}
+            for i, span in enumerate(unique_spans):
+                span_dict = span if isinstance(span, dict) else span.__dict__
+                
+                if span_dict.get('type') == 'llm':
+                    span_name = span_dict.get('name')
+                    if span_name:
+                        if span_name not in llm_spans_by_name:
+                            llm_spans_by_name[span_name] = []
+                        llm_spans_by_name[span_name].append((i, span_dict))
+            
+            # Update model information for spans with same name
+            for spans_with_same_name in llm_spans_by_name.values():
+                if len(spans_with_same_name) > 1:
+                    # Check if any span has non-default model
+                    has_custom_model = any(
+                        span[1].get('info', {}).get('model') != 'default'
+                        for span in spans_with_same_name
+                    )
+                    
+                    # If we have a custom model, update all default models to 'custom'
+                    if has_custom_model:
+                        for idx, span_dict in spans_with_same_name:
+                            if span_dict.get('info', {}).get('model') == 'default':
+                                if isinstance(unique_spans[idx], dict):
+                                    if 'info' not in unique_spans[idx]:
+                                        unique_spans[idx]['info'] = {}
+                                    # unique_spans[idx]['info']['model'] = 'custom'
+                                    unique_spans[idx]['type'] = 'custom'
+                                else:
+                                    if not hasattr(unique_spans[idx], 'info'):
+                                        unique_spans[idx].info = {}
+                                    # unique_spans[idx].info['model'] = 'custom'
+                                    unique_spans[idx].type = 'custom'
+            
             return unique_spans
 
         # Remove any spans without hash ids
