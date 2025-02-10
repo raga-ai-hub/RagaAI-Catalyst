@@ -49,7 +49,7 @@ class RedTeaming:
     def run_scan(
             self,
             model: Callable,
-            evaluators: Optional[List[str]] = None,
+            evaluators: Optional[list] = None,
             save_report: bool = True
     ) -> pd.DataFrame:
         """
@@ -75,8 +75,8 @@ class RedTeaming:
         model_instance = giskard.Model(
             model=model,
             model_type="text_generation",
-            name="RagaAI RedTeaming Scan",
-            description=None,
+            name="RagaAI's Scan",
+            description="RagaAI's RedTeaming Scan",
             feature_names=["question"],
         )
 
