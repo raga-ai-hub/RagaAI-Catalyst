@@ -162,7 +162,7 @@ class LLMTracerMixin:
                         self.wrap_method(llm_class, "chat")
                         self.wrap_method(llm_class, "achat")
                         self.wrap_method(llm_class, "stream_chat")
-                        self.wrap_method(llm_class, "stream_achat")
+                        # self.wrap_method(llm_class, "stream_achat")
                         self.wrap_method(llm_class, "stream_complete")
                         self.wrap_method(llm_class, "stream_acomplete")
 
@@ -176,7 +176,7 @@ class LLMTracerMixin:
                         self.wrap_method(llm_class, "chat")
                         self.wrap_method(llm_class, "achat")
                         self.wrap_method(llm_class, "stream_chat")
-                        self.wrap_method(llm_class, "stream_achat")
+                        # self.wrap_method(llm_class, "stream_achat")
 
                 # Azure OpenAI
                 if hasattr(module.llms, "azure_openai"):
@@ -188,7 +188,7 @@ class LLMTracerMixin:
                         self.wrap_method(llm_class, "chat")
                         self.wrap_method(llm_class, "achat")
                         self.wrap_method(llm_class, "stream_chat")
-                        self.wrap_method(llm_class, "stream_achat")
+                        # self.wrap_method(llm_class, "stream_achat")
 
                 # LiteLLM
                 if hasattr(module.llms, "litellm"):
