@@ -318,8 +318,8 @@ class TraceDependencyTracker:
         return sys.prefix
     
     def get_catalyst_location(self):
-        imorted_module = importlib.import_module("ragaai_catalyst")
-        return os.path.dirname(os.path.abspath(imorted_module.__file__))
+        imported_module = importlib.import_module("ragaai_catalyst")
+        return os.path.dirname(os.path.abspath(imported_module.__file__))
 
     def create_zip(self, filepaths):
         self.track_jupyter_notebook()
