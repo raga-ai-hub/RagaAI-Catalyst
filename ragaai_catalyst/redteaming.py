@@ -8,58 +8,6 @@ import pandas as pd
 logging.getLogger("giskard").disabled = True
 
 
-def get_supported_evaluators():
-    """Contains tags corresponding to the 'llm' and 'robustness' directories in the giskard > scanner library"""
-    return {'classification',
-            'control_chars_injection',
-            'discrimination',
-            'ethical_bias',
-            'ethics',
-            'faithfulness',
-            'generative',
-            'hallucination',
-            'harmfulness',
-            'implausible_output',
-            'information_disclosure',
-            'jailbreak',
-            'llm',
-            'llm_harmful_content',
-            'llm_stereotypes_detector',
-            'misinformation',
-            'output_formatting',
-            'prompt_injection',
-            'regression',
-            'robustness',
-            'stereotypes',
-            'sycophancy',
-            'text_generation',
-            'text_perturbation'}
-
-
-def set_giskard_llm_model(provider, model=None):
-    """
-    Sets the LLM model for Giskard based on the provider.
-
-    :param provider: The LLM provider (e.g., "openai", "gemini", "azure").
-    :param model: The specific model name to use (optional).
-    :raises ValueError: If the provider is "azure" and no model is provided.
-    """
-    default_models = {
-        "openai": "gpt-4o",
-        "gemini": "gemini-1.5-pro"
-    }
-
-    if provider == "azure" and model is None:
-        raise ValueError("Model must be provided for Azure.")
-
-    selected_model = model if model is not None else default_models.get(provider)
-
-    if selected_model is None:
-        raise ValueError(f"Unsupported provider: {provider}")
-
-    giskard.llm.set_llm_model(selected_model)
-
-
 class RedTeaming:
 
     def __init__(self,
@@ -102,20 +50,20 @@ class RedTeaming:
             self,
             model: Callable,
             evaluators: Optional[List[str]] = None,
-            to_save: bool = True
+            save_report: bool = True
     ) -> pd.DataFrame:
         """
         Runs red teaming on the provided model and returns a DataFrame of the results.
 
         :param model: The model function provided by the user.
         :param evaluators: Optional list of scan metrics to run.
-        :param to_save: Boolean flag indicating whether to save the scan report as a CSV file.
+        :param save_report: Boolean flag indicating whether to save the scan report as a CSV file.
         :return: A DataFrame containing the scan report.
         """
 
-        set_giskard_llm_model(self.provider, self.model)
+        self.set_scanning_model(self.provider, self.model)
 
-        supported_evaluators = get_supported_evaluators()
+        supported_evaluators = self.get_supported_evaluators()
         if evaluators:
             invalid_evaluators = [evaluator for evaluator in evaluators if evaluator not in supported_evaluators]
             if invalid_evaluators:
@@ -137,7 +85,57 @@ class RedTeaming:
 
         report_df = report.to_dataframe()
 
-        if to_save:
+        if save_report:
             report_df.to_csv("raga-ai_red-teaming_scan.csv", index=False)
 
         return report_df
+
+    def get_supported_evaluators(self):
+        """Contains tags corresponding to the 'llm' and 'robustness' directories in the giskard > scanner library"""
+        return {'classification',
+                'control_chars_injection',
+                'discrimination',
+                'ethical_bias',
+                'ethics',
+                'faithfulness',
+                'generative',
+                'hallucination',
+                'harmfulness',
+                'implausible_output',
+                'information_disclosure',
+                'jailbreak',
+                'llm',
+                'llm_harmful_content',
+                'llm_stereotypes_detector',
+                'misinformation',
+                'output_formatting',
+                'prompt_injection',
+                'regression',
+                'robustness',
+                'stereotypes',
+                'sycophancy',
+                'text_generation',
+                'text_perturbation'}
+
+    def set_scanning_model(self, provider, model=None):
+        """
+        Sets the LLM model for Giskard based on the provider.
+
+        :param provider: The LLM provider (e.g., "openai", "gemini", "azure").
+        :param model: The specific model name to use (optional).
+        :raises ValueError: If the provider is "azure" and no model is provided.
+        """
+        default_models = {
+            "openai": "gpt-4o",
+            "gemini": "gemini-1.5-pro"
+        }
+
+        if provider == "azure" and model is None:
+            raise ValueError("Model must be provided for Azure.")
+
+        selected_model = model if model is not None else default_models.get(provider)
+
+        if selected_model is None:
+            raise ValueError(f"Unsupported provider: {provider}")
+
+        giskard.llm.set_llm_model(selected_model)
