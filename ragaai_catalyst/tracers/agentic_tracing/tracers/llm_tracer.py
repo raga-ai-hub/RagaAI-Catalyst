@@ -212,6 +212,7 @@ class LLMTracerMixin:
         openai.beta.threads.runs.create(...) are automatically traced.
         """
         # Make sure openai_module has a 'beta' attribute
+        openai_module.api_type = "openai" 
         if not hasattr(openai_module, "beta"):
             return
 
