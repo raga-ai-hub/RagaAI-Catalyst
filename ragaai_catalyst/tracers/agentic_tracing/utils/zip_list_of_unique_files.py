@@ -8,7 +8,6 @@ import ast
 import importlib.util
 import json
 import ipynbname
-import sys
 
 from pathlib import Path
 from IPython import get_ipython
