@@ -5,7 +5,11 @@ from typing import Callable, Optional, List
 import giskard
 import pandas as pd
 
-logging.getLogger("giskard").disabled = True
+logging.getLogger('giskard.core').disabled = True
+logging.getLogger('giskard.scanner.logger').disabled = True
+logging.getLogger('giskard.models.automodel').disabled = True
+logging.getLogger('giskard.datasets.base').disabled = True
+logging.getLogger('giskard.utils.logging_utils').disabled = True
 
 
 class RedTeaming:
