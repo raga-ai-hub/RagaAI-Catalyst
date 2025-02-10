@@ -65,6 +65,8 @@ class RedTeaming:
 
         supported_evaluators = self.get_supported_evaluators()
         if evaluators:
+            if isinstance(evaluators, str):
+                evaluators = [evaluators]
             invalid_evaluators = [evaluator for evaluator in evaluators if evaluator not in supported_evaluators]
             if invalid_evaluators:
                 raise ValueError(f"Invalid evaluators: {invalid_evaluators}. "
@@ -92,8 +94,7 @@ class RedTeaming:
 
     def get_supported_evaluators(self):
         """Contains tags corresponding to the 'llm' and 'robustness' directories in the giskard > scanner library"""
-        return {'classification',
-                'control_chars_injection',
+        return {'control_chars_injection',
                 'discrimination',
                 'ethical_bias',
                 'ethics',
@@ -110,7 +111,6 @@ class RedTeaming:
                 'misinformation',
                 'output_formatting',
                 'prompt_injection',
-                'regression',
                 'robustness',
                 'stereotypes',
                 'sycophancy',
