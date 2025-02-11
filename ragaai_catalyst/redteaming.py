@@ -85,7 +85,8 @@ class RedTeaming:
         )
 
         try:
-            report = giskard.scan(model_instance, only=evaluators) if evaluators else giskard.scan(model_instance)
+            report = giskard.scan(model_instance, only=evaluators, raise_exceptions=True) if evaluators \
+                     else giskard.scan(model_instance, raise_exceptions=True)
         except Exception as e:
             raise RuntimeError(f"Error occurred during model scan: {str(e)}")
 
