@@ -1084,7 +1084,7 @@ class BaseTracer:
                     config = result['metric_config']
                     metric_config = {
                         "job_id": config.get("job_id"),
-                        "metric_name": config.get("metric_name"),
+                        "metric_name": config.get("displayName"),
                         "model": config.get("model"),
                         "org_domain": config.get("orgDomain"),
                         "provider": config.get("provider"),
@@ -1097,7 +1097,7 @@ class BaseTracer:
                         }
                     }
                     formatted_metric = {
-                        "name": metric.get("name"),
+                        "name": metric.get("displayName"),
                         "displayName": metric.get("displayName"),
                         "score": result.get("score"),
                         "reason": result.get("reason", ""),

@@ -94,13 +94,13 @@ def get_trace_metrics_from_trace(traces):
 def _change_metrics_format_for_payload(metrics):
     formatted_metrics = []
     for metric in metrics:
-        if any(m["name"] == metric["name"] for m in formatted_metrics):
+        if any(m["name"] == metric.get("displayName") or m['name'] == metric.get("name") for m in formatted_metrics):
             continue
         metric_display_name = metric["name"]
         if metric.get("displayName"):
             metric_display_name = metric['displayName']
         formatted_metrics.append({
-            "name": metric["name"],
+            "name": metric_display_name,
             "displayName": metric_display_name,
             "config": {"source": "user"},
         })
