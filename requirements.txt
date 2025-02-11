@@ -43,7 +43,7 @@ litellm==1.42.12
 Markdown==3.7
 MarkupSafe==3.0.2
 multidict==6.1.0
-numpy==2.2.1
+numpy~=1.26.4
 openai==1.35.10
 opentelemetry-api==1.25.0
 opentelemetry-instrumentation==0.46b0
@@ -93,3 +93,4 @@ wheel==0.44.0
 wrapt==1.17.0
 yarl==1.18.3
 zipp==3.21.0
+giskard~=2.16.0

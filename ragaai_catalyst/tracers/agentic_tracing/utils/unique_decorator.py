@@ -56,7 +56,9 @@ def generate_unique_hash(func, *args, **kwargs):
                 return '_'.join(f"{normalize_arg(k)}:{normalize_arg(v)}" 
                               for k, v in sorted(arg.items()))
             elif callable(arg):
-                return arg.__name__
+                if hasattr(arg, "__name__"):
+                    return arg.__name__
+                return str(type(arg).__name__)
             else:
                 return str(type(arg).__name__)
 

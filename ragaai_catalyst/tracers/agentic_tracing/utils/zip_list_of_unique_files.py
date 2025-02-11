@@ -1,4 +1,6 @@
 import os
+import sys
+import importlib
 import hashlib
 import zipfile
 import re
@@ -6,7 +8,6 @@ import ast
 import importlib.util
 import json
 import ipynbname
-import sys
 
 from pathlib import Path
 from IPython import get_ipython
@@ -321,6 +322,17 @@ class TraceDependencyTracker:
         except Exception as e:
             pass
 
+    def get_env_location(self):
+        return sys.prefix
+    
+    def get_catalyst_location(self):
+        try:
+            imported_module = importlib.import_module("ragaai_catalyst")
+            return os.path.dirname(os.path.abspath(imported_module.__file__))
+        except ImportError:
+            logger.error("Error getting Catalyst location")
+            return 'ragaai_catalyst'
+
     def create_zip(self, filepaths):
         self.track_jupyter_notebook()
 
@@ -373,6 +385,10 @@ class TraceDependencyTracker:
 
             except Exception as e:
                 pass
+
+        env_location = self.get_env_location()
+        catalyst_location = self.get_catalyst_location()
+
         # Calculate hash and create zip
         self.tracked_files.update(self.python_imports)
         hash_contents = []
@@ -380,7 +396,7 @@ class TraceDependencyTracker:
         for filepath in sorted(self.tracked_files):
             if not filepath.endswith('.py'):
                 continue
-            elif '/envs' in filepath or '__init__' in filepath:
+            elif env_location in filepath or '__init__' in filepath:
                 continue
             try:
                 with open(filepath, 'rb') as file:
@@ -413,7 +429,7 @@ class TraceDependencyTracker:
 
         with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for filepath in sorted(self.tracked_files):
-                if 'env' in filepath or 'ragaai_catalyst' in filepath:
+                if env_location in filepath or catalyst_location in filepath:
                     continue
                 try:
                     relative_path = os.path.relpath(filepath, base_path)
