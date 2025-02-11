@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 logging_level = logger.setLevel(logging.DEBUG) if os.getenv("DEBUG") == "1" else logging.INFO
 
 
-# Define the PackageUsageRemover class
+# PackageUsageRemover class
 class PackageUsageRemover(ast.NodeTransformer):
     def __init__(self, package_name):
         self.package_name = package_name
@@ -49,7 +49,12 @@ class PackageUsageRemover(ast.NodeTransformer):
         return node
     
     def visit_Assign(self, node):
-        if self._uses_package(node.value):
+        if isinstance(node.value, ast.Expr):  
+            node_value = node.value.body   
+        else:
+            node_value = node.value
+
+        if self._uses_package(node_value):
             return None
         return node
     
@@ -60,8 +65,10 @@ class PackageUsageRemover(ast.NodeTransformer):
             if isinstance(node.func.value, ast.Name) and node.func.value.id in self.imported_names:
                 return None
         return node
-    
+
     def _uses_package(self, node):
+        if isinstance(node, ast.Expr):
+            return self._uses_package(node.body)
         if isinstance(node, ast.Name) and node.id in self.imported_names:
             return True
         if isinstance(node, ast.Call):
@@ -70,13 +77,14 @@ class PackageUsageRemover(ast.NodeTransformer):
             return self._uses_package(node.value)
         return False
 
-# Define the function to remove package code from a source code string
+
+# Remove package code from a source code string
 def remove_package_code(source_code: str, package_name: str) -> str:
     try:
         tree = ast.parse(source_code)
-        remover = PackageUsageRemover(package_name)
-        modified_tree = remover.visit(tree)
-        modified_code = ast.unparse(modified_tree)
+        # remover = PackageUsageRemover(package_name)
+        # modified_tree = remover.visit(tree)
+        modified_code = ast.unparse(tree)
 
         return modified_code
     except Exception as e:
@@ -327,20 +335,16 @@ class TraceDependencyTracker:
 
     def create_zip(self, filepaths):
         self.track_jupyter_notebook()
-        # logger.info("Tracked Jupyter notebook and its dependencies")
 
         # Ensure output directory exists
         os.makedirs(self.output_dir, exist_ok=True)
-        # logger.info(f"Using output directory: {self.output_dir}")
 
         # Special handling for Colab
         if self.jupyter_handler.is_running_in_colab():
-            # logger.info("Running in Google Colab environment")
-            # Try to get the Colab notebook path
+            # Get the Colab notebook path
             colab_notebook = self.jupyter_handler.get_notebook_path()
             if colab_notebook:
                 self.tracked_files.add(os.path.abspath(colab_notebook))
-                # logger.info(f"Added Colab notebook to tracked files: {colab_notebook}")
 
             # Get current cell content
             self.check_environment_and_save()
@@ -462,9 +466,9 @@ def zip_list_of_unique_files(filepaths, output_dir=None):
     return tracker.create_zip(filepaths)
 
 
-# Example usage
-if __name__ == "__main__":
-    filepaths = ["script1.py", "script2.py"]
-    hash_id, zip_path = zip_list_of_unique_files(filepaths)
-    print(f"Created zip file: {zip_path}")
-    print(f"Hash ID: {hash_id}")
+# # Example usage
+# if __name__ == "__main__":
+#     filepaths = ["script1.py", "script2.py"]
+#     hash_id, zip_path = zip_list_of_unique_files(filepaths)
+#     print(f"Created zip file: {zip_path}")
+#     print(f"Hash ID: {hash_id}")
