@@ -1,8 +1,8 @@
 import logging
 import os
-from typing import Callable, Optional, List
+from typing import Callable, Optional
 
-import giskard
+import giskard as scanner
 import pandas as pd
 
 logging.getLogger('giskard.core').disabled = True
@@ -59,11 +59,13 @@ class RedTeaming:
         """
         Runs red teaming on the provided model and returns a DataFrame of the results.
 
-        :param model: The model function provided by the user.
+        :param model: The model function provided by the user (can be sync or async).
         :param evaluators: Optional list of scan metrics to run.
         :param save_report: Boolean flag indicating whether to save the scan report as a CSV file.
         :return: A DataFrame containing the scan report.
         """
+        import asyncio
+        import inspect
 
         self.set_scanning_model(self.provider, self.model)
 
@@ -76,8 +78,31 @@ class RedTeaming:
                 raise ValueError(f"Invalid evaluators: {invalid_evaluators}. "
                                  f"Allowed evaluators: {supported_evaluators}.")
 
-        model_instance = giskard.Model(
-            model=model,
+        # Handle async model functions by wrapping them in a sync function
+        if inspect.iscoroutinefunction(model):
+            def sync_wrapper(*args, **kwargs):
+                try:
+                    # Try to get the current event loop
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    # If no event loop exists (e.g., in Jupyter), create a new one
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                try:
+                    # Handle both IPython and regular Python environments
+                    import nest_asyncio
+                    nest_asyncio.apply()
+                except ImportError:
+                    pass  # nest_asyncio not available, continue without it
+
+                return loop.run_until_complete(model(*args, **kwargs))
+            wrapped_model = sync_wrapper
+        else:
+            wrapped_model = model
+
+        model_instance = scanner.Model(
+            model=wrapped_model,
             model_type="text_generation",
             name="RagaAI's Scan",
             description="RagaAI's RedTeaming Scan",
@@ -85,7 +110,8 @@ class RedTeaming:
         )
 
         try:
-            report = giskard.scan(model_instance, only=evaluators) if evaluators else giskard.scan(model_instance)
+            report = scanner.scan(model_instance, only=evaluators, raise_exceptions=True) if evaluators \
+                     else scanner.scan(model_instance, raise_exceptions=True)
         except Exception as e:
             raise RuntimeError(f"Error occurred during model scan: {str(e)}")
 
@@ -142,4 +168,4 @@ class RedTeaming:
         if selected_model is None:
             raise ValueError(f"Unsupported provider: {provider}")
 
-        giskard.llm.set_llm_model(selected_model)
+        scanner.llm.set_llm_model(selected_model)
