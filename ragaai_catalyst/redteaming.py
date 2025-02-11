@@ -1,8 +1,8 @@
 import logging
 import os
-from typing import Callable, Optional, List
+from typing import Callable, Optional
 
-import giskard
+import giskard as scanner
 import pandas as pd
 
 logging.getLogger('giskard.core').disabled = True
@@ -76,7 +76,7 @@ class RedTeaming:
                 raise ValueError(f"Invalid evaluators: {invalid_evaluators}. "
                                  f"Allowed evaluators: {supported_evaluators}.")
 
-        model_instance = giskard.Model(
+        model_instance = scanner.Model(
             model=model,
             model_type="text_generation",
             name="RagaAI's Scan",
@@ -85,8 +85,8 @@ class RedTeaming:
         )
 
         try:
-            report = giskard.scan(model_instance, only=evaluators, raise_exceptions=True) if evaluators \
-                     else giskard.scan(model_instance, raise_exceptions=True)
+            report = scanner.scan(model_instance, only=evaluators, raise_exceptions=True) if evaluators \
+                     else scanner.scan(model_instance, raise_exceptions=True)
         except Exception as e:
             raise RuntimeError(f"Error occurred during model scan: {str(e)}")
 
@@ -143,4 +143,4 @@ class RedTeaming:
         if selected_model is None:
             raise ValueError(f"Unsupported provider: {provider}")
 
-        giskard.llm.set_llm_model(selected_model)
+        scanner.llm.set_llm_model(selected_model)
