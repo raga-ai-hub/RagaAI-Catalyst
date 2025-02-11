@@ -17,6 +17,7 @@ RagaAI Catalyst is a comprehensive platform designed to enhance the management a
     - [Synthetic Data Generation](#synthetic-data-generation)
     - [Guardrail Management](#guardrail-management)
     - [Agentic Tracing](#agentic-tracing)
+    - [Red-teaming](#red-teaming)
 
 ## Installation
 
@@ -383,4 +384,37 @@ tracer = AgenticTracer(
 with tracer:
     # Agent execution code
     pass
+```
 
+### Red-teaming
+
+The Red-teaming module provides comprehensive scans for model vulnerabilities:
+
+- Initialize RedTeaming object requiring optional `provider` (defaulting to OpenAI), `model`, `api_key`, `api_base` and `api_version`. 
+User can set API keys in the environment variables, or optionally pass them to the constructor.
+
+1. View all supported evaluators
+```python
+from ragaai_catalyst import RedTeaming
+rt = RedTeaming()
+
+supported_evaluators = rt.get_supported_evaluators()
+```
+
+2. Run scan: returns a scan dataframe for the model
+```python
+import pandas as pd
+from ragaai_catalyst import RedTeaming
+
+rt = RedTeaming("openai", "gpt-4o-mini", "my-api-key")
+
+def mock_llm_call(query):
+  pass # llm call for the query
+
+def model(df: pd.DataFrame):
+  # Function which takes in an input dataframe, and returns a list containing LLM outputs for the inputs  
+  return [mock_llm_call({"query": question}) for question in df["question"]]
+
+
+scan_df = rt.run_scan(model=model, evaluators=["llm"], save_report=True)
+```
