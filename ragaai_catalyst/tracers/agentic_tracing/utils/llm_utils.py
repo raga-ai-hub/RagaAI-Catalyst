@@ -71,6 +71,9 @@ def extract_parameters(kwargs):
     # Remove messages key in parameters (OpenAI message)
     if 'messages' in parameters:
         del parameters['messages']
+        
+    if 'run_manager' in parameters:
+        del parameters['run_manager']
 
     if 'generation_config' in parameters:
         generation_config = parameters['generation_config']
