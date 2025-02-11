@@ -718,8 +718,28 @@ class LLMTracerMixin:
             messages = input_data
         else:
             return ""
-        return "\n".join(msg.get("content", "").strip() for msg in messages if msg.get("content"))
 
+        def process_content(content):
+            if isinstance(content, str):
+                return content.strip()
+            elif isinstance(content, list):
+                # Handle list of content blocks
+                text_parts = []
+                for block in content:
+                    if hasattr(block, 'text'):
+                        # Handle TextBlock-like objects
+                        text_parts.append(block.text.strip())
+                    elif isinstance(block, dict) and 'text' in block:
+                        # Handle dictionary with text field
+                        text_parts.append(block['text'].strip())
+                return " ".join(text_parts)
+            elif isinstance(content, dict):
+                # Handle dictionary content
+                return content.get('text', '').strip()
+            return ""
+
+        return "\n".join(process_content(msg.get("content", "")) for msg in messages if msg.get("content"))
+  
     def start_component(self, component_id):
         """Start tracking network calls for a component"""
         self.component_network_calls[component_id] = []
