@@ -1,5 +1,3 @@
-import asyncio
-import inspect
 import logging
 import os
 from typing import Callable, Optional
@@ -66,6 +64,8 @@ class RedTeaming:
         :param save_report: Boolean flag indicating whether to save the scan report as a CSV file.
         :return: A DataFrame containing the scan report.
         """
+        import asyncio
+        import inspect
 
         self.set_scanning_model(self.provider, self.model)
 
