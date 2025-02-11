@@ -62,10 +62,12 @@ class SpanAttributes:
         self.feedback = feedback
         logger.debug(f"Added feedback: {self.feedback}")
 
-    def execute_metrics(self,
-                        name: str,
-                        model: str,
-                        provider: str):
+    def execute_metrics(self, **kwargs: Any):
+        name = kwargs.get("name")
+        model = kwargs.get("model")
+        provider = kwargs.get("provider")
+        display_name = kwargs.get("display_name", None)
+        mapping = kwargs.get("mapping", None)
 
         if isinstance(name, str):
             metrics = [{
@@ -86,11 +88,22 @@ class SpanAttributes:
                 count = sum(1 for m in self.local_metrics if m.startswith(metric_name))
                 metric_name = f"{metric_name}_{count + 1}"
 
+            prompt =None
+            context = None
+            response = None
+            if mapping is not None:
+                prompt = mapping['prompt']
+                context = mapping['context']
+                response = mapping['response']
             new_metric = {
                 "name": metric_name,
                 "model": model,
                 "provider": provider,
-                "project_id": self.project_id
+                "project_id": self.project_id,
+                "prompt": prompt,
+                "context": context,
+                "response": response,
+                "displayName": display_name
             }
             self.local_metrics.append(new_metric)
 

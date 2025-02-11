@@ -14,7 +14,7 @@ import importlib
 import sys
 from litellm import model_cost
 
-from ..upload.upload_local_metric import calculate_metric
+from .base import BaseTracer
 from ..utils.llm_utils import (
     extract_model_name,
     extract_parameters,
@@ -296,7 +296,7 @@ class LLMTracerMixin:
         openai.beta.threads.runs.create(...) are automatically traced.
         """
         # Make sure openai_module has a 'beta' attribute
-        openai_module.api_type = "openai" 
+        openai_module.api_type = "openai"
         if not hasattr(openai_module, "beta"):
             return
 
@@ -626,51 +626,9 @@ class LLMTracerMixin:
         response = self.convert_to_content(output)
 
         # TODO: Execute & Add the User requested metrics here
-        if name in self.span_attributes_dict:
-            local_metrics = self.span_attributes_dict[name].local_metrics or []
-            for metric in local_metrics:
-                try:
-                    result = calculate_metric(project_id=self.project_id,
-                                              metric_name=metric.get("name"),
-                                              model=metric.get("model"),
-                                              provider=metric.get("provider"),
-                                              prompt=prompt,
-                                              context=span_context,
-                                              response=response,
-                                              expected_response=span_gt
-                                              )
-
-                    result = result['data']['data'][0]
-                    config = result['metric_config']
-                    metric_config = {
-                        "job_id": config.get("job_id"),
-                        "metric_name": config.get("metric_name"),
-                        "model": config.get("model"),
-                        "org_domain": config.get("orgDomain"),
-                        "provider": config.get("provider"),
-                        "reason": config.get("reason"),
-                        "request_id": config.get("request_id"),
-                        "user_id": config.get("user_id"),
-                        "threshold": {
-                            "is_editable": config.get("threshold").get("isEditable"),
-                            "lte": config.get("threshold").get("lte")
-                        }
-                    }
-                    formatted_metric = {
-                        "name": metric.get("name"),
-                        "score": result.get("score"),
-                        "reason": result.get("reason", ""),
-                        "source": "user",
-                        "cost": result.get("cost"),
-                        "latency": result.get("latency"),
-                        "mappings": [],
-                        "config": metric_config
-                    }
-                    metrics.append(formatted_metric)
-                except ValueError as e:
-                    logger.error(f"Validation Error: {e}")
-                except Exception as e:
-                    logger.error(f"Error executing metric: {e}")
+        formatted_metric = BaseTracer.get_formatted_metric(self, name, prompt, span_context, response, span_gt)
+        if formatted_metric is not None:
+            metrics.append(formatted_metric)
 
         component = {
             "id": component_id,

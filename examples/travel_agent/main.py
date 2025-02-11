@@ -1,3 +1,6 @@
+import sys
+sys.path.append('.')
+
 from dotenv import load_dotenv
 from tools import (
     llm_call,

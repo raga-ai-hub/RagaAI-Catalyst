@@ -15,7 +15,7 @@ def initialize_tracing():
     )
 
     tracer = Tracer(
-        project_name="swarnendu-1",
+        project_name="swarnendu-4",
         dataset_name="travel_agent_dataset",
         tracer_type="Agentic",
     )
