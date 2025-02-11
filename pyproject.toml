@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.9,<3.13"
 # license = {file = "LICENSE"}
 
-version = "2.1.4.1"
+version = "2.1.5.b22"
 authors = [
     {name = "Kiran Scaria", email = "kiran.scaria@raga.ai"},
     {name = "Kedar Gaikwad", email = "kedar.gaikwad@raga.ai"},
