@@ -13,6 +13,7 @@ import traceback
 import importlib
 import sys
 from litellm import model_cost
+from llama_index.core.base.llms.types import ChatResponse
 
 from ..upload.upload_local_metric import calculate_metric
 from ..utils.llm_utils import (
@@ -621,9 +622,12 @@ class LLMTracerMixin:
         # TODO TO check i/p and o/p is according or not
         input = input_data["args"] if hasattr(input_data, "args") else input_data
         output = output_data.output_response if output_data else None
-
+        #print("Prompt input:",input)
         prompt = self.convert_to_content(input)
+        #print("Prompt Output: ",prompt)
+        #print("Response input: ",output)
         response = self.convert_to_content(output)
+        #print("Response output: ",response)
 
         # TODO: Execute & Add the User requested metrics here
         if name in self.span_attributes_dict:
@@ -711,35 +715,70 @@ class LLMTracerMixin:
 
         return component
 
+    # def convert_to_content(self, input_data):
+    #     if isinstance(input_data, dict):
+    #         messages = input_data.get("kwargs", {}).get("messages", [])
+    #     elif isinstance(input_data, list):
+    #         messages = input_data
+    #     else:
+    #         return ""
+        # return "\n".join(process_content(msg.get("content", "")) for msg in messages if msg.get("content"))
+  
     def convert_to_content(self, input_data):
         if isinstance(input_data, dict):
             messages = input_data.get("kwargs", {}).get("messages", [])
         elif isinstance(input_data, list):
-            messages = input_data
+            if len(input_data)>0 and isinstance(input_data[0]['content'],ChatResponse):
+                extracted_messages = []
+
+                for item in input_data:
+                    chat_response = item.get('content')
+                    if hasattr(chat_response, 'message') and hasattr(chat_response.message, 'blocks'):
+                        for block in chat_response.message.blocks:
+                            if hasattr(block, 'text'):
+                                extracted_messages.append(block.text)
+                messages=extracted_messages
+                if isinstance(messages,list):
+                    return "\n".join(messages)
+                
+                #messages=[msg["content"] for msg in input_data if isinstance(msg, dict) and "content" in msg]
+                #messages = [msg["content"].message for msg in input_data if isinstance(msg, dict) and "content" in msg and isinstance(msg["content"], ChatResponse)]
+            else:
+                messages = input_data
+        elif isinstance(input_data,ChatResponse):
+            messages=input_data['content']
         else:
             return ""
+        res=""
+        # try:
+        res="\n".join(msg.get("content", "").strip() for msg in messages if msg.get("content"))
+        # except Exception as e:
+        #     print("Exception occured for: ",e)
+        #     print("Input: ",input_data,"Meeage: ",messages)
+        #     # import sys
+        #     # sys.exit()
+        return res
 
-        def process_content(content):
-            if isinstance(content, str):
-                return content.strip()
-            elif isinstance(content, list):
-                # Handle list of content blocks
-                text_parts = []
-                for block in content:
-                    if hasattr(block, 'text'):
-                        # Handle TextBlock-like objects
-                        text_parts.append(block.text.strip())
-                    elif isinstance(block, dict) and 'text' in block:
-                        # Handle dictionary with text field
-                        text_parts.append(block['text'].strip())
-                return " ".join(text_parts)
-            elif isinstance(content, dict):
-                # Handle dictionary content
-                return content.get('text', '').strip()
-            return ""
+    def process_content(content):
+        if isinstance(content, str):
+            return content.strip()
+        elif isinstance(content, list):
+            # Handle list of content blocks
+            text_parts = []
+            for block in content:
+                if hasattr(block, 'text'):
+                    # Handle TextBlock-like objects
+                    text_parts.append(block.text.strip())
+                elif isinstance(block, dict) and 'text' in block:
+                    # Handle dictionary with text field
+                    text_parts.append(block['text'].strip())
+            return " ".join(text_parts)
+        elif isinstance(content, dict):
+            # Handle dictionary content
+            return content.get('text', '').strip()
+        return ""
 
-        return "\n".join(process_content(msg.get("content", "")) for msg in messages if msg.get("content"))
-  
+    
     def start_component(self, component_id):
         """Start tracking network calls for a component"""
         self.component_network_calls[component_id] = []
