@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 import logging
 import os
 from typing import Callable, Optional
@@ -59,7 +61,7 @@ class RedTeaming:
         """
         Runs red teaming on the provided model and returns a DataFrame of the results.
 
-        :param model: The model function provided by the user.
+        :param model: The model function provided by the user (can be sync or async).
         :param evaluators: Optional list of scan metrics to run.
         :param save_report: Boolean flag indicating whether to save the scan report as a CSV file.
         :return: A DataFrame containing the scan report.
@@ -76,8 +78,31 @@ class RedTeaming:
                 raise ValueError(f"Invalid evaluators: {invalid_evaluators}. "
                                  f"Allowed evaluators: {supported_evaluators}.")
 
+        # Handle async model functions by wrapping them in a sync function
+        if inspect.iscoroutinefunction(model):
+            def sync_wrapper(*args, **kwargs):
+                try:
+                    # Try to get the current event loop
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    # If no event loop exists (e.g., in Jupyter), create a new one
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                try:
+                    # Handle both IPython and regular Python environments
+                    import nest_asyncio
+                    nest_asyncio.apply()
+                except ImportError:
+                    pass  # nest_asyncio not available, continue without it
+
+                return loop.run_until_complete(model(*args, **kwargs))
+            wrapped_model = sync_wrapper
+        else:
+            wrapped_model = model
+
         model_instance = scanner.Model(
-            model=model,
+            model=wrapped_model,
             model_type="text_generation",
             name="RagaAI's Scan",
             description="RagaAI's RedTeaming Scan",
