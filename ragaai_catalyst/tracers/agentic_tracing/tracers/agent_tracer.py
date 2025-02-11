@@ -555,7 +555,6 @@ class AgentTracerMixin:
                 metrics.append(metric)
 
         # TODO agent_trace execute metric
-        self.local
         component = {
             "id": kwargs["component_id"],
             "hash_id": kwargs["hash_id"],
