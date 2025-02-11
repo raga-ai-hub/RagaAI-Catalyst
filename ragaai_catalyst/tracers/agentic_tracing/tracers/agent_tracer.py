@@ -48,15 +48,15 @@ class AgentTracerMixin:
         self.auto_instrument_network = False
 
     def trace_agent(
-        self,
-        name: str,
-        agent_type: str = None,
-        version: str = None,
-        capabilities: List[str] = None,
-        tags: List[str] = [],
-        metadata: Dict[str, Any] = {},
-        metrics: List[Dict[str, Any]] = [],
-        feedback: Optional[Any] = None,
+            self,
+            name: str,
+            agent_type: str = None,
+            version: str = None,
+            capabilities: List[str] = None,
+            tags: List[str] = [],
+            metadata: Dict[str, Any] = {},
+            metrics: List[Dict[str, Any]] = [],
+            feedback: Optional[Any] = None,
     ):
         if name not in self.span_attributes_dict:
             self.span_attributes_dict[name] = SpanAttributes(name)
@@ -199,8 +199,8 @@ class AgentTracerMixin:
                                                 children = tracer.agent_children.get()
                                                 if children:
                                                     if (
-                                                        "children"
-                                                        not in component["data"]
+                                                            "children"
+                                                            not in component["data"]
                                                     ):
                                                         component["data"][
                                                             "children"
@@ -263,7 +263,7 @@ class AgentTracerMixin:
         return decorator
 
     def _trace_sync_agent_execution(
-        self, func, name, agent_type, version, capabilities, top_level_hash_id, *args, **kwargs
+            self, func, name, agent_type, version, capabilities, top_level_hash_id, *args, **kwargs
     ):
         hash_id = top_level_hash_id
 
@@ -390,7 +390,7 @@ class AgentTracerMixin:
             self.agent_children.reset(children_token)
 
     async def _trace_agent_execution(
-        self, func, name, agent_type, version, capabilities, hash_id, *args, **kwargs
+            self, func, name, agent_type, version, capabilities, hash_id, *args, **kwargs
     ):
         """Asynchronous version of agent tracing"""
         if not self.is_active:
@@ -522,7 +522,7 @@ class AgentTracerMixin:
             for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
                 if interaction["interaction_type"] in ["input", "output"]:
                     input_output_interactions.append(interaction)
-            interactions.extend(input_output_interactions) 
+            interactions.extend(input_output_interactions)
         if self.auto_instrument_file_io:
             file_io_interactions = []
             for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
@@ -551,9 +551,10 @@ class AgentTracerMixin:
                 counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
                 metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
                 self.visited_metrics.append(metric_name)
-                metric["name"] = metric_name  
+                metric["name"] = metric_name
                 metrics.append(metric)
 
+        # TODO agent_trace execute metric
         component = {
             "id": kwargs["component_id"],
             "hash_id": kwargs["hash_id"],
@@ -609,22 +610,22 @@ class AgentTracerMixin:
         self.component_network_calls.set(component_network_calls)
 
     def _sanitize_input(self, args: tuple, kwargs: dict) -> dict:
-            """Sanitize and format input data, including handling of nested lists and dictionaries."""
+        """Sanitize and format input data, including handling of nested lists and dictionaries."""
 
-            def sanitize_value(value):
-                if isinstance(value, (int, float, bool, str)):
-                    return value
-                elif isinstance(value, list):
-                    return [sanitize_value(item) for item in value]
-                elif isinstance(value, dict):
-                    return {key: sanitize_value(val) for key, val in value.items()}
-                else:
-                    return str(value)  # Convert non-standard types to string
+        def sanitize_value(value):
+            if isinstance(value, (int, float, bool, str)):
+                return value
+            elif isinstance(value, list):
+                return [sanitize_value(item) for item in value]
+            elif isinstance(value, dict):
+                return {key: sanitize_value(val) for key, val in value.items()}
+            else:
+                return str(value)  # Convert non-standard types to string
 
-            return {
-                "args": [sanitize_value(arg) for arg in args],
-                "kwargs": {key: sanitize_value(val) for key, val in kwargs.items()},
-            }
+        return {
+            "args": [sanitize_value(arg) for arg in args],
+            "kwargs": {key: sanitize_value(val) for key, val in kwargs.items()},
+        }
 
     def _sanitize_output(self, output: Any) -> Any:
         """Sanitize and format output data"""
@@ -640,6 +641,6 @@ class AgentTracerMixin:
 
     def instrument_network_calls(self):
         self.auto_instrument_network = True
-        
+
     def instrument_file_io_calls(self):
         self.auto_instrument_file_io = True

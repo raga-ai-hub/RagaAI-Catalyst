@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 import uuid
 import sys
 import tempfile
@@ -1053,3 +1053,63 @@ class BaseTracer:
         if span_name not in self.span_attributes_dict:
             self.span_attributes_dict[span_name] = SpanAttributes(span_name, self.project_id)
         return self.span_attributes_dict[span_name]
+
+    @staticmethod
+    def get_formatted_metric(span_attributes_dict, project_id, name, prompt, span_context, response, span_gt):
+        if name in span_attributes_dict:
+            local_metrics = span_attributes_dict[name].local_metrics or []
+            for metric in local_metrics:
+                try:
+                    if metric.get("prompt") is not None:
+                        prompt = metric['prompt']
+                    if metric.get("response") is not None:
+                        response = metric['response']
+                    if metric.get('context') is not None:
+                        span_context = metric['context']
+                    if metric.get('gt') is not None:
+                        span_gt = metric['gt']
+
+                    logger.info("calculating the metric, please wait....")
+                    result = calculate_metric(project_id=project_id,
+                                              metric_name=metric.get("name"),
+                                              model=metric.get("model"),
+                                              provider=metric.get("provider"),
+                                              prompt=prompt,
+                                              context=span_context,
+                                              response=response,
+                                              expected_response=span_gt
+                                              )
+
+                    result = result['data']['data'][0]
+                    config = result['metric_config']
+                    metric_config = {
+                        "job_id": config.get("job_id"),
+                        "metric_name": config.get("metric_name"),
+                        "model": config.get("model"),
+                        "org_domain": config.get("orgDomain"),
+                        "provider": config.get("provider"),
+                        "reason": config.get("reason"),
+                        "request_id": config.get("request_id"),
+                        "user_id": config.get("user_id"),
+                        "threshold": {
+                            "is_editable": config.get("threshold").get("isEditable"),
+                            "lte": config.get("threshold").get("lte")
+                        }
+                    }
+                    formatted_metric = {
+                        "name": metric.get("name"),
+                        "displayName": metric.get("displayName"),
+                        "score": result.get("score"),
+                        "reason": result.get("reason", ""),
+                        "source": "user",
+                        "cost": result.get("cost"),
+                        "latency": result.get("latency"),
+                        "mappings": [],
+                        "config": metric_config
+                    }
+                    return formatted_metric
+                except ValueError as e:
+                    logger.error(f"Validation Error: {e}")
+                except Exception as e:
+                    logger.error(f"Error executing metric: {e}")
+

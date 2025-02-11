@@ -1,15 +1,24 @@
+import logging
+
 import requests
 import os
 import json
 from ....ragaai_catalyst import RagaAICatalyst
 from ..utils.get_user_trace_metrics import get_user_trace_metrics
 
+logger = logging.getLogger(__name__)
+logging_level = (
+    logger.setLevel(logging.DEBUG)
+    if os.getenv("DEBUG")
+    else logger.setLevel(logging.INFO)
+)
+
 
 def upload_trace_metric(json_file_path, dataset_name, project_name):
     try:
         with open(json_file_path, "r") as f:
             traces = json.load(f)
-                    
+
         metrics = get_trace_metrics_from_trace(traces)
         metrics = _change_metrics_format_for_payload(metrics)
 
@@ -81,14 +90,18 @@ def get_trace_metrics_from_trace(traces):
             metrics.extend(metric)
     return metrics
 
+
 def _change_metrics_format_for_payload(metrics):
     formatted_metrics = []
     for metric in metrics:
         if any(m["name"] == metric["name"] for m in formatted_metrics):
             continue
+        metric_display_name = metric["name"]
+        if metric.get("displayName"):
+            metric_display_name = metric['displayName']
         formatted_metrics.append({
             "name": metric["name"],
-            "displayName": metric["name"],
+            "displayName": metric_display_name,
             "config": {"source": "user"},
         })
     return formatted_metrics
