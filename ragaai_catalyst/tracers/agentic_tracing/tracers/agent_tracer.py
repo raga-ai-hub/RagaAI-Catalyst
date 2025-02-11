@@ -281,7 +281,7 @@ class AgentTracerMixin:
         component_id = str(uuid.uuid4())
 
         # Extract ground truth if present
-        ground_truth = kwargs.pop("gt") if kwargs else None
+        ground_truth = kwargs.pop("gt", None) if kwargs else None
         if ground_truth is not None:
             span = self.span(name)
             span.add_gt(ground_truth)
@@ -404,7 +404,7 @@ class AgentTracerMixin:
         component_id = str(uuid.uuid4())
 
         # Extract ground truth if present
-        ground_truth = kwargs.pop("gt") if kwargs else None
+        ground_truth = kwargs.pop("gt", None) if kwargs else None
         if ground_truth is not None:
             span = self.span(name)
             span.add_gt(ground_truth)
