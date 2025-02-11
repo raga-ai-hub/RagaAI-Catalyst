@@ -169,6 +169,7 @@ class Tracer(AgenticTracing):
             self._upload_task = None
         elif tracer_type == "llamaindex":
             self._upload_task = None
+            self.llamaindex_tracer = None
             from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
 
         else:
@@ -256,7 +257,8 @@ class Tracer(AgenticTracing):
             return self.langchain_tracer.start()
         elif self.tracer_type == "llamaindex":
             from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
-            return LlamaIndexTracer(self._pass_user_data()).start()
+            self.llamaindex_tracer = LlamaIndexTracer(self._pass_user_data())
+            return self.llamaindex_tracer.start()
         else:
             super().start()
             return self
@@ -348,8 +350,9 @@ class Tracer(AgenticTracing):
             return 
 
         elif self.tracer_type == "llamaindex":
-            from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
-            return LlamaIndexTracer(self._pass_user_data()).stop()
+            if self.llamaindex_tracer is None:
+                raise ValueError("LlamaIndex tracer was not started")
+            return self.llamaindex_tracer.stop()
         else:
             super().stop()
 
