@@ -1055,9 +1055,9 @@ class BaseTracer:
         return self.span_attributes_dict[span_name]
 
     @staticmethod
-    def get_formatted_metric(self, name, prompt, span_context, response, span_gt):
-        if name in self.span_attributes_dict:
-            local_metrics = self.span_attributes_dict[name].local_metrics or []
+    def get_formatted_metric(span_attributes_dict, project_id, name, prompt, span_context, response, span_gt):
+        if name in span_attributes_dict:
+            local_metrics = span_attributes_dict[name].local_metrics or []
             for metric in local_metrics:
                 try:
                     if metric.get("prompt") is not None:
@@ -1070,7 +1070,7 @@ class BaseTracer:
                         span_gt = metric['gt']
 
                     logger.info("calculating the metric, please wait....")
-                    result = calculate_metric(project_id=self.project_id,
+                    result = calculate_metric(project_id=project_id,
                                               metric_name=metric.get("name"),
                                               model=metric.get("model"),
                                               provider=metric.get("provider"),
