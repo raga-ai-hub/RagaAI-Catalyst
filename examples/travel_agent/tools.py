@@ -25,7 +25,13 @@ def llm_call(prompt, max_tokens=512, model="gpt-4o-mini", name="default"):
     current_span().execute_metrics(
         name="Hallucination",
         model="gpt-4o-mini",
-        provider="openai"
+        provider="openai",
+        display_name="Hallucination_display",
+        mapping={
+            'prompt': "goa to kashmir price",
+            'context': "travel agent",
+            'response': "approximately 10000"
+        }
     )
 
     response = client.chat.completions.create(
