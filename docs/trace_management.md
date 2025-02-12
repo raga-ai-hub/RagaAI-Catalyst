@@ -2,11 +2,11 @@
 
 Record and analyse trace using the `ragaai_catalyst` library. This guide provides steps to initialize tracer with project and dataset name(langchain and llama-index),run tracer and add context,stop the tracer,list dataset,add rows and column and evalutaion on tracer datasets efficiently.
 
-#### - Initialize Tracer Management
+#### Initialize Tracer Management
 
 To start managing datasets for a specific project, initialize the `Tracer` class with your project name.
 
-##### - 1. langchain example
+##### 1. langchain example
 
 ```python
 from ragaai_catalyst import Tracer
@@ -221,7 +221,7 @@ def get_impression(resp_dict, model_name="gemini-1.5-flash-002"):
     return new_impression, context
 ```
 
-##### - 2. Llama-index example
+##### 2. Llama-index example
 
 ```python
 from ragaai_catalyst import Tracer
@@ -357,7 +357,7 @@ with tracer:
     print(f"Question: {question}\nResponse: {response}\n")
 ```
 
-#### - Run tracer and add context
+#### Run tracer and add context
 
 You can add context using tracer.add_context(context).Context needs to be in str type
 
@@ -373,7 +373,7 @@ with tracer:
     tracer.add_context(str(context))
 ```
 
-#### - Add rows to the uploaded tracer dataset
+#### Add rows to the uploaded tracer dataset
 
 ```python
 from ragaai_catalyst import Dataset
@@ -382,7 +382,7 @@ add_rows_csv_path = "path to dataset"
 dataset_manager.add_rows(csv_path=add_rows_csv_path, dataset_name=dataset_name)
 ```
 
-#### - Add column to the uploaded tracer dataset
+#### Add column to the uploaded tracer dataset
 
 ```python
 text_fields = [
@@ -416,7 +416,7 @@ dataset_manager.add_columns(
 )
 ```
 
-#### - Evaluate metrics
+#### Evaluate metrics
 
 Evaluate metrics on the uploaded dataset.
 
