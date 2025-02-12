@@ -631,7 +631,7 @@ class LLMTracerMixin:
 
         # TODO: Execute & Add the User requested metrics here
         formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name, prompt, span_context, response, span_gt)
-        if len(formatted_metrics) > 0:
+        if formatted_metrics:
             for formatted_metric in formatted_metrics:
                 metrics.append(formatted_metric)
 
