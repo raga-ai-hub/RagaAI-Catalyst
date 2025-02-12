@@ -12,7 +12,6 @@ To start managing datasets for a specific project, initialize the `Tracer` class
 from ragaai_catalyst import Tracer
 tracer_dataset_name = "tracer_dataset_name"
 
-
 tracer = Tracer(
     project_name=project_name,
     dataset_name=tracer_dataset_name,
@@ -25,6 +24,25 @@ tracer = Tracer(
     }
 )
 ```
+##### - Set up logging configuration
+
+```python
+import logging
+import sys
+
+logging.basicConfig(
+    level=logging.INFO,  # Set the logging level (INFO, DEBUG, ERROR, etc.)
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),  # Logs INFO and DEBUG to stdout
+        logging.StreamHandler(sys.stderr),  # Logs WARNING and ERROR to stderr
+    ],
+)
+
+# Create a logger instance
+logger = logging.getLogger("auto-impression")
+```
+
 ##### - User code
 
 ```python
@@ -142,6 +160,10 @@ def get_radiology_prompt(resp_dict: dict, format_instructions: str) -> ChatPromp
 
 ```python
 !pip install langchain_community -q
+!pip install langchain-google-vertexai -q
+!pip install langchain-google-genai -q
+!pip install langchain-anthropic -q
+!pip install langchain-aws -q
 ```
 
 ```python
