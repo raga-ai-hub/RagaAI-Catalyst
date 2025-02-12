@@ -361,6 +361,10 @@ The Agentic Tracing module provides comprehensive monitoring and analysis capabi
 
 The module includes utilities for cost tracking, performance monitoring, and debugging agent behavior. This helps in understanding and optimizing AI agent performance while maintaining transparency in agent operations.
 
+#### Tracer initialization
+
+Initialize the tracer with project_name and dataset_name
+
 ```python
 from ragaai_catalyst import Tracer
 
@@ -371,10 +375,50 @@ tracer = Tracer(
     dataset_name=agentic_tracing_dataset_name,
     tracer_type="Agentic",
 )
+```
 
+```python
 from ragaai_catalyst import init_tracing
 init_tracing(catalyst=catalyst, tracer=tracer)
+```
 
+#### Agentic Tracing Features
+1- add span level metrics
+
+```python
+current_span().add_metrics(name='Accuracy', score=0.5, reasoning='some reasoning')
+```
+
+2- add trace level metrics
+
+```python
+tracer.add_metrics(name='hallucination_1', score=0.5, reasoning='some reasoning')
+```
+
+3- add gt 
+
+```python
+current_span().add_gt("name = span level in summary_agent gt = some span level gt")
+```
+
+4- add context
+
+```python
+current_span().add_context("name = span level in summary_agent, context = some span level context")
+```
+
+5- add span level metric execution
+
+```python
+current_span().execute_metrics(
+    name="Hallucination",
+    model="gpt-4o",
+    provider="openai"
+)
+```
+
+#### Example
+```python
 from ragaai_catalyst import trace_llm, trace_tool, trace_agent, current_span
 
 from openai import OpenAI
