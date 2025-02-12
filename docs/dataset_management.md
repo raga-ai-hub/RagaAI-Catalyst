@@ -98,3 +98,59 @@ schema_mapping = {
 ```
 
 This mapping ensures that when the CSV is uploaded, the data in `user_id` is understood as `user_identifier`, and `response_time` is understood as `response_duration`, aligning the data with the system's expectations.
+
+
+##### c. Add rows in the existing dataset from CSV
+
+```python
+add_rows_csv_path = "path to dataset"
+dataset_manager.add_rows(csv_path=add_rows_csv_path, dataset_name=dataset_name)
+```
+
+##### d. Add columns in the existing dataset from CSV
+
+```python
+text_fields = [
+      {
+        "role": "system",
+        "content": "you are an evaluator, which answers only in yes or no."
+      },
+      {
+        "role": "user",
+        "content": "are any of the {{asdf}} {{abcd}} related to broken hand"
+      }
+    ]
+column_name = "from_colab_v1"
+provider = "openai"
+model = "gpt-4o-mini"
+
+variables={
+    "asdf": "context",
+    "abcd": "feedback"
+}
+```
+
+#### 3. Create a New Dataset from JSONl
+
+##### a. Create a Dataset from JSONl with `create_from_jsonl()`
+
+```python
+dataset_manager.create_from_jsonl(
+    jsonl_path='jsonl_path',
+    dataset_name='MyDataset',
+    schema_mapping={'column1': 'schema_element1', 'column2': 'schema_element2'}
+)
+```
+
+##### b. Add rows from JSONl with `add_rows_from_jsonl()`
+
+```python
+dataset_manager.add_rows_from_jsonl(
+    jsonl_path='jsonl_path',
+    dataset_name='MyDataset',
+)
+```
+
+
+
+
