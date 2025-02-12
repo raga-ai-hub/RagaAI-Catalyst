@@ -11,13 +11,14 @@ logging_level = (
     else logger.setLevel(logging.INFO)
 )
 
+
 def calculate_metric(project_id, metric_name, model, provider, **kwargs):
     user_id = "1"
     org_domain = "raga"
 
     headers = {
         "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
-        "X-Project-Id": str(project_id),  # TODO to change it to project_id
+        "X-Project-Id": str(project_id),
         "Content-Type": "application/json"
     }
 
@@ -38,6 +39,7 @@ def calculate_metric(project_id, metric_name, model, provider, **kwargs):
                     "metric_name": metric_name,
                     "request_id": 1
                 },
+                "variable_mapping": kwargs,
                 "trace_object": {
                     "Data": {
                         "DocId": "doc-1",
