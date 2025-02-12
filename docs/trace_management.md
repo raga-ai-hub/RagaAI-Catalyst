@@ -440,7 +440,7 @@ dataset_manager.add_columns(
 
 #### Evaluate metrics
 
-Evaluate metrics on the uploaded dataset.
+Evaluate metrics on the uploaded tracer dataset.
 
 ```python
 from ragaai_catalyst import Evaluation
