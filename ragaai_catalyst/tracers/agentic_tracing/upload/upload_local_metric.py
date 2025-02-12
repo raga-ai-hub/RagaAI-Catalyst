@@ -11,7 +11,7 @@ logging_level = (
     else logger.setLevel(logging.INFO)
 )
 
-def calculate_metric(project_id, metric_name, model, provider, prompt, response, context, expected_response=None):
+def calculate_metric(project_id, metric_name, model, provider, **kwargs):
     user_id = "1"
     org_domain = "raga"
 
@@ -41,15 +41,15 @@ def calculate_metric(project_id, metric_name, model, provider, prompt, response,
                 "trace_object": {
                     "Data": {
                         "DocId": "doc-1",
-                        "Prompt": prompt,
-                        "Response": response,
-                        "Context": context,
-                        "ExpectedResponse": "",
-                        "ExpectedContext": expected_response,
-                        "Chat": "",
-                        "Instructions": "",
-                        "SystemPrompt": "",
-                        "Text": ""
+                        "Prompt": kwargs.get("prompt"),
+                        "Response": kwargs.get("response"),
+                        "Context": kwargs.get("context"),
+                        "ExpectedResponse": kwargs.get("expected_response"),
+                        "ExpectedContext": kwargs.get("expected_context"),
+                        "Chat": kwargs.get("chat"),
+                        "Instructions": kwargs.get("instructions"),
+                        "SystemPrompt": kwargs.get("system_prompt"),
+                        "Text": kwargs.get("text")
                     },
                     "claims": {},
                     "last_computed_metrics": {

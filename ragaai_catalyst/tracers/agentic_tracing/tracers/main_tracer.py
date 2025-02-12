@@ -368,7 +368,7 @@ class AgenticTracing(
 
         # Check if there's an active agent context
         current_agent_id = self.current_agent_id.get()
-        if current_agent_id and component_data["type"] in ["llm", "tool"]:
+        if current_agent_id and component_data["type"] in ["llm", "tool", "custom"]:
             # Add this component as a child of the current agent
             current_children = self.agent_children.get()
             current_children.append(component_data)

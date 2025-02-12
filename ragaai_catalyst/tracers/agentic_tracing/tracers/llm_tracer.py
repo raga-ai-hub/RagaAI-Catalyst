@@ -630,10 +630,9 @@ class LLMTracerMixin:
         #print("Response output: ",response)
 
         # TODO: Execute & Add the User requested metrics here
-        formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name, prompt, span_context, response, span_gt)
+        formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name)
         if formatted_metrics:
-            for formatted_metric in formatted_metrics:
-                metrics.append(formatted_metric)
+            metrics.extend(formatted_metrics)
 
         component = {
             "id": component_id,
@@ -684,38 +683,52 @@ class LLMTracerMixin:
         # return "\n".join(process_content(msg.get("content", "")) for msg in messages if msg.get("content"))
   
     def convert_to_content(self, input_data):
-        if isinstance(input_data, dict):
-            messages = input_data.get("kwargs", {}).get("messages", [])
-        elif isinstance(input_data, list):
-            if len(input_data)>0 and isinstance(input_data[0]['content'],ChatResponse):
-                extracted_messages = []
+        try:
+            if isinstance(input_data, dict):
+                messages = input_data.get("kwargs", {}).get("messages", [])
+            elif isinstance(input_data, list):
+                if len(input_data)>0 and isinstance(input_data[0]['content'],ChatResponse):
+                    extracted_messages = []
 
-                for item in input_data:
-                    chat_response = item.get('content')
-                    if hasattr(chat_response, 'message') and hasattr(chat_response.message, 'blocks'):
-                        for block in chat_response.message.blocks:
-                            if hasattr(block, 'text'):
-                                extracted_messages.append(block.text)
-                messages=extracted_messages
-                if isinstance(messages,list):
-                    return "\n".join(messages)
-                
-                #messages=[msg["content"] for msg in input_data if isinstance(msg, dict) and "content" in msg]
-                #messages = [msg["content"].message for msg in input_data if isinstance(msg, dict) and "content" in msg and isinstance(msg["content"], ChatResponse)]
+                    for item in input_data:
+                        chat_response = item.get('content')
+                        if hasattr(chat_response, 'message') and hasattr(chat_response.message, 'blocks'):
+                            for block in chat_response.message.blocks:
+                                if hasattr(block, 'text'):
+                                    extracted_messages.append(block.text)
+                    messages=extracted_messages
+                    if isinstance(messages,list):
+                        return "\n".join(messages)
+                    
+                    #messages=[msg["content"] for msg in input_data if isinstance(msg, dict) and "content" in msg]
+                    #messages = [msg["content"].message for msg in input_data if isinstance(msg, dict) and "content" in msg and isinstance(msg["content"], ChatResponse)]
+                else:
+                    messages = input_data
+            elif isinstance(input_data,ChatResponse):
+                messages=input_data['content']
             else:
-                messages = input_data
-        elif isinstance(input_data,ChatResponse):
-            messages=input_data['content']
-        else:
-            return ""
-        res=""
-        # try:
-        res="\n".join(str(msg.get("content", "")).strip() for msg in messages if msg.get("content"))
+# <<<<<<< HEAD
+#                     messages = input_data
+#             elif isinstance(input_data,ChatResponse):
+#                 messages=input_data['content']
+#             else:
+#                 return ""
+#             res=""
+            # try:
+            # res="\n".join(str(msg.get("content", "")).strip() for msg in messages if msg.get("content"))
         # except Exception as e:
         #     print("Exception occured for: ",e)
         #     print("Input: ",input_data,"Meeage: ",messages)
         #     # import sys
         #     # sys.exit()
+# =======
+                return ""
+            res=""
+            # try:
+            res="\n".join(str(msg.get("content", "")).strip() for msg in messages if msg.get("content"))
+        except Exception as e:
+            res=str(messages)
+# >>>>>>> 08b5e3d7ab5485f2ae27d8057196f37a709e997e
         return res
 
     def process_content(content):
