@@ -1058,6 +1058,7 @@ class BaseTracer:
     def get_formatted_metric(span_attributes_dict, project_id, name, prompt, span_context, response, span_gt):
         if name in span_attributes_dict:
             local_metrics = span_attributes_dict[name].local_metrics or []
+            local_metrics_results = []
             for metric in local_metrics:
                 try:
                     if metric.get("prompt") is not None:
@@ -1107,9 +1108,11 @@ class BaseTracer:
                         "mappings": [],
                         "config": metric_config
                     }
-                    return formatted_metric
+                    local_metrics_results.append(formatted_metric)
                 except ValueError as e:
                     logger.error(f"Validation Error: {e}")
                 except Exception as e:
                     logger.error(f"Error executing metric: {e}")
+
+            return local_metrics_results
 
