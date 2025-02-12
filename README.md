@@ -84,6 +84,19 @@ dataset_manager.create_from_csv(
     schema_mapping={'column1': 'schema_element1', 'column2': 'schema_element2'}
 )
 
+# Create a dataset from JSONl
+dataset_manager.create_from_jsonl(
+    jsonl_path='jsonl_path',
+    dataset_name='MyDataset',
+    schema_mapping={'column1': 'schema_element1', 'column2': 'schema_element2'}
+)
+
+# Add rows from JSONl
+dataset_manager.add_rows_from_jsonl(
+    jsonl_path='jsonl_path',
+    dataset_name='MyDataset',
+)
+
 # Get project schema mapping
 dataset_manager.get_schema_mapping()
 
@@ -150,20 +163,29 @@ print("Experiment Results:", results)
 Record and analyze traces of your RAG application:
 
 ```python
-from ragaai_catalyst import Tracer
+from ragaai_catalyst import RagaAICatalyst, Tracer
 
-# Start a trace recording
+catalyst = RagaAICatalyst(
+    access_key="access_key",
+    secret_key="secret_key",
+    base_url="base_url"
+)
+# There are two ways to start a trace recording
+
+#1- with tracer():
 tracer = Tracer(
     project_name="Test-RAG-App-1",
     dataset_name="tracer_dataset_name",
     metadata={"key1": "value1", "key2": "value2"},
-    tracer_type="langchain",
-    pipeline={
-        "llm_model": "gpt-4o-mini",
-        "vector_store": "faiss",
-        "embed_model": "text-embedding-ada-002",
-    }
-).start()
+    tracer_type="langchain"
+)
+
+with tracer():
+    # Your code here
+
+#2- tracer.start()
+#start the trace recording
+tracer.start()
 
 # Your code here
 
@@ -173,6 +195,7 @@ tracer.stop()
 
 # Get upload status
 tracer.get_upload_status()
+
 ```
 For more detailed information on Trace Management, please refer to the [Trace Management documentation](docs/trace_management.md).
 
@@ -366,7 +389,7 @@ The module includes utilities for cost tracking, performance monitoring, and deb
 Initialize the tracer with project_name and dataset_name
 
 ```python
-from ragaai_catalyst import Tracer
+from ragaai_catalyst import RagaAICatalyst, Tracer, trace_llm, trace_tool, trace_agent, current_span
 
 agentic_tracing_dataset_name = "agentic_tracing_dataset_name"
 
