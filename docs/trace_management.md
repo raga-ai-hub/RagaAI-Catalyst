@@ -24,223 +24,24 @@ tracer = Tracer(
     }
 )
 ```
-##### - Set up logging configuration
-
-```python
-import logging
-import sys
-
-logging.basicConfig(
-    level=logging.INFO,  # Set the logging level (INFO, DEBUG, ERROR, etc.)
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),  # Logs INFO and DEBUG to stdout
-        logging.StreamHandler(sys.stderr),  # Logs WARNING and ERROR to stderr
-    ],
-)
-
-# Create a logger instance
-logger = logging.getLogger("auto-impression")
-```
-
 ##### - User code
 
 ```python
-from langchain.prompts import PromptTemplate
-from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+tracer.start()
 
-def get_radiology_prompt(resp_dict: dict, format_instructions: str) -> ChatPromptTemplate:
-    enhanced_instructions = f"""Output must strictly adhere to this format: {format_instructions}. Do not add any explanations or extra text"""
-    impression_system = """You are an expert radiologist responsible for generating precise and focused impressions for radiology reports. Your impressions should adhere to current clinical guidelines and best practices from reputable radiological societies such as the ACR (American College of Radiology), RSNA (Radiological Society of North America), Fleischner Society, and other relevant organizations. Incorporate recommendations and guidelines from clinical papers and established frameworks to ensure optimal patient care.
-    {enhanced_instructions}"""
-    impression_prompt = """
-    You are a knowledgeable radiologist responsible for crafting precise and focused impressions for radiology reports. Your impressions should be clear, concise, and adhere to the following guidelines.
-        PRIORITY ORDER:
-        Clinical Findings:
-        Start with findings directly related to the reason for the exam or the primary clinical indications.
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-        Acute Findings Statement:
-        Clearly state the presence or absence of acute findings in the examined regions.
+chat = ChatLiteLLM(model="gpt-4o-mini")
 
-        Post-Surgical Changes:
-        Note any stable post-surgical changes relevant to the patient's history.
+messages = [
+    HumanMessage(
+        content="Translate this sentence from English to German. I love you."
+    )
+]
+response = chat(messages)
+print(response.content)
 
-        Clinically Significant Findings:
-        List clinically significant findings in order of importance, providing essential details.
-
-        Unremarkable Exam Statement:
-        If the entire exam findings are unremarkable and there are no clinical findings, simply state "Unremarkable exam." and do not include any other statements in the impression.
-
-        CORE RULES:
-        Exclude Normal and Negative Findings:
-        Do not include normal findings or negative statements about structures without abnormalities unless directly addressing the clinical question.
-        Avoid phrases like "No evidence of..." or "No significant abnormalities in...".
-
-        Include Only Essential Findings:
-        Focus on clinically significant findings that impact patient care or require follow-up.
-
-        Include Recommendations When Necessary:
-        Provide recommendations if they significantly impact patient management or are essential for follow-up.
-
-        Avoid Redundant Phrases:
-        Do not use phrases like "present," "noted," "identified," or "visualized."
-
-        Exclude Unnecessary Details:
-        Do not include technical details, unnecessary measurements, or incidental findings without clinical relevance.
-
-        STYLE GUIDELINES:
-        Numbered List:
-        Always present the Impression as a numbered list, with each point numbered and on its own line for clarity.
-
-        Conciseness:
-        Keep the impression concise, using only as many lines as necessary for essential information.
-
-        Order of Significance:
-        List findings from most significant to least significant.
-
-        Consistent Wording:
-        Use clear and consistent terminology, avoiding unnecessary words or phrases.
-
-        Punctuation:
-        Use periods at the end of each statement.
-
-        FORMAT SUMMARY:
-        Clinical Findings:
-        Address findings related to the clinical indications for the exam.
-
-        Acute Findings Statement:
-        State the presence or absence of acute findings relevant to the clinical concern.
-
-        Post-Surgical Changes:
-        Mention stable post-surgical changes if applicable.
-
-        Clinically Significant Findings:
-        Include significant findings with essential details, ordered by importance.
-
-        Unremarkable Exam Statement:
-        If the exam is completely unremarkable and there are no clinical findings, state "Unremarkable exam." and do not include any other statements in the impression.
-
-        Your Task:
-        Generate an IMPRESSION section based on the provided findings, strictly following these guidelines. Focus on conveying critical information to the referring clinician, ensuring the impression is concise and aligns with the known good impression in focus and content.
-
-        Note:
-        Only output the Impression text, presented as a numbered list.
-        Do not include normal findings or unnecessary negative statements unless directly relevant to the clinical indication.
-        Include significant recommendations if they impact patient management.
-        If the exam is completely unremarkable and there are no clinical findings, state "Unremarkable exam." and do not include any other statements in the impression.
-        Patient-Information:
-        Age: {age}
-        Gender: {gender}
-        Ethnicity: {ethnicity}
-
-        Radiography Exam:
-        Type of Radiography Exam: {exam}
-        Reason For Exam: {reason_for_exam}
-        Technique: {technique}
-        Indication Codes List: {indication_codes}
-
-        Findings: {findings}
-
-        """
-
-    context = {
-        "age": resp_dict.get("age"),
-        "gender": resp_dict.get("gender"), "ethnicity": resp_dict.get("ethnicity"),
-        "exam": resp_dict.get("exam"), "reason_for_exam": resp_dict.get("reason_for_exam"),
-        "technique": resp_dict.get("technique"), "indication_codes": resp_dict.get("indication_codes"),
-        "findings": resp_dict.get("findings"), "format_instructions": format_instructions
-    }
-    system_message = SystemMessagePromptTemplate.from_template(impression_system, partial_variables={"enhanced_instructions": enhanced_instructions})
-
-    human_message = HumanMessagePromptTemplate.from_template(impression_prompt, partial_variables=context)
-
-    prompt = ChatPromptTemplate.from_messages([system_message, human_message])
-    return prompt, context
-```
-
-```python
-!pip install langchain_community -q
-!pip install langchain-google-vertexai -q
-!pip install langchain-google-genai -q
-!pip install langchain-anthropic -q
-!pip install langchain-aws -q
-```
-
-```python
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain.chat_models import ChatOpenAI, AzureChatOpenAI
-from langchain_google_vertexai import ChatVertexAI, VertexAI
-from langchain_google_vertexai.model_garden import ChatAnthropicVertex
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_anthropic import ChatAnthropic
-from langchain_aws import ChatBedrock
-from pydantic import BaseModel, Field
-import json
-import logging
-
-logger = logging.getLogger(__name__)
-
-class ImpressionPromptOutput(BaseModel):
-    impression: str = Field(description="Impression generated by LLM")
-
-# Define model configurations
-# Define model configurations
-MODEL_CONFIGS = {
-    # Anthropic Models
-    "claude-3-5-sonnet-latest": {
-        "provider": "anthropic",
-        "model_class": ChatAnthropic,
-        "kwargs": {
-            "model": "claude-3-5-sonnet-latest",
-            "temperature": 0.7
-        }
-    },
-    # OpenAI Models
-    "gpt-4o": {
-        "provider": "openai",
-        "model_class": ChatOpenAI,
-        "kwargs": {
-            "model_name": "gpt-4o",
-            "temperature": 0.7
-        }
-    }
-}
-```
-
-```python
-def generate(resp_dict, model_name):
-    if model_name not in MODEL_CONFIGS:
-        raise ValueError(f"Unsupported model: {model_name}")
-
-    config = MODEL_CONFIGS[model_name]
-    model = config["model_class"](**config["kwargs"])
-    parser = PydanticOutputParser(pydantic_object=ImpressionPromptOutput)
-    prompt, context = get_radiology_prompt(resp_dict, parser.get_format_instructions())
-
-    try:
-        chain = prompt | model | parser
-        output = chain.invoke({})
-        print(f"Raw LLM Response: {output}")
-    except Exception as e:
-        logger.warning(f"Errors during chain execution: {e}")
-        try:
-            chain = prompt | model
-            output = chain.invoke({})
-            print(f"Raw LLM Response: here::::{output}")
-            try:
-                wrapped_resp = json.dumps({"impression": output})
-            except:
-                wrapped_resp = json.dumps({"impression": output.content})
-            output = parser.parse(wrapped_resp)
-        except Exception as fallback_error:
-            logger.warning(f"Errors during chain fallback execution: {fallback_error}")
-            output = None
-
-    return output, context
-
-def get_impression(resp_dict, model_name="gemini-1.5-flash-002"):
-    new_impression, context = generate(resp_dict, model_name)
-    return new_impression, context
+tracer.stop()
 ```
 
 ##### 2. Llama-index example
