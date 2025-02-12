@@ -1055,29 +1055,20 @@ class BaseTracer:
         return self.span_attributes_dict[span_name]
 
     @staticmethod
-    def get_formatted_metric(span_attributes_dict, project_id, name, prompt, span_context, response, span_gt):
+    def get_formatted_metric(span_attributes_dict, project_id, name):
         if name in span_attributes_dict:
             local_metrics = span_attributes_dict[name].local_metrics or []
+            local_metrics_results = []
             for metric in local_metrics:
                 try:
-                    if metric.get("prompt") is not None:
-                        prompt = metric['prompt']
-                    if metric.get("response") is not None:
-                        response = metric['response']
-                    if metric.get('context') is not None:
-                        span_context = metric['context']
-                    if metric.get('gt') is not None:
-                        span_gt = metric['gt']
-
                     logger.info("calculating the metric, please wait....")
+
+                    mapping = metric.get("mapping", {})
                     result = calculate_metric(project_id=project_id,
                                               metric_name=metric.get("name"),
                                               model=metric.get("model"),
                                               provider=metric.get("provider"),
-                                              prompt=prompt,
-                                              context=span_context,
-                                              response=response,
-                                              expected_response=span_gt
+                                              **mapping
                                               )
 
                     result = result['data']['data'][0]
@@ -1107,9 +1098,11 @@ class BaseTracer:
                         "mappings": [],
                         "config": metric_config
                     }
-                    return formatted_metric
+                    local_metrics_results.append(formatted_metric)
                 except ValueError as e:
                     logger.error(f"Validation Error: {e}")
                 except Exception as e:
                     logger.error(f"Error executing metric: {e}")
+
+            return local_metrics_results
 

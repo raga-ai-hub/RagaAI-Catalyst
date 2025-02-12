@@ -7,6 +7,7 @@ import functools
 from typing import Optional, Any, Dict, List
 
 from pydantic import tools
+from .base import BaseTracer
 from ..utils.unique_decorator import generate_unique_hash_simple
 import contextvars
 import asyncio
@@ -482,6 +483,10 @@ class ToolTracerMixin:
                 self.visited_metrics.append(metric_name)
                 metric["name"] = metric_name  
                 metrics.append(metric)
+
+        formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name)
+        if formatted_metrics:
+            metrics.extend(formatted_metrics)
 
         start_time = kwargs["start_time"]
         component = {

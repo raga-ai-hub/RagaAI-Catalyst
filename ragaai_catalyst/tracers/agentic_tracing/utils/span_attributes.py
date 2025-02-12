@@ -62,6 +62,7 @@ class SpanAttributes:
         self.feedback = feedback
         logger.debug(f"Added feedback: {self.feedback}")
 
+    # TODO: Add validation to check if all the required parameters are present
     def execute_metrics(self, **kwargs: Any):
         name = kwargs.get("name")
         model = kwargs.get("model")
@@ -91,19 +92,20 @@ class SpanAttributes:
             prompt =None
             context = None
             response = None
-            if mapping is not None:
-                prompt = mapping['prompt']
-                context = mapping['context']
-                response = mapping['response']
+            # if mapping is not None:
+            #     prompt = mapping['prompt']
+            #     context = mapping['context']
+            #     response = mapping['response']
             new_metric = {
                 "name": metric_name,
                 "model": model,
                 "provider": provider,
                 "project_id": self.project_id,
-                "prompt": prompt,
-                "context": context,
-                "response": response,
-                "displayName": display_name
+                # "prompt": prompt,
+                # "context": context,
+                # "response": response,
+                "displayName": display_name,
+                "mapping": mapping
             }
             self.local_metrics.append(new_metric)
 

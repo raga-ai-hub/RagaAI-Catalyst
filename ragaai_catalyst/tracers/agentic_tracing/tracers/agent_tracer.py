@@ -9,6 +9,7 @@ import contextvars
 import asyncio
 from ..utils.file_name_tracker import TrackName
 from ..utils.span_attributes import SpanAttributes
+from .base import BaseTracer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -519,6 +520,10 @@ class AgentTracerMixin:
                 metrics.append(metric)
 
         # TODO agent_trace execute metric
+        formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name)
+        if formatted_metrics:
+            metrics.extend(formatted_metrics)
+
         component = {
             "id": kwargs["component_id"],
             "hash_id": kwargs["hash_id"],
