@@ -62,6 +62,7 @@ class SpanAttributes:
         self.feedback = feedback
         logger.debug(f"Added feedback: {self.feedback}")
 
+    # TODO: Add validation to check if all the required parameters are present
     def execute_metrics(self, **kwargs: Any):
         name = kwargs.get("name")
         model = kwargs.get("model")
