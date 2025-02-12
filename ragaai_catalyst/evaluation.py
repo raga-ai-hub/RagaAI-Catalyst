@@ -358,7 +358,10 @@ class Evaluation:
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
 
-    def append_metrics(self, display_name):
+    def append_metric(self, display_name):
+        if not isinstance(display_name, str):
+            raise ValueError("display_name should be a string")
+        
         headers = {
             "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
             'X-Project-Id': str(self.project_id),
