@@ -236,12 +236,19 @@ class AgenticTracing(
         total_cost = 0.0
         total_tokens = 0
 
+        processed_components = set()
+
         def process_component(component):
             nonlocal total_cost, total_tokens
             # Convert component to dict if it's an object
             comp_dict = (
                 component.__dict__ if hasattr(component, "__dict__") else component
             )
+
+            comp_id = comp_dict.get("id") or comp_dict.get("component_id")
+            if comp_id in processed_components:
+                return  # Skip if already processed
+            processed_components.add(comp_id)
 
             if comp_dict.get("type") == "llm":
                 info = comp_dict.get("info", {})
