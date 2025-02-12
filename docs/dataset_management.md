@@ -120,7 +120,7 @@ text_fields = [
         "content": "are any of the {{asdf}} {{abcd}} related to broken hand"
       }
     ]
-column_name = "from_colab_v1"
+column_name = "column_name"
 provider = "openai"
 model = "gpt-4o-mini"
 
@@ -128,6 +128,17 @@ variables={
     "asdf": "context",
     "abcd": "feedback"
 }
+```
+
+```python
+dataset_manager.add_columns(
+    text_fields=text_fields,
+    dataset_name=dataset_name,
+    column_name=column_name,
+    provider=provider,
+    model=model,
+    variables=variables
+)
 ```
 
 #### 3. Create a New Dataset from JSONl
