@@ -27,8 +27,6 @@ tracer = Tracer(
 ##### - User code
 
 ```python
-tracer.start()
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 chat = ChatLiteLLM(model="gpt-4o-mini")
@@ -38,10 +36,8 @@ messages = [
         content="Translate this sentence from English to German. I love you."
     )
 ]
-response = chat(messages)
-print(response.content)
-
-tracer.stop()
+with tracer:
+    response = chat(messages)
 ```
 
 ##### 2. Llama-index example
@@ -267,6 +263,22 @@ metrics = [
 evaluation.add_metrics(metrics=metrics)
 evaluation.get_status()
 ```
+
+#### Appending Metrics for New Data
+
+If you've added new rows to your dataset, you can calculate metrics just for the new data:
+
+```python
+evaluation.append_metrics(display_name="Faithfulness_v1")
+```
+
+
+
+
+
+
+
+
 
 
 

@@ -5,7 +5,6 @@ RagaAI Catalyst is a comprehensive platform designed to enhance the management a
 ## Table of Contents
 
 - [RagaAI Catalyst](#ragaai-catalyst)
-  - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
   - [Configuration](#configuration)
   - [Usage](#usage)
@@ -40,7 +39,15 @@ catalyst = RagaAICatalyst(
     base_url="BASE_URL"
 )
 ```
-**Note**: Authetication to RagaAICatalyst is necessary to perform any operations below 
+you'll need to generate authentication credentials:
+
+1. Navigate to your profile settings
+2. Select "Authenticate" 
+3. Click "Generate New Key" to create your access and secret keys
+
+![How to generate authentication keys](docs/key_generation.gif)
+
+**Note**: Authetication to RagaAICatalyst is necessary to perform any operations below.
 
 
 ## Usage
@@ -177,7 +184,7 @@ tracer = Tracer(
     project_name="Test-RAG-App-1",
     dataset_name="tracer_dataset_name",
     metadata={"key1": "value1", "key2": "value2"},
-    tracer_type="langchain"
+    tracer_type="tracer_type"
 )
 
 with tracer():
