@@ -160,7 +160,6 @@ class AgentTracerMixin:
                         if callable(attr_value):
 
                             def wrap_method(method):
-                                @self.file_tracker.trace_decorator
                                 @functools.wraps(method)
                                 def wrapped_method(self, *args, **kwargs):
                                     gt = kwargs.get("gt") if kwargs else None
@@ -303,7 +302,7 @@ class AgentTracerMixin:
 
         try:
             # Execute the agent
-            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
+            result = func(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
@@ -424,7 +423,7 @@ class AgentTracerMixin:
 
         try:
             # Execute the agent
-            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
+            result = await func(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss

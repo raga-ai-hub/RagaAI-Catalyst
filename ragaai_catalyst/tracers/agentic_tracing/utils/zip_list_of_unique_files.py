@@ -302,7 +302,7 @@ class TraceDependencyTracker:
                     except (UnicodeDecodeError, IOError):
                         pass
 
-    def analyze_python_imports(self, filepath):
+    def analyze_python_imports(self, filepath, env_location):
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 tree = ast.parse(file.read(), filename=filepath)
@@ -315,8 +315,10 @@ class TraceDependencyTracker:
                             module_name = name.name.split('.')[0]
                     try:
                         spec = importlib.util.find_spec(module_name)
-                        if spec and spec.origin and not spec.origin.startswith(os.path.dirname(importlib.__file__)):
-                            self.python_imports.add(spec.origin)
+                        if spec and spec.origin:    
+                            if not ((spec.origin.startswith(env_location)) or (spec.origin == 'built-in')):
+                                self.python_imports.add(spec.origin)
+                                self.analyze_python_imports(spec.origin, env_location)
                     except (ImportError, AttributeError):
                         pass
         except Exception as e:
@@ -349,6 +351,9 @@ class TraceDependencyTracker:
             # Get current cell content
             self.check_environment_and_save()
 
+        env_location = self.get_env_location()
+        catalyst_location = self.get_catalyst_location()
+
         # Process all files (existing code)
         for filepath in filepaths:
             abs_path = os.path.abspath(filepath)
@@ -360,7 +365,7 @@ class TraceDependencyTracker:
                     content = comment_magic_commands(content)
                 self.find_config_files(content, abs_path)
                 if filepath.endswith('.py'):
-                    self.analyze_python_imports(abs_path)
+                    self.analyze_python_imports(abs_path, env_location)
             except Exception as e:
                 pass
 
@@ -385,9 +390,6 @@ class TraceDependencyTracker:
 
             except Exception as e:
                 pass
-
-        env_location = self.get_env_location()
-        catalyst_location = self.get_catalyst_location()
 
         # Calculate hash and create zip
         self.tracked_files.update(self.python_imports)
