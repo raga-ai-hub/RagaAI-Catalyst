@@ -211,7 +211,6 @@ def comment_magic_commands(script_content: str) -> str:
 class TraceDependencyTracker:
     def __init__(self, output_dir=None):
         self.tracked_files = set()
-        self.python_imports = set()
         self.notebook_path = None
         self.colab_content = None  
         
@@ -302,7 +301,7 @@ class TraceDependencyTracker:
                     except (UnicodeDecodeError, IOError):
                         pass
 
-    def analyze_python_imports(self, filepath, env_location):
+    def analyze_python_imports(self, filepath, ignored_locations):
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 tree = ast.parse(file.read(), filename=filepath)
@@ -316,9 +315,9 @@ class TraceDependencyTracker:
                     try:
                         spec = importlib.util.find_spec(module_name)
                         if spec and spec.origin:    
-                            if not ((spec.origin.startswith(env_location)) or (spec.origin == 'built-in')):
-                                self.python_imports.add(spec.origin)
-                                self.analyze_python_imports(spec.origin, env_location)
+                            if not (any(spec.origin.startswith(location) for location in ignored_locations) or (spec.origin in ['built-in', 'frozen'])):
+                                self.tracked_files.add(spec.origin)
+                                self.analyze_python_imports(spec.origin, ignored_locations)
                     except (ImportError, AttributeError):
                         pass
         except Exception as e:
@@ -359,15 +358,21 @@ class TraceDependencyTracker:
             abs_path = os.path.abspath(filepath)
             self.track_file_access(abs_path)
             try:
-                with open(abs_path, 'r', encoding='utf-8') as file:
+                if filepath.endswith('.py'):
+                    self.analyze_python_imports(abs_path, [env_location, catalyst_location])
+            except Exception as e:
+                pass
+        
+        for filepath in self.tracked_files:
+            try:
+                with open(filepath, 'r', encoding='utf-8') as file:
                     content = file.read()
                     # Comment out magic commands before processing
                     content = comment_magic_commands(content)
-                self.find_config_files(content, abs_path)
-                if filepath.endswith('.py'):
-                    self.analyze_python_imports(abs_path, env_location)
+                self.find_config_files(content, filepath)
             except Exception as e:
                 pass
+
 
         notebook_content_str = None
         if self.notebook_path and os.path.exists(self.notebook_path):
@@ -392,7 +397,6 @@ class TraceDependencyTracker:
                 pass
 
         # Calculate hash and create zip
-        self.tracked_files.update(self.python_imports)
         hash_contents = []
 
         for filepath in sorted(self.tracked_files):
