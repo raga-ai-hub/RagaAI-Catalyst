@@ -13,7 +13,7 @@ import traceback
 import importlib
 import sys
 from litellm import model_cost
-from llama_index.core.base.llms.types import ChatResponse
+from llama_index.core.base.llms.types import ChatResponse,TextBlock
 
 from .base import BaseTracer
 from ..utils.llm_utils import (
@@ -673,15 +673,6 @@ class LLMTracerMixin:
 
         return component
 
-    # def convert_to_content(self, input_data):
-    #     if isinstance(input_data, dict):
-    #         messages = input_data.get("kwargs", {}).get("messages", [])
-    #     elif isinstance(input_data, list):
-    #         messages = input_data
-    #     else:
-    #         return ""
-        # return "\n".join(process_content(msg.get("content", "")) for msg in messages if msg.get("content"))
-  
     def convert_to_content(self, input_data):
         try:
             if isinstance(input_data, dict):
@@ -689,7 +680,6 @@ class LLMTracerMixin:
             elif isinstance(input_data, list):
                 if len(input_data)>0 and isinstance(input_data[0]['content'],ChatResponse):
                     extracted_messages = []
-
                     for item in input_data:
                         chat_response = item.get('content')
                         if hasattr(chat_response, 'message') and hasattr(chat_response.message, 'blocks'):
@@ -699,9 +689,8 @@ class LLMTracerMixin:
                     messages=extracted_messages
                     if isinstance(messages,list):
                         return "\n".join(messages)
-                    
-                    #messages=[msg["content"] for msg in input_data if isinstance(msg, dict) and "content" in msg]
-                    #messages = [msg["content"].message for msg in input_data if isinstance(msg, dict) and "content" in msg and isinstance(msg["content"], ChatResponse)]
+                elif len(input_data)>0 and isinstance(input_data[0]['content'],TextBlock):
+                    return " ".join(block.text for item in input_data for block in item['content'] if isinstance(block, TextBlock))
                 else:
                     messages = input_data
             elif isinstance(input_data,ChatResponse):
@@ -709,10 +698,9 @@ class LLMTracerMixin:
             else:
                 return ""
             res=""
-            # try:
             res="\n".join(msg.get("content", "").strip() for msg in messages if msg.get("content"))
         except Exception as e:
-            res=str(messages)
+            res=str(input_data)
         return res
 
     def process_content(content):
