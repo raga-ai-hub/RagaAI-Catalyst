@@ -333,6 +333,13 @@ class TraceDependencyTracker:
         except ImportError:
             logger.error("Error getting Catalyst location")
             return 'ragaai_catalyst'
+    
+    def should_ignore_path(self, path, main_filepaths):
+        if any(os.path.abspath(path) in os.path.abspath(main_filepath) for main_filepath in main_filepaths):
+            return False
+        if path in ['', os.path.abspath('')]:
+            return False
+        return True
 
     def create_zip(self, filepaths):
         self.track_jupyter_notebook()
@@ -354,12 +361,13 @@ class TraceDependencyTracker:
         catalyst_location = self.get_catalyst_location()
 
         # Process all files (existing code)
+        ignored_locations = [env_location, catalyst_location] + [path for path in sys.path if self.should_ignore_path(path, filepaths)]
         for filepath in filepaths:
             abs_path = os.path.abspath(filepath)
             self.track_file_access(abs_path)
             try:
                 if filepath.endswith('.py'):
-                    self.analyze_python_imports(abs_path, [env_location, catalyst_location])
+                    self.analyze_python_imports(abs_path, ignored_locations)
             except Exception as e:
                 pass
         
