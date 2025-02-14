@@ -31,14 +31,26 @@ def get_current_catalyst() -> Optional[RagaAICatalyst]:
     return _global_catalyst
 
 def init_tracing(
+    project_name: str = None,
+    dataset_name: str = None,
+    access_key: str = None,
+    secret_key: str = None,
+    base_url: str = None,
     tracer: Tracer = None,
-    catalyst: RagaAICatalyst = None
+    catalyst: RagaAICatalyst = None, 
+    **kwargs
 ) -> None:
     """Initialize distributed tracing.
     
     Args:
+        project_name: Project name for new tracer
+        dataset_name: Dataset name for new tracer
+        access_key: RagaAI Catalyst access key
+        secret_key: RagaAI Catalyst secret key  
+        base_url: RagaAI Catalyst API base URL
         tracer: Existing Tracer instance
         catalyst: Existing RagaAICatalyst instance
+        **kwargs: Additional tracer parameters
     """
     global _global_tracer, _global_catalyst
     
