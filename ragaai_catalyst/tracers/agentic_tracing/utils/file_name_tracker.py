@@ -63,3 +63,7 @@ class TrackName:
     def reset(self):
         """Reset the file tracker by clearing all tracked files."""
         self.files.clear()
+    
+    def trace_main_file(self):
+        frame = inspect.stack()[-1]
+        self.files.add(frame.filename)

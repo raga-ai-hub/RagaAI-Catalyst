@@ -137,6 +137,7 @@ class BaseTracer:
         """Initialize a new trace"""
         self.tracking = True
         self.trace_id = str(uuid.uuid4())
+        self.file_tracker.trace_main_file()
         self.system_monitor = SystemMonitor(self.trace_id)
         threading.Thread(target=self._track_memory_usage).start()
         threading.Thread(target=self._track_cpu_usage).start()

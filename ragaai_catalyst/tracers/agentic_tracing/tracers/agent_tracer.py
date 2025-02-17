@@ -147,6 +147,78 @@ class AgentTracerMixin:
                     finally:
                         tracer.current_agent_id.reset(token)
 
+                # Wrap all public methods to track execution
+                for attr_name in dir(target):
+                    if not attr_name.startswith("_"):
+                        attr_value = getattr(target, attr_name)
+                        if callable(attr_value):
+
+                            def wrap_method(method):
+                                @functools.wraps(method)
+                                def wrapped_method(self, *args, **kwargs):
+                                    gt = kwargs.get("gt") if kwargs else None
+                                    if gt is not None:
+                                        span = tracer.span(name)
+                                        span.add_gt(gt)
+                                    # Set this agent as current during method execution
+                                    token = tracer.current_agent_id.set(
+                                        self._agent_component_id
+                                    )
+
+                                    # Store parent's children before setting new empty list
+                                    parent_children = tracer.agent_children.get()
+                                    children_token = tracer.agent_children.set([])
+
+                                    try:
+                                        start_time = datetime.now().astimezone().isoformat()
+                                        result = method(self, *args, **kwargs)
+
+                                        # Update agent component with method result
+                                        if hasattr(tracer, "_agent_components"):
+                                            component = tracer._agent_components.get(
+                                                self._agent_component_id
+                                            )
+                                            if component:
+                                                component["data"]["output"] = (
+                                                    tracer._sanitize_output(result)
+                                                )
+                                                component["data"]["input"] = (
+                                                    tracer._sanitize_input(args, kwargs)
+                                                )
+                                                component["start_time"] = (
+                                                    start_time
+                                                )
+
+                                                # Get children accumulated during method execution
+                                                children = tracer.agent_children.get()
+                                                if children:
+                                                    if (
+                                                            "children"
+                                                            not in component["data"]
+                                                    ):
+                                                        component["data"][
+                                                            "children"
+                                                        ] = []
+                                                    component["data"][
+                                                        "children"
+                                                    ].extend(children)
+
+                                                    # Add this component as a child to parent's children list
+                                                    parent_children.append(component)
+                                                    tracer.agent_children.set(
+                                                        parent_children
+                                                    )
+                                        return result
+                                    finally:
+                                        tracer.current_agent_id.reset(token)
+                                        tracer.agent_children.reset(children_token)
+
+                                return wrapped_method
+
+                            setattr(target, attr_name, wrap_method(attr_value))
+
+                # Replace __init__ with wrapped version
+
                 target.__init__ = wrapped_init
 
                 # Wrap all methods to maintain parent-child relationship
@@ -262,7 +334,7 @@ class AgentTracerMixin:
 
         try:
             # Execute the agent
-            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
+            result = func(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
@@ -386,7 +458,7 @@ class AgentTracerMixin:
 
         try:
             # Execute the agent
-            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
+            result = await func(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss

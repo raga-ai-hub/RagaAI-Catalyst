@@ -41,7 +41,6 @@ class CustomTracerMixin:
             # Check if the function is async
             is_async = asyncio.iscoroutinefunction(func)
 
-            @self.file_tracker.trace_decorator
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 async_wrapper.metadata = metadata
@@ -53,7 +52,6 @@ class CustomTracerMixin:
                     func, name or func.__name__, custom_type, version, trace_variables, *args, **kwargs
                 )
 
-            @self.file_tracker.trace_decorator
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 sync_wrapper.metadata = metadata
@@ -104,7 +102,7 @@ class CustomTracerMixin:
 
         try:
             # Execute the function
-            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
+            result = func(*args, **kwargs)
 
             # Calculate resource usage
             end_time = datetime.now().astimezone().isoformat()
@@ -192,7 +190,7 @@ class CustomTracerMixin:
 
         try:
             # Execute the function
-            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
+            result = await func(*args, **kwargs)
 
             # Calculate resource usage
             end_time = datetime.now().astimezone().isoformat()

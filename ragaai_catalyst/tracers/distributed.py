@@ -145,7 +145,7 @@ def trace_llm(name: str = None, model: str = None, **kwargs):
             
             try:
                 # Just execute the function within the current span
-                result = await tracer.file_tracker.trace_wrapper(func)(*args, **kwargs)
+                result = await func(*args, **kwargs)
                 return result
             finally:
                 # Reset using the stored token
@@ -163,7 +163,7 @@ def trace_llm(name: str = None, model: str = None, **kwargs):
             
             try:
                 # Just execute the function within the current span
-                result = tracer.file_tracker.trace_wrapper(func)(*args, **kwargs)
+                result = func(*args, **kwargs)
                 return result
             finally:
                 # Reset using the stored token
