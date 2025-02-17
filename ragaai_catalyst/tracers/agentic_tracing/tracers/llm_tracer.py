@@ -709,8 +709,8 @@ class LLMTracerMixin:
             else:
                 return ""
             res=""
-            # try:
-            res="\n".join(msg.get("content", "").strip() for msg in messages if msg.get("content"))
+            res="\n".join(str(msg.get("content", "")).strip() for msg in messages if msg.get("content"))
+            
         except Exception as e:
             res=str(messages)
         return res
