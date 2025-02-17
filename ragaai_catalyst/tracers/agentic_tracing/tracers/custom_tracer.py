@@ -160,7 +160,7 @@ class CustomTracerMixin:
                 error=error_component
             )
 
-            self.add_component(custom_component)
+            self.add_component(custom_component, is_error=True)
             raise
 
     async def _trace_custom_execution(self, func, name, custom_type, version, trace_variables, *args, **kwargs):
@@ -240,7 +240,7 @@ class CustomTracerMixin:
                 output_data=None,
                 error=error_component
             )
-            self.add_component(custom_component)
+            self.add_component(custom_component, is_error=True)
             raise
 
     def create_custom_component(self, **kwargs):

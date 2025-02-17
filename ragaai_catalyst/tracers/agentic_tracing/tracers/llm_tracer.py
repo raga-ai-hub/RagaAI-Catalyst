@@ -981,6 +981,10 @@ class LLMTracerMixin:
             metrics: List[Dict[str, Any]] = [],
             feedback: Optional[Any] = None,
     ):
+
+        start_memory = psutil.Process().memory_info().rss
+        start_time = datetime.now().astimezone().isoformat()
+
         if name not in self.span_attributes_dict:
             self.span_attributes_dict[name] = SpanAttributes(name)
         if tags:
@@ -1034,14 +1038,34 @@ class LLMTracerMixin:
                     result = await func(*args, **kwargs)
                     return result
                 except Exception as e:
-                    error_info = {
-                        "error": {
-                            "type": type(e).__name__,
-                            "message": str(e),
-                            "traceback": traceback.format_exc(),
-                            "timestamp": datetime.now().astimezone().isoformat(),
-                        }
+                    error_component = {
+                        "type": type(e).__name__,
+                        "message": str(e),
+                        "traceback": traceback.format_exc(),
+                        "timestamp": datetime.now().astimezone().isoformat(),
                     }
+
+                    # End tracking network calls for this component
+                    self.end_component(component_id)
+
+                    end_memory = psutil.Process().memory_info().rss
+                    memory_used = max(0, end_memory - start_memory)
+
+                    llm_component = self.create_llm_component(
+                        component_id=component_id,
+                        hash_id=generate_unique_hash(func, args, kwargs),
+                        name=name,
+                        llm_type="unknown",
+                        version=None,
+                        memory_used=memory_used,
+                        start_time=start_time,
+                        input_data=extract_input_data(args, kwargs, None),
+                        output_data=None,
+                        error=error_component,
+                    )
+                    self.llm_data = llm_component
+                    self.add_component(llm_component, is_error=True)
+
                     raise
                 finally:
 
@@ -1109,14 +1133,34 @@ class LLMTracerMixin:
                     result = func(*args, **kwargs)
                     return result
                 except Exception as e:
-                    error_info = {
-                        "error": {
-                            "type": type(e).__name__,
-                            "message": str(e),
-                            "traceback": traceback.format_exc(),
-                            "timestamp": datetime.now().astimezone().isoformat(),
-                        }
+                    error_component = {
+                        "type": type(e).__name__,
+                        "message": str(e),
+                        "traceback": traceback.format_exc(),
+                        "timestamp": datetime.now().astimezone().isoformat(),
                     }
+
+                    # End tracking network calls for this component
+                    self.end_component(component_id)
+
+                    end_memory = psutil.Process().memory_info().rss
+                    memory_used = max(0, end_memory - start_memory)
+
+                    llm_component = self.create_llm_component(
+                        component_id=component_id,
+                        hash_id=generate_unique_hash(func, args, kwargs),
+                        name=name,
+                        llm_type="unknown",
+                        version=None,
+                        memory_used=memory_used,
+                        start_time=start_time,
+                        input_data=extract_input_data(args, kwargs, None),
+                        output_data=None,
+                        error=error_component,
+                    )
+                    self.llm_data = llm_component
+                    self.add_component(llm_component, is_error=True)
+
                     raise
                 finally:
                     llm_component = self.llm_data

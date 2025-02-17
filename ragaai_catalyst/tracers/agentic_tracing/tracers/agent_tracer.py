@@ -344,7 +344,7 @@ class AgentTracerMixin:
                 self.agent_children.set(parent_children)
             else:
                 # Only add to root components if no parent
-                self.add_component(agent_component)
+                self.add_component(agent_component, is_error=True)
 
             raise
         finally:
@@ -467,7 +467,7 @@ class AgentTracerMixin:
                 self.agent_children.set(parent_children)
             else:
                 # Only add to root components if no parent
-                self.add_component(agent_component)
+                self.add_component(agent_component, is_error=True)
 
             raise
         finally:
