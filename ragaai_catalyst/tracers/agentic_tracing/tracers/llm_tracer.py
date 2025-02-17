@@ -13,7 +13,7 @@ import traceback
 import importlib
 import sys
 from litellm import model_cost
-from llama_index.core.base.llms.types import ChatResponse,TextBlock
+from llama_index.core.base.llms.types import ChatResponse,TextBlock, ChatMessage
 
 from .base import BaseTracer
 from ..utils.llm_utils import (
@@ -691,6 +691,8 @@ class LLMTracerMixin:
                         return "\n".join(messages)
                 elif len(input_data)>0 and isinstance(input_data[0]['content'],TextBlock):
                     return " ".join(block.text for item in input_data for block in item['content'] if isinstance(block, TextBlock))
+                elif len(input_data)>0 and isinstance(input_data[0]['content'],ChatMessage):
+                    return " ".join(block.text for block in input_data[0]['content'].blocks if isinstance(block, TextBlock)) 
                 else:
                     messages = input_data
             elif isinstance(input_data,ChatResponse):
