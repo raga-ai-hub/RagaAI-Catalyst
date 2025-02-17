@@ -357,8 +357,8 @@ class Tracer(AgenticTracing):
             converted_back_to_callback = self.llamaindex_tracer.stop()
 
             filepath_3 = os.path.join(os.getcwd(), "llama_final_result.json")
-            # with open(filepath_3, 'w') as f:
-            #     json.dump(converted_back_to_callback, f, default=str, indent=2)
+            with open(filepath_3, 'w') as f:
+                json.dump(converted_back_to_callback, f, default=str, indent=2)
 
             if converted_back_to_callback:
                 UploadTraces(json_file_path=filepath_3,
