@@ -379,66 +379,6 @@ class AgenticTracing(
 
         # Handle error case
         if is_error:
-            # Get the parent component if it exists
-            parent_id = component_data.get("parent_id")
-            children = self.agent_children.get()
-
-            # Set parent_id for all children
-            for child in children:
-                child["parent_id"] = parent_id
-
-            agent_tracer_mixin = AgentTracerMixin()
-            agent_tracer_mixin.component_network_calls = self.component_network_calls
-            agent_tracer_mixin.component_user_interaction = (
-                self.component_user_interaction
-            )
-
-            agent_tracer_mixin.span_attributes_dict[self.current_agent_name.get()] = (
-                SpanAttributes(self.current_agent_name.get())
-            )
-
-            # Create parent component with error info
-            parent_component = agent_tracer_mixin.create_agent_component(
-                component_id=parent_id,
-                hash_id=str(uuid.uuid4()),
-                source_hash_id=None,
-                type="agent",
-                name=self.current_agent_name.get(),
-                agent_type=self.agent_type.get(),
-                version=self.version.get(),
-                capabilities=self.capabilities.get(),
-                start_time=self.start_time,
-                end_time=datetime.now().astimezone().isoformat(),
-                memory_used=0,
-                input_data=self.input_data,
-                output_data=None,
-                children=children,
-                parent_id=None,  # Add parent ID if exists
-            )
-
-            filtered_data = {
-                k: v
-                for k, v in parent_component.items()
-                if k
-                in [
-                    "id",
-                    "hash_id",
-                    "source_hash_id",
-                    "type",
-                    "name",
-                    "start_time",
-                    "end_time",
-                    "parent_id",
-                    "info",
-                    "data",
-                    "network_calls",
-                    "interactions",
-                    "error",
-                ]
-            }
-            parent_agent_component = AgentComponent(**filtered_data)
-            # Add the parent component to trace and stop tracing
-            super().add_component(parent_agent_component)
             self.stop()
 
     def __enter__(self):
