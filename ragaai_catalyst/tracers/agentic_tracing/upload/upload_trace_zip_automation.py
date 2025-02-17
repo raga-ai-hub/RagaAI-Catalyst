@@ -3,7 +3,6 @@ import json
 import os
 import logging
 from typing import Dict, Optional
-from datetime import datetime
 
 logger = logging.getLogger("RagaAICatalyst")
 logging_level = logger.setLevel(logging.DEBUG) if os.getenv("DEBUG") else logger.setLevel(logging.INFO)
@@ -55,7 +54,8 @@ class RagaAICatalyst:
         )
         response.raise_for_status()
         project_list = [project["name"] for project in response.json()["data"]["content"]]
-        project_id = [project["id"] for project in response.json()["data"]["content"]][0]
+        project_ids = [project["id"] for project in response.json()["data"]["content"]]
+        project_id = project_ids[0] if project_ids else None
         return project_list, project_id
     
     def project_use_cases(self):
@@ -202,7 +202,7 @@ class UploadAgenticTraces:
 
         if "blob.core.windows.net" in presignedUrl:  # Azure
             headers["x-ms-blob-type"] = "BlockBlob"
-        print(f"Uploading agentic traces...")
+        print("Uploading agentic traces...")
         try:
             with open(filename) as f:
                 payload = f.read().replace("\n", "").replace("\r", "").encode()
@@ -320,7 +320,7 @@ def _fetch_dataset_code_hashes(project_name, dataset_name):
                                     f"{RagaAICatalyst.BASE_URL}/v2/llm/dataset/code?datasetName={dataset_name}", 
                                     headers=headers, 
                                     data=payload,
-                                    timeout=99999)
+                                    timeout=300)
         if response.status_code == 200:
             return response.json()["data"]["codeHashes"]
         else:
@@ -347,7 +347,7 @@ def _fetch_presigned_url(project_name, dataset_name):
                                     f"{RagaAICatalyst.BASE_URL}/v1/llm/presigned-url", 
                                     headers=headers, 
                                     data=payload,
-                                    timeout=99999)
+                                    timeout=300)
 
         if response.status_code == 200:
             return response.json()["data"]["presignedUrls"][0]
@@ -373,7 +373,7 @@ def _put_zip_presigned_url(project_name, presignedUrl, filename):
                                 presignedUrl, 
                                 headers=headers, 
                                 data=payload,
-                                timeout=99999)
+                                timeout=300)
     if response.status_code not in [200, 201]:
         return response, response.status_code
 
@@ -394,7 +394,7 @@ def _insert_code(dataset_name, hash_id, presigned_url, project_name):
                                     f"{RagaAICatalyst.BASE_URL}/v2/llm/dataset/code", 
                                     headers=headers, 
                                     data=payload,
-                                    timeout=99999)
+                                    timeout=300)
         if response.status_code == 200:
             return response.json()["message"]
         else:
@@ -532,10 +532,10 @@ def get_user_trace_metrics(project_name, dataset_name):
 
 # Main execution
 if __name__ == "__main__":
-    access_key = 'access_key'
-    secret_key = 'secret_key'
-    base_url = 'base_url'
-    json_file_path = "json_file_path"
+    access_key = os.getenv('RAGAAI_ACCESS_KEY')
+    secret_key = os.getenv('RAGAAI_SECRET_KEY')
+    base_url = os.getenv('RAGAAI_BASE_URL')
+    json_file_path = os.getenv('RAGAAI_JSON_FILE_PATH')
 
     project_name = 'project_name'
     usecase = "Agentic Application"
