@@ -29,6 +29,7 @@ from ragaai_catalyst.tracers.instrumentators import (
 )
 from ragaai_catalyst.tracers.utils import get_unique_key
 # from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
+from ragaai_catalyst.tracers.llamaindex_instrumentation import LlamaIndexInstrumentationTracer
 from ragaai_catalyst import RagaAICatalyst
 from ragaai_catalyst.tracers.agentic_tracing import AgenticTracing, TrackName
 from ragaai_catalyst.tracers.agentic_tracing.tracers.llm_tracer import LLMTracerMixin
@@ -256,8 +257,7 @@ class Tracer(AgenticTracing):
             self.langchain_tracer = LangchainTracer()
             return self.langchain_tracer.start()
         elif self.tracer_type == "llamaindex":
-            from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
-            self.llamaindex_tracer = LlamaIndexTracer(self._pass_user_data())
+            self.llamaindex_tracer = LlamaIndexInstrumentationTracer(self._pass_user_data())
             return self.llamaindex_tracer.start()
         else:
             super().start()
@@ -352,7 +352,23 @@ class Tracer(AgenticTracing):
         elif self.tracer_type == "llamaindex":
             if self.llamaindex_tracer is None:
                 raise ValueError("LlamaIndex tracer was not started")
-            return self.llamaindex_tracer.stop()
+
+            user_detail = self._pass_user_data()
+            converted_back_to_callback = self.llamaindex_tracer.stop()
+
+            filepath_3 = os.path.join(os.getcwd(), "llama_final_result.json")
+            # with open(filepath_3, 'w') as f:
+            #     json.dump(converted_back_to_callback, f, default=str, indent=2)
+
+            if converted_back_to_callback:
+                UploadTraces(json_file_path=filepath_3,
+                             project_name=self.project_name,
+                             project_id=self.project_id,
+                             dataset_name=self.dataset_name,
+                             user_detail=user_detail,
+                             base_url=self.base_url
+                             ).upload_traces()
+            return 
         else:
             super().stop()
 
