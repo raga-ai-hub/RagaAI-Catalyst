@@ -65,6 +65,7 @@ catalyst.project_use_cases()
 projects = catalyst.list_projects()
 print(projects)
 ```
+![Projects](docs/img/projects_new.png)
 
 ### Dataset Management
 Manage datasets efficiently for your projects:
@@ -90,6 +91,7 @@ dataset_manager.create_from_csv(
 dataset_manager.get_schema_mapping()
 
 ```
+![Dataset](docs/img/dataset.png)
 
 For more detailed information on Dataset Management, including CSV schema handling and advanced usage, please refer to the [Dataset Management documentation](docs/dataset_management.md).
 
@@ -144,7 +146,7 @@ print("Experiment Status:", status)
 results = evaluation.get_results()
 print("Experiment Results:", results)
 ```
-
+![Evaluation](docs/img/evaluation.png)
 
 
 ### Trace Management
@@ -176,6 +178,7 @@ tracer.stop()
 # Get upload status
 tracer.get_upload_status()
 ```
+![Trace](docs/img/trace_comp.png)
 
 
 ### Prompt Management
@@ -349,6 +352,7 @@ llm_caller = 'litellm'
 executor([message],prompt_params,model_params,llm_caller)
 
 ```
+![Guardrails](docs/img/guardrails.png)
 
 ### Agentic Tracing
 
@@ -387,6 +391,7 @@ with tracer:
     # Agent execution code
     pass
 ```
+![Tracing](docs/img/last_main.png)
 
 ### Red-teaming
 
