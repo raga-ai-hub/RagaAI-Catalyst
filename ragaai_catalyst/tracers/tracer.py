@@ -171,7 +171,6 @@ class Tracer(AgenticTracing):
         elif tracer_type == "llamaindex":
             self._upload_task = None
             self.llamaindex_tracer = None
-            from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
 
         else:
             self._upload_task = None
