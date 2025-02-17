@@ -62,7 +62,7 @@ def init_tracing(
             else:
                 raise ValueError("Both Tracer and Catalyst objects must be instances of Tracer and RagaAICatalyst, respectively.")
         else:
-            raise ValueError("Both Tracer and Catalyst objecta must be provided.")
+            raise ValueError("Both Tracer and Catalyst objects must be provided.")
 
 
 def trace_agent(name: str = None, agent_type: str = "generic", version: str = "1.0.0", **kwargs):
