@@ -357,7 +357,7 @@ class ToolTracerMixin:
                 error=error_component,
             )
 
-            self.add_component(tool_component)
+            self.add_component(tool_component, is_error=True)
 
             raise
         finally:
@@ -432,7 +432,7 @@ class ToolTracerMixin:
                 output_data=None,
                 error=error_component,
             )
-            self.add_component(tool_component)
+            self.add_component(tool_component, is_error=True)
 
             raise
         finally:
