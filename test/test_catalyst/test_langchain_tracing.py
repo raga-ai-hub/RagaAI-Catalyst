@@ -30,23 +30,6 @@ catalyst = RagaAICatalyst(
     secret_key=os.getenv("RAGAAICATALYST_SECRET_KEY"),
     base_url=os.getenv("RAGAAICATALYST_BASE_URL")
 )
-# Initialize tracer
-tracer = Tracer(
-    project_name="langchain_tracing_test",
-    dataset_name="test_00",
-    tracer_type='langchain',
-    metadata={
-        "model": "gpt-3.5-turbo",
-        "environment": "production"
-    },
-    pipeline={
-        "llm_model": "gpt-3.5-turbo",
-        "vector_store": "faiss",
-        "embed_model": "text-embedding-ada-002",
-    }
-)
-
-tracer.start()
 
 def create_rag_pipeline(pdf_path):
     loader = PyPDFLoader(pdf_path)
@@ -66,7 +49,6 @@ def create_rag_pipeline(pdf_path):
     qa_chain = RetrievalQA.from_chain_type(
         llm,
         chain_type="stuff",
-        # callbacks=[tracer],
         retriever=vectorstore.as_retriever(search_kwargs={"k": 2})
     )
     
@@ -74,6 +56,22 @@ def create_rag_pipeline(pdf_path):
 
 def run_pipeline():
     global tracer
+    tracer = Tracer(
+        project_name="langchain_tracing_test",
+        dataset_name="test_00",
+        tracer_type='langchain',
+        metadata={
+            "model": "gpt-3.5-turbo",
+            "environment": "production"
+        },
+        pipeline={
+            "llm_model": "gpt-3.5-turbo",
+            "vector_store": "faiss",
+            "embed_model": "text-embedding-ada-002",
+        }
+    )
+
+    tracer.start()
 
     pdf_path = "test/test_catalyst/ai document_061023_2.pdf"
 
@@ -164,7 +162,7 @@ class TestLangchainTracing:
             )
         except ValueError:
             evaluation.append_metrics('Hallucination_v1')
-        except Exception as e:
+        except Exception:
             raise
         status = evaluation.get_status()
         while status == 'in_progress':
