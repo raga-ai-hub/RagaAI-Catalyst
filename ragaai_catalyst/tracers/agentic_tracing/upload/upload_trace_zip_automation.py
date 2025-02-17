@@ -2,7 +2,6 @@ import requests
 import json
 import os
 import logging
-from aiohttp import payload
 from typing import Dict, Optional
 from datetime import datetime
 
@@ -89,8 +88,8 @@ class RagaAICatalyst:
             str: A message indicating the success or failure of the project creation.
         """
         # Check if the project already exists
-        existing_projects = self.list_projects()
-        if project_name in existing_projects:
+        project_list, project_id = self.list_projects()
+        if project_name in project_list:
             raise ValueError(f"Project name '{project_name}' already exists. Please choose a different name.")
 
         usecase_list = self.project_use_cases()
@@ -216,7 +215,7 @@ class UploadAgenticTraces:
                                         headers=headers, 
                                         data=payload,
                                         timeout=self.timeout)
-            if response.status_code != 200 or response.status_code != 201:
+            if response.status_code not in [200, 201]:
                 return response, response.status_code
         except requests.exceptions.RequestException as e:
             print(f"Error while uploading to presigned url: {e}")
@@ -375,7 +374,7 @@ def _put_zip_presigned_url(project_name, presignedUrl, filename):
                                 headers=headers, 
                                 data=payload,
                                 timeout=99999)
-    if response.status_code != 200 or response.status_code != 201:
+    if response.status_code not in [200, 201]:
         return response, response.status_code
 
 def _insert_code(dataset_name, hash_id, presigned_url, project_name):
