@@ -2,7 +2,7 @@
 
 RagaAI Catalyst is a comprehensive platform designed to enhance the management and optimization of LLM projects. It offers a wide range of features, including project management, dataset management, evaluation management, trace management, prompt management, synthetic data generation, and guardrail management. These functionalities enable you to efficiently evaluate, and safeguard your LLM applications.
 
-![RagaAI Catalyst](@RagaAI-Catalyst/docs/img/main.png)
+![RagaAI Catalyst](docs/img/main.png)
 
 ## Table of Contents
 
