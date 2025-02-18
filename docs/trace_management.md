@@ -181,14 +181,14 @@ with tracer:
 You can add context using tracer.add_context(context).Context needs to be in str type
 
 ```python
-# OpenAI
 with tracer:
-    result, context = get_impression(resp_dict, "gpt-4o")
+    response = chat(messages)
     tracer.add_context(str(context))
 
-# Anthropic
+
 with tracer:
-    result, context = get_impression(resp_dict, "claude-3-5-sonnet-latest")
+  for question in questions:
+    response = process_document(source_doc_path, None, question)
     tracer.add_context(str(context))
 ```
 
