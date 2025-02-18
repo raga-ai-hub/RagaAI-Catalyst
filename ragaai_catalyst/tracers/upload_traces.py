@@ -37,7 +37,10 @@ class UploadTraces:
 
         if additional_metadata_keys:
             for key in additional_metadata_keys:
-                SCHEMA_MAPPING_NEW[key] = {"columnType": "metadata"}
+                if key == "model_name":
+                    SCHEMA_MAPPING_NEW['response']["modelName"] = additional_metadata_keys[key]
+                else:
+                    SCHEMA_MAPPING_NEW[key] = {"columnType": key, "parentColumn": "response"}
 
         if additional_pipeline_keys:
             for key in additional_pipeline_keys:

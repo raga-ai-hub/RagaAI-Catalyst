@@ -285,30 +285,31 @@ class Tracer(AgenticTracing):
                     if 'tokens' in additional_metadata and all(k in additional_metadata['tokens'] for k in ['prompt', 'completion']):
                         prompt_cost = additional_metadata["tokens"]["prompt"]*model_cost_data["input_cost_per_token"]
                         completion_cost = additional_metadata["tokens"]["completion"]*model_cost_data["output_cost_per_token"]
-                        additional_metadata.setdefault('cost', {})["total_cost"] = prompt_cost + completion_cost 
+                        additional_metadata["cost"] = prompt_cost + completion_cost 
+
+                        additional_metadata["prompt_tokens"] = float(additional_metadata["tokens"].get("prompt", 0.0))
+                        additional_metadata["completion_tokens"] = float(additional_metadata["tokens"].get("completion", 0.0))
+
+                        logger.debug("Metadata added successfully")
                     else:
                         logger.warning("Token information missing in additional_metadata")
+
+                    if 'cost' in additional_metadata:
+                        additional_metadata["cost"] = float(additional_metadata["cost"])
+                    else:
+                        additional_metadata["cost"] = 0.0
+                        logger.warning("Total cost information not available")
+
+
                 except Exception as e:
                     logger.warning(f"Error adding cost: {e}")
             else:
                 logger.debug("Model name not available in additional_metadata, skipping cost calculation")
             
-            # Safely get total tokens and cost
-            if 'tokens' in additional_metadata and 'total' in additional_metadata['tokens']:
-                additional_metadata["total_tokens"] = float(additional_metadata["tokens"]["total"])
-            else:
-                additional_metadata["total_tokens"] = 0.0
-                logger.warning("Total tokens information not available")
-
-            if 'cost' in additional_metadata and 'total_cost' in additional_metadata['cost']:
-                additional_metadata["total_cost"] = float(additional_metadata["cost"]["total_cost"])
-            else:
-                additional_metadata["total_cost"] = 0.0
-                logger.warning("Total cost information not available")
 
             # Safely remove tokens and cost dictionaries if they exist
             additional_metadata.pop("tokens", None)
-            additional_metadata.pop("cost", None)
+            # additional_metadata.pop("cost", None)
             
             # Safely merge metadata
             combined_metadata = {}
@@ -336,7 +337,8 @@ class Tracer(AgenticTracing):
             else:
                 logger.warning("No valid langchain traces found in final_result")
 
-            additional_metadata_keys = list(additional_metadata.keys()) if additional_metadata else None
+            # additional_metadata_keys = list(additional_metadata.keys()) if additional_metadata else None
+            additional_metadata_dict = additional_metadata if additional_metadata else {}
 
             UploadTraces(json_file_path=filepath_3,
                          project_name=self.project_name,
@@ -344,7 +346,7 @@ class Tracer(AgenticTracing):
                          dataset_name=self.dataset_name,
                          user_detail=user_detail,
                          base_url=self.base_url
-                         ).upload_traces(additional_metadata_keys=additional_metadata_keys)
+                         ).upload_traces(additional_metadata_keys=additional_metadata_dict)
             
             return 
 
