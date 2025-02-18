@@ -105,7 +105,7 @@ dataset_manager.create_from_jsonl(
 dataset_manager.get_schema_mapping()
 
 ```
-![Dataset](docs/img/dataset.png)
+![Dataset](docs/img/dataset.gif)
 
 For more detailed information on Dataset Management, including CSV schema handling and advanced usage, please refer to the [Dataset Management documentation](docs/dataset_management.md).
 
