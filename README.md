@@ -198,7 +198,6 @@ tracer.start()
 
 # Your code here
 
-
 # Stop the trace recording
 tracer.stop()
 
