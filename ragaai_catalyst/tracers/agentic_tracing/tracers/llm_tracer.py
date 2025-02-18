@@ -13,8 +13,12 @@ import traceback
 import importlib
 import sys
 from litellm import model_cost
-from llama_index.core.base.llms.types import ChatResponse,TextBlock, ChatMessage
+import logging
 
+try:
+    from llama_index.core.base.llms.types import ChatResponse,TextBlock, ChatMessage
+except ImportError:
+    logging.warning("Failed to import ChatResponse, TextBlock, ChatMessage. Some features from llamaindex may not work. Please upgrade to the latest version of llama_index or version (>=0.12)")
 from .base import BaseTracer
 from ..utils.llm_utils import (
     extract_model_name,
@@ -30,7 +34,6 @@ from ..utils.llm_utils import (
 from ..utils.unique_decorator import generate_unique_hash
 from ..utils.file_name_tracker import TrackName
 from ..utils.span_attributes import SpanAttributes
-import logging
 
 logger = logging.getLogger(__name__)
 logging_level = (
