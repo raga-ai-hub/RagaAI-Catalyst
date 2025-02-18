@@ -72,7 +72,7 @@ catalyst.project_use_cases()
 projects = catalyst.list_projects()
 print(projects)
 ```
-![Projects](docs/img/projects_new.png)
+![Projects](docs/img/create_project.png)
 
 ### Dataset Management
 Manage datasets efficiently for your projects:
