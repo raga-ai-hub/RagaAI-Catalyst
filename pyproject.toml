@@ -8,8 +8,7 @@ description = "RAGA AI CATALYST"
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 # license = {file = "LICENSE"}
-
-version = "2.1.5.b22"
+version = "2.1.5.b26"
 authors = [
     {name = "Kiran Scaria", email = "kiran.scaria@raga.ai"},
     {name = "Kedar Gaikwad", email = "kedar.gaikwad@raga.ai"},
@@ -21,16 +20,6 @@ authors = [
 
 dependencies = [
     "aiohttp>=3.10.2", # Ref: https://github.com/raga-ai-hub/ragaai-catalyst/security/dependabot/1
-    "opentelemetry-api==1.25.0",
-    "opentelemetry-sdk==1.25.0",
-    "opentelemetry-exporter-otlp-proto-grpc==1.25.0",
-    "opentelemetry-instrumentation==0.46b0",
-    "opentelemetry-instrumentation-fastapi==0.46b0",
-    "opentelemetry-instrumentation-asgi==0.46b0",
-    "opentelemetry-semantic-conventions==0.46b0",
-    "opentelemetry-util-http==0.46b0",
-    "opentelemetry-instrumentation-langchain~=0.24.0",
-    "opentelemetry-instrumentation-openai~=0.24.0",
     "langchain-core>=0.2.11",
     "langchain>=0.2.11",
     "openai>=1.57.0",
@@ -42,7 +31,7 @@ dependencies = [
     "litellm==1.51.1",  
     "tenacity==8.3.0",
     "tqdm>=4.66.5",
-    "llama-index>=0.10.0,<0.11.0",
+    "llama-index>=0.10.0",
     "pyopenssl>=24.2.1",
     "psutil~=6.0.0",
     "py-cpuinfo~=9.0.0",

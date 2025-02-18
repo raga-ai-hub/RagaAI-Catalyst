@@ -510,8 +510,11 @@ class Evaluation:
             df = pd.read_csv(io.StringIO(response_text))
 
             column_list = df.columns.to_list()
+            # Remove unwanted columns
             column_list = [col for col in column_list if not col.startswith('_')]
             column_list = [col for col in column_list if '.' not in col]
+            # Remove _claims_ columns
+            column_list = [col for col in column_list if '_claims_' not in col]
             return df[column_list]
         else:
             return pd.DataFrame()
