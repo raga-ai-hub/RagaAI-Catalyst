@@ -18,7 +18,7 @@ import logging
 try:
     from llama_index.core.base.llms.types import ChatResponse,TextBlock, ChatMessage
 except ImportError:
-    logging.warning("Failed to import ChatResponse, TextBlock, ChatMessage. Some features from llamaindex may not work.")
+    logging.warning("Failed to import ChatResponse, TextBlock, ChatMessage. Some features from llamaindex may not work. Please upgrade to the latest version of llama_index or version (>=0.12)")
 from .base import BaseTracer
 from ..utils.llm_utils import (
     extract_model_name,
