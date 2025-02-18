@@ -8,6 +8,7 @@ import ast
 import importlib.util
 import json
 import ipynbname
+from copy import deepcopy
 
 from pathlib import Path
 from IPython import get_ipython
@@ -371,7 +372,8 @@ class TraceDependencyTracker:
             except Exception as e:
                 pass
         
-        for filepath in self.tracked_files:
+        curr_tracked_files = deepcopy(self.tracked_files)
+        for filepath in curr_tracked_files:
             try:
                 with open(filepath, 'r', encoding='utf-8') as file:
                     content = file.read()
@@ -447,7 +449,11 @@ class TraceDependencyTracker:
                     continue
                 try:
                     relative_path = os.path.relpath(filepath, base_path)
-                    zipf.write(filepath, relative_path)
+                    if relative_path in ['', '.']:
+                        zipf.write(filepath, os.path.basename(filepath))
+                    else:
+                        zipf.write(filepath, relative_path)
+                    
                     logger.debug(f"Added python script to zip: {relative_path}")
                 except Exception as e:
                     pass
