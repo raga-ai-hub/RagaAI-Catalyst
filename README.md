@@ -160,7 +160,7 @@ print("Experiment Status:", status)
 results = evaluation.get_results()
 print("Experiment Results:", results)
 ```
-![Evaluation](docs/img/evaluation.png)
+![Evaluation](docs/img/evaluation.gif)
 
 
 
