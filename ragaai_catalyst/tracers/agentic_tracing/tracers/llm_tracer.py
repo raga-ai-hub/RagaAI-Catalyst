@@ -13,8 +13,11 @@ import traceback
 import importlib
 import sys
 from litellm import model_cost
-from llama_index.core.base.llms.types import ChatResponse,TextBlock, ChatMessage
 
+try:
+    from llama_index.core.base.llms.types import ChatResponse,TextBlock, ChatMessage
+except ImportError:
+    pass
 from .base import BaseTracer
 from ..utils.llm_utils import (
     extract_model_name,
