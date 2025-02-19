@@ -183,13 +183,13 @@ You can add context using tracer.add_context(context).Context needs to be in str
 ```python
 with tracer:
     response = chat(messages)
-    tracer.add_context(str(context))
+    tracer.add_context(context)
 
 
 with tracer:
   for question in questions:
     response = process_document(source_doc_path, None, question)
-    tracer.add_context(str(context))
+    tracer.add_context(context)
 ```
 
 #### Add rows to the uploaded tracer dataset

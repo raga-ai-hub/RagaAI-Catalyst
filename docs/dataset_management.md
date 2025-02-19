@@ -17,32 +17,11 @@ datasets = dataset_manager.list_datasets()
 print("Existing Datasets:", datasets)
 ```
 
-#### 1. Create a New Dataset from Trace
-
-Create a dataset by applying filters to trace data. Below is an example of creating a dataset with specific criteria.
-
-```python
-dataset_manager.create_from_trace(
-    dataset_name='Test-dataset-1',
-    filter_list=[
-        {
-            "name": "llm_model",
-            "values": ["gpt-3.5-turbo", "gpt-4"]
-        },
-        {
-            "name": "prompt_length",
-            "lte": 27,
-            "gte": 23
-        }
-    ]
-)
-```
-
-#### 2. Create a New Dataset from CSV
+#### 1. Create a New Dataset from CSV
 
 You can create a new dataset by uploading a CSV file and mapping its columns to the required schema elements.
 
-##### a. Retrieve CSV Schema Elements with `get_csv_schema()`
+##### a. Retrieve CSV Schema Elements with `get_schema_mapping()`
 
 This function retrieves the valid schema elements that the CSV column names must map to. It helps ensure that your CSV column names align correctly with the expected schema.
 
@@ -53,7 +32,7 @@ This function retrieves the valid schema elements that the CSV column names must
   - `data['schemaElements']`: A list of valid schema column names.
 
 ```python
-schemaElements = dataset_manager.get_csv_schema()['data']['schemaElements']
+schemaElements = dataset_manager.get_schema_mapping()['data']['schemaElements']
 print('Supported column names: ', schemaElements)
 ```
 
@@ -117,7 +96,7 @@ text_fields = [
       },
       {
         "role": "user",
-        "content": "are any of the {{asdf}} {{abcd}} related to broken hand"
+        "content": "are any of the {{context1}} {{feedback1}} related to broken hand"
       }
     ]
 column_name = "column_name"
@@ -125,8 +104,8 @@ provider = "openai"
 model = "gpt-4o-mini"
 
 variables={
-    "asdf": "context",
-    "abcd": "feedback"
+    "context1": "context",
+    "feedback1": "feedback"
 }
 ```
 
@@ -141,7 +120,7 @@ dataset_manager.add_columns(
 )
 ```
 
-#### 3. Create a New Dataset from JSONl
+#### 2. Create a New Dataset from JSONl
 
 ##### a. Create a Dataset from JSONl with `create_from_jsonl()`
 

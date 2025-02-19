@@ -160,6 +160,15 @@ print("Experiment Status:", status)
 results = evaluation.get_results()
 print("Experiment Results:", results)
 ```
+
+1- Appending Metrics for New Data
+
+If you've added new rows to your dataset, you can calculate metrics just for the new data:
+
+```python
+evaluation.append_metrics(display_name="Faithfulness_v1")
+```
+
 ![Evaluation](docs/img/evaluation.gif)
 
 
@@ -174,7 +183,6 @@ from ragaai_catalyst import RagaAICatalyst, Tracer
 tracer = Tracer(
     project_name="Test-RAG-App-1",
     dataset_name="tracer_dataset_name",
-    metadata={"key1": "value1", "key2": "value2"},
     tracer_type="tracer_type"
 )
 ```
@@ -208,6 +216,188 @@ tracer.get_upload_status()
 ![Trace](docs/img/trace_comp.png)
 For more detailed information on Trace Management, please refer to the [Trace Management documentation](docs/trace_management.md).
 
+### Agentic Tracing
+
+The Agentic Tracing module provides comprehensive monitoring and analysis capabilities for AI agent systems. It helps track various aspects of agent behavior including:
+
+- LLM interactions and token usage
+- Tool utilization and execution patterns
+- Network activities and API calls
+- User interactions and feedback
+- Agent decision-making processes
+
+The module includes utilities for cost tracking, performance monitoring, and debugging agent behavior. This helps in understanding and optimizing AI agent performance while maintaining transparency in agent operations.
+
+#### Tracer initialization
+
+Initialize the tracer with project_name and dataset_name
+
+```python
+from ragaai_catalyst import RagaAICatalyst, Tracer, trace_llm, trace_tool, trace_agent, current_span
+
+agentic_tracing_dataset_name = "agentic_tracing_dataset_name"
+
+tracer = Tracer(
+    project_name=agentic_tracing_project_name,
+    dataset_name=agentic_tracing_dataset_name,
+    tracer_type="Agentic",
+)
+```
+
+```python
+from ragaai_catalyst import init_tracing
+init_tracing(catalyst=catalyst, tracer=tracer)
+```
+
+#### Agentic Tracing Features
+1- add span level metrics
+
+```python
+current_span().add_metrics(name='Accuracy', score=0.5, reasoning='some reasoning')
+```
+
+2- add trace level metrics
+
+```python
+tracer.add_metrics(name='hallucination_1', score=0.5, reasoning='some reasoning')
+```
+
+3- add gt 
+
+```python
+current_span().add_gt("This is the ground truth")
+```
+
+4- add context
+
+```python
+current_span().add_context("This is the context")
+```
+
+5- add span level metric execution
+
+```python
+current_span().execute_metrics(
+    name="Hallucination",
+    model="gpt-4o",
+    provider="openai"
+)
+```
+
+#### Example
+```python
+from ragaai_catalyst import trace_llm, trace_tool, trace_agent, current_span
+
+from openai import OpenAI
+
+
+@trace_llm(name="llm_call", tags=["default_llm_call"])
+def llm_call(prompt, max_tokens=512, model="gpt-4o-mini"):
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        temperature=0.85,
+    )
+    # Span level context
+    current_span().add_context("name = span level in summary_agent, context = some span level context")
+
+    # Span level execute metrics
+    current_span().execute_metrics(
+        name="Hallucination",
+        model="gpt-4o",
+        provider="openai"
+    )
+    response_data = response.choices[0].message.content.strip()
+    print('response_data: ', response_data)
+    return response_data
+
+class SummaryAgent:
+    def __init__(self, persona="Summary Agent"):
+        self.persona = persona
+
+    @trace_agent(name="summary_agent")
+    def summarize(self, text):
+        prompt = f"Please summarize this text concisely: {text}"
+
+        # Span level metric
+        current_span().add_metrics(name='Accuracy', score=0.5, reasoning='some reasoning')
+
+        # Span level context
+        current_span().add_context("name = span level in summary_agent, context = some span level context")
+
+        summary = llm_call(prompt)
+        return summary
+
+
+class AnalysisAgent:
+    def __init__(self, persona="Analysis Agent"):
+        self.persona = persona
+        self.summary_agent = SummaryAgent()
+
+    @trace_agent(name="analysis_agent")
+    def analyze(self, text):
+        summary = self.summary_agent.summarize(text)
+
+        prompt = f"Given this summary: {summary}\nProvide a brief analysis of the main points."
+
+        # Span level metric
+        current_span().add_metrics(name='correctness', score=0.5, reasoning='some reasoning')
+        analysis = llm_call(prompt)
+
+        return {
+            "summary": summary,
+            "analysis": analysis
+        }
+
+class RecommendationAgent:
+    def __init__(self, persona="Recommendation Agent"):
+        self.persona = persona
+        self.analysis_agent = AnalysisAgent()
+
+    @trace_agent(name="recommendation_agent", tags=['coordinator_agent'])
+    def recommend(self, text):
+        analysis_result = self.analysis_agent.analyze(text)
+
+        prompt = f"""Given this summary: {analysis_result['summary']}
+        And this analysis: {analysis_result['analysis']}
+        Provide 2-3 actionable recommendations."""
+
+        recommendations = llm_call(prompt)
+
+        return {
+            "summary": analysis_result["summary"],
+            "analysis": analysis_result["analysis"],
+            "recommendations": recommendations
+        }
+#Defining agent tracer
+@trace_agent(name="get_recommendation", tags=['coordinator_agent'])
+def get_recommendation(agent, text):
+    recommendation = agent.recommend(text)
+    return recommendation
+
+def main():
+    text = """
+    Artificial Intelligence has transformed various industries in recent years.
+    From healthcare to finance, AI applications are becoming increasingly prevalent.
+    Machine learning models are being used to predict market trends, diagnose diseases,
+    and automate routine tasks. The impact of AI on society continues to grow,
+    raising both opportunities and challenges for the future.
+    """
+
+    recommendation_agent = RecommendationAgent()
+    result = get_recommendation(recommendation_agent, text)
+
+
+    # Trace level metric
+    tracer.add_metrics(name='hallucination_1', score=0.5, reasoning='some reasoning')
+
+# Run tracer
+with tracer:
+    main()
+```
+![Tracing](docs/img/last_main.png)
 
 ### Prompt Management
 
@@ -381,189 +571,6 @@ executor([message],prompt_params,model_params,llm_caller)
 
 ```
 ![Guardrails](docs/img/guardrails.png)
-
-### Agentic Tracing
-
-The Agentic Tracing module provides comprehensive monitoring and analysis capabilities for AI agent systems. It helps track various aspects of agent behavior including:
-
-- LLM interactions and token usage
-- Tool utilization and execution patterns
-- Network activities and API calls
-- User interactions and feedback
-- Agent decision-making processes
-
-The module includes utilities for cost tracking, performance monitoring, and debugging agent behavior. This helps in understanding and optimizing AI agent performance while maintaining transparency in agent operations.
-
-#### Tracer initialization
-
-Initialize the tracer with project_name and dataset_name
-
-```python
-from ragaai_catalyst import RagaAICatalyst, Tracer, trace_llm, trace_tool, trace_agent, current_span
-
-agentic_tracing_dataset_name = "agentic_tracing_dataset_name"
-
-tracer = Tracer(
-    project_name=agentic_tracing_project_name,
-    dataset_name=agentic_tracing_dataset_name,
-    tracer_type="Agentic",
-)
-```
-
-```python
-from ragaai_catalyst import init_tracing
-init_tracing(catalyst=catalyst, tracer=tracer)
-```
-
-#### Agentic Tracing Features
-1- add span level metrics
-
-```python
-current_span().add_metrics(name='Accuracy', score=0.5, reasoning='some reasoning')
-```
-
-2- add trace level metrics
-
-```python
-tracer.add_metrics(name='hallucination_1', score=0.5, reasoning='some reasoning')
-```
-
-3- add gt 
-
-```python
-current_span().add_gt("name = span level in summary_agent gt = some span level gt")
-```
-
-4- add context
-
-```python
-current_span().add_context("name = span level in summary_agent, context = some span level context")
-```
-
-5- add span level metric execution
-
-```python
-current_span().execute_metrics(
-    name="Hallucination",
-    model="gpt-4o",
-    provider="openai"
-)
-```
-
-#### Example
-```python
-from ragaai_catalyst import trace_llm, trace_tool, trace_agent, current_span
-
-from openai import OpenAI
-
-
-@trace_llm(name="llm_call", tags=["default_llm_call"])
-def llm_call(prompt, max_tokens=512, model="gpt-4o-mini"):
-    client = OpenAI(api_key=OPENAI_API_KEY)
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=max_tokens,
-        temperature=0.85,
-    )
-    # Span level context
-    current_span().add_context("name = span level in summary_agent, context = some span level context")
-
-    # Span level execute metrics
-    current_span().execute_metrics(
-        name="Hallucination",
-        model="gpt-4o",
-        provider="openai"
-    )
-    response_data = response.choices[0].message.content.strip()
-    print('response_data: ', response_data)
-    return response_data
-
-class SummaryAgent:
-    def __init__(self, persona="Summary Agent"):
-        self.persona = persona
-
-    @trace_agent(name="summary_agent")
-    def summarize(self, text):
-        prompt = f"Please summarize this text concisely: {text}"
-
-        # Span level metric
-        current_span().add_metrics(name='Accuracy', score=0.5, reasoning='some reasoning')
-
-        # Span level context
-        current_span().add_context("name = span level in summary_agent, context = some span level context")
-
-        summary = llm_call(prompt)
-        return summary
-
-
-class AnalysisAgent:
-    def __init__(self, persona="Analysis Agent"):
-        self.persona = persona
-        self.summary_agent = SummaryAgent()
-
-    @trace_agent(name="analysis_agent")
-    def analyze(self, text):
-        summary = self.summary_agent.summarize(text)
-
-        prompt = f"Given this summary: {summary}\nProvide a brief analysis of the main points."
-
-        # Span level metric
-        current_span().add_metrics(name='correctness', score=0.5, reasoning='some reasoning')
-        analysis = llm_call(prompt)
-
-        return {
-            "summary": summary,
-            "analysis": analysis
-        }
-
-class RecommendationAgent:
-    def __init__(self, persona="Recommendation Agent"):
-        self.persona = persona
-        self.analysis_agent = AnalysisAgent()
-
-    @trace_agent(name="recommendation_agent", tags=['coordinator_agent'])
-    def recommend(self, text):
-        analysis_result = self.analysis_agent.analyze(text)
-
-        prompt = f"""Given this summary: {analysis_result['summary']}
-        And this analysis: {analysis_result['analysis']}
-        Provide 2-3 actionable recommendations."""
-
-        recommendations = llm_call(prompt)
-
-        return {
-            "summary": analysis_result["summary"],
-            "analysis": analysis_result["analysis"],
-            "recommendations": recommendations
-        }
-#Defining agent tracer
-@trace_agent(name="get_recommendation", tags=['coordinator_agent'])
-def get_recommendation(agent, text):
-    recommendation = agent.recommend(text)
-    return recommendation
-
-def main():
-    text = """
-    Artificial Intelligence has transformed various industries in recent years.
-    From healthcare to finance, AI applications are becoming increasingly prevalent.
-    Machine learning models are being used to predict market trends, diagnose diseases,
-    and automate routine tasks. The impact of AI on society continues to grow,
-    raising both opportunities and challenges for the future.
-    """
-
-    recommendation_agent = RecommendationAgent()
-    result = get_recommendation(recommendation_agent, text)
-
-
-    # Trace level metric
-    tracer.add_metrics(name='hallucination_1', score=0.5, reasoning='some reasoning')
-
-# Run tracer
-with tracer:
-    main()
-```
-![Tracing](docs/img/last_main.png)
 
 ### Red-teaming
 
