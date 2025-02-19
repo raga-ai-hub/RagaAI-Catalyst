@@ -37,7 +37,7 @@ def init_tracing(
     secret_key: str = None,
     base_url: str = None,
     tracer: Tracer = None,
-    catalyst: RagaAICatalyst = None,
+    catalyst: RagaAICatalyst = None, 
     **kwargs
 ) -> None:
     """Initialize distributed tracing.
@@ -50,37 +50,20 @@ def init_tracing(
         base_url: RagaAI Catalyst API base URL
         tracer: Existing Tracer instance
         catalyst: Existing RagaAICatalyst instance
-        **kwargs: Additional tracer configuration
+        **kwargs: Additional tracer parameters
     """
     global _global_tracer, _global_catalyst
     
     with _tracer_lock:
         if tracer and catalyst:
-            _global_tracer = tracer
-            _global_catalyst = catalyst
+            if isinstance(tracer, Tracer) and isinstance(catalyst, RagaAICatalyst):
+                _global_tracer = tracer
+                _global_catalyst = catalyst
+            else:
+                raise ValueError("Both Tracer and Catalyst objects must be instances of Tracer and RagaAICatalyst, respectively.")
         else:
-            # Use env vars as fallback
-            access_key = access_key or os.getenv("RAGAAI_CATALYST_ACCESS_KEY")
-            secret_key = secret_key or os.getenv("RAGAAI_CATALYST_SECRET_KEY") 
-            base_url = base_url or os.getenv("RAGAAI_CATALYST_BASE_URL")
+            raise ValueError("Both Tracer and Catalyst objects must be provided.")
 
-            if not all([access_key, secret_key]):
-                raise ValueError(
-                    "Missing required credentials. Either provide access_key and secret_key "
-                    "or set RAGAAI_CATALYST_ACCESS_KEY and RAGAAI_CATALYST_SECRET_KEY environment variables."
-                )
-
-            _global_catalyst = RagaAICatalyst(
-                access_key=access_key,
-                secret_key=secret_key,
-                base_url=base_url
-            )
-
-            _global_tracer = Tracer(
-                project_name=project_name,
-                dataset_name=dataset_name,
-                **kwargs
-            )
 
 def trace_agent(name: str = None, agent_type: str = "generic", version: str = "1.0.0", **kwargs):
     """Decorator for tracing agent functions."""
@@ -162,7 +145,7 @@ def trace_llm(name: str = None, model: str = None, **kwargs):
             
             try:
                 # Just execute the function within the current span
-                result = await tracer.file_tracker.trace_wrapper(func)(*args, **kwargs)
+                result = await func(*args, **kwargs)
                 return result
             finally:
                 # Reset using the stored token
@@ -180,7 +163,7 @@ def trace_llm(name: str = None, model: str = None, **kwargs):
             
             try:
                 # Just execute the function within the current span
-                result = tracer.file_tracker.trace_wrapper(func)(*args, **kwargs)
+                result = func(*args, **kwargs)
                 return result
             finally:
                 # Reset using the stored token

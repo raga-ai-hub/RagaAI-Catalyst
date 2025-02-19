@@ -13,8 +13,12 @@ import traceback
 import importlib
 import sys
 from litellm import model_cost
-from llama_index.core.base.llms.types import ChatResponse
+import logging
 
+try:
+    from llama_index.core.base.llms.types import ChatResponse,TextBlock, ChatMessage
+except ImportError:
+    logging.warning("Failed to import ChatResponse, TextBlock, ChatMessage. Some features from llamaindex may not work. Please upgrade to the latest version of llama_index or version (>=0.12)")
 from .base import BaseTracer
 from ..utils.llm_utils import (
     extract_model_name,
@@ -30,7 +34,6 @@ from ..utils.llm_utils import (
 from ..utils.unique_decorator import generate_unique_hash
 from ..utils.file_name_tracker import TrackName
 from ..utils.span_attributes import SpanAttributes
-import logging
 
 logger = logging.getLogger(__name__)
 logging_level = (
@@ -550,172 +553,162 @@ class LLMTracerMixin:
             error=None,
             parameters={},
     ):
-        # Update total metrics
-        self.total_tokens += usage.get("total_tokens", 0)
-        self.total_cost += cost.get("total_cost", 0)
+        try:
+            # Update total metrics
+            self.total_tokens += usage.get("total_tokens", 0)
+            self.total_cost += cost.get("total_cost", 0)
 
-        network_calls = []
-        if self.auto_instrument_network:
-            network_calls = self.component_network_calls.get(component_id, [])
+            network_calls = []
+            if self.auto_instrument_network:
+                network_calls = self.component_network_calls.get(component_id, [])
 
-        interactions = []
-        if self.auto_instrument_user_interaction:
-            input_output_interactions = []
-            for interaction in self.component_user_interaction.get(component_id, []):
-                if interaction["interaction_type"] in ["input", "output"]:
-                    input_output_interactions.append(interaction)
-            interactions.extend(input_output_interactions)
-        if self.auto_instrument_file_io:
-            file_io_interactions = []
-            for interaction in self.component_user_interaction.get(component_id, []):
-                if interaction["interaction_type"] in ["file_read", "file_write"]:
-                    file_io_interactions.append(interaction)
-            interactions.extend(file_io_interactions)
+            interactions = []
+            if self.auto_instrument_user_interaction:
+                input_output_interactions = []
+                for interaction in self.component_user_interaction.get(component_id, []):
+                    if interaction["interaction_type"] in ["input", "output"]:
+                        input_output_interactions.append(interaction)
+                interactions.extend(input_output_interactions)
+            if self.auto_instrument_file_io:
+                file_io_interactions = []
+                for interaction in self.component_user_interaction.get(component_id, []):
+                    if interaction["interaction_type"] in ["file_read", "file_write"]:
+                        file_io_interactions.append(interaction)
+                interactions.extend(file_io_interactions)
 
-        parameters_to_display = {}
-        if "run_manager" in parameters:
-            parameters_obj = parameters["run_manager"]
-            if hasattr(parameters_obj, "metadata"):
-                metadata = parameters_obj.metadata
-                # parameters = {'metadata': metadata}
-                parameters_to_display.update(metadata)
+            parameters_to_display = {}
+            if "run_manager" in parameters:
+                parameters_obj = parameters["run_manager"]
+                if hasattr(parameters_obj, "metadata"):
+                    metadata = parameters_obj.metadata
+                    # parameters = {'metadata': metadata}
+                    parameters_to_display.update(metadata)
 
-        # Add only those keys in parameters that are single values and not objects, dict or list
-        for key, value in parameters.items():
-            if isinstance(value, (str, int, float, bool)):
-                parameters_to_display[key] = value
+            # Add only those keys in parameters that are single values and not objects, dict or list
+            for key, value in parameters.items():
+                if isinstance(value, (str, int, float, bool)):
+                    parameters_to_display[key] = value
 
-        # Limit the number of parameters to display
-        parameters_to_display = dict(
-            list(parameters_to_display.items())[: self.MAX_PARAMETERS_TO_DISPLAY]
-        )
+            # Limit the number of parameters to display
+            parameters_to_display = dict(
+                list(parameters_to_display.items())[: self.MAX_PARAMETERS_TO_DISPLAY]
+            )
 
-        # Set the Context and GT
-        span_gt = None
-        span_context = None
-        if name in self.span_attributes_dict:
-            span_gt = self.span_attributes_dict[name].gt
-            span_context = self.span_attributes_dict[name].context
+            # Set the Context and GT
+            span_gt = None
+            span_context = None
+            if name in self.span_attributes_dict:
+                span_gt = self.span_attributes_dict[name].gt
+                span_context = self.span_attributes_dict[name].context
 
-            logger.debug(f"span context {span_context}, span_gt {span_gt}")
+                logger.debug(f"span context {span_context}, span_gt {span_gt}")
 
-        # Tags
-        tags = []
-        if name in self.span_attributes_dict:
-            tags = self.span_attributes_dict[name].tags or []
+            # Tags
+            tags = []
+            if name in self.span_attributes_dict:
+                tags = self.span_attributes_dict[name].tags or []
 
-        # Get End Time
-        end_time = datetime.now().astimezone().isoformat()
+            # Get End Time
+            end_time = datetime.now().astimezone().isoformat()
 
-        # Metrics
-        metrics = []
-        if name in self.span_attributes_dict:
-            raw_metrics = self.span_attributes_dict[name].metrics or []
-            for metric in raw_metrics:
-                base_metric_name = metric["name"]
-                counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
-                metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
-                self.visited_metrics.append(metric_name)
-                metric["name"] = metric_name
-                metrics.append(metric)
+            # Metrics
+            metrics = []
+            if name in self.span_attributes_dict:
+                raw_metrics = self.span_attributes_dict[name].metrics or []
+                for metric in raw_metrics:
+                    base_metric_name = metric["name"]
+                    counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
+                    metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
+                    self.visited_metrics.append(metric_name)
+                    metric["name"] = metric_name
+                    metrics.append(metric)
 
-        # TODO TO check i/p and o/p is according or not
-        input = input_data["args"] if hasattr(input_data, "args") else input_data
-        output = output_data.output_response if output_data else None
-        #print("Prompt input:",input)
-        prompt = self.convert_to_content(input)
-        #print("Prompt Output: ",prompt)
-        #print("Response input: ",output)
-        response = self.convert_to_content(output)
-        #print("Response output: ",response)
+            # TODO TO check i/p and o/p is according or not
+            input = input_data["args"] if hasattr(input_data, "args") else input_data
+            output = output_data.output_response if output_data else None
+            #print("Prompt input:",input)
+            prompt = self.convert_to_content(input)
+            #print("Prompt Output: ",prompt)
+            #print("Response input: ",output)
+            response = self.convert_to_content(output)
+            #print("Response output: ",response)
 
-        # TODO: Execute & Add the User requested metrics here
-        formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name, prompt, span_context, response, span_gt)
-        if formatted_metrics:
-            for formatted_metric in formatted_metrics:
-                metrics.append(formatted_metric)
+            # TODO: Execute & Add the User requested metrics here
+            formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name)
+            if formatted_metrics:
+                metrics.extend(formatted_metrics)
 
-        component = {
-            "id": component_id,
-            "hash_id": hash_id,
-            "source_hash_id": None,
-            "type": "llm",
-            "name": name,
-            "start_time": start_time,
-            "end_time": end_time,
-            "error": error,
-            "parent_id": self.current_agent_id.get(),
-            "info": {
-                "model": llm_type,
-                "version": version,
-                "memory_used": memory_used,
-                "cost": cost,
-                "tokens": usage,
-                "tags": tags,
-                **parameters_to_display,
-            },
-            "extra_info": parameters,
-            "data": {
-                "input": input,
-                "output": output,
-                "memory_used": memory_used,
-            },
-            "metrics": metrics,
-            "network_calls": network_calls,
-            "interactions": interactions,
-        }
+            component = {
+                "id": component_id,
+                "hash_id": hash_id,
+                "source_hash_id": None,
+                "type": "llm",
+                "name": name,
+                "start_time": start_time,
+                "end_time": end_time,
+                "error": error,
+                "parent_id": self.current_agent_id.get(),
+                "info": {
+                    "model": llm_type,
+                    "version": version,
+                    "memory_used": memory_used,
+                    "cost": cost,
+                    "tokens": usage,
+                    "tags": tags,
+                    **parameters_to_display,
+                },
+                "extra_info": parameters,
+                "data": {
+                    "input": input,
+                    "output": output,
+                    "memory_used": memory_used,
+                },
+                "metrics": metrics,
+                "network_calls": network_calls,
+                "interactions": interactions,
+            }
 
-        # Assign context and gt if available
-        component["data"]["gt"] = span_gt
-        component["data"]["context"] = span_context
+            # Assign context and gt if available
+            component["data"]["gt"] = span_gt
+            component["data"]["context"] = span_context
 
-        # Reset the SpanAttributes context variable
-        self.span_attributes_dict[name] = SpanAttributes(name)
+            # Reset the SpanAttributes context variable
+            self.span_attributes_dict[name] = SpanAttributes(name)
 
-        return component
+            return component
+        except Exception as e:
+            raise Exception("Failed to create LLM component")
 
-    # def convert_to_content(self, input_data):
-    #     if isinstance(input_data, dict):
-    #         messages = input_data.get("kwargs", {}).get("messages", [])
-    #     elif isinstance(input_data, list):
-    #         messages = input_data
-    #     else:
-    #         return ""
-        # return "\n".join(process_content(msg.get("content", "")) for msg in messages if msg.get("content"))
-  
     def convert_to_content(self, input_data):
-        if isinstance(input_data, dict):
-            messages = input_data.get("kwargs", {}).get("messages", [])
-        elif isinstance(input_data, list):
-            if len(input_data)>0 and isinstance(input_data[0]['content'],ChatResponse):
-                extracted_messages = []
-
-                for item in input_data:
-                    chat_response = item.get('content')
-                    if hasattr(chat_response, 'message') and hasattr(chat_response.message, 'blocks'):
-                        for block in chat_response.message.blocks:
-                            if hasattr(block, 'text'):
-                                extracted_messages.append(block.text)
-                messages=extracted_messages
-                if isinstance(messages,list):
-                    return "\n".join(messages)
-                
-                #messages=[msg["content"] for msg in input_data if isinstance(msg, dict) and "content" in msg]
-                #messages = [msg["content"].message for msg in input_data if isinstance(msg, dict) and "content" in msg and isinstance(msg["content"], ChatResponse)]
+        try:
+            if isinstance(input_data, dict):
+                messages = input_data.get("kwargs", {}).get("messages", [])
+            elif isinstance(input_data, list):
+                if len(input_data)>0 and isinstance(input_data[0]['content'],ChatResponse):
+                    extracted_messages = []
+                    for item in input_data:
+                        chat_response = item.get('content')
+                        if hasattr(chat_response, 'message') and hasattr(chat_response.message, 'blocks'):
+                            for block in chat_response.message.blocks:
+                                if hasattr(block, 'text'):
+                                    extracted_messages.append(block.text)
+                    messages=extracted_messages
+                    if isinstance(messages,list):
+                        return "\n".join(messages)
+                elif len(input_data)>0 and isinstance(input_data[0]['content'],TextBlock):
+                    return " ".join(block.text for item in input_data for block in item['content'] if isinstance(block, TextBlock))
+                elif len(input_data)>0 and isinstance(input_data[0]['content'],ChatMessage):
+                    return " ".join(block.text for block in input_data[0]['content'].blocks if isinstance(block, TextBlock)) 
+                else:
+                    messages = input_data
+            elif isinstance(input_data,ChatResponse):
+                messages=input_data['content']
             else:
-                messages = input_data
-        elif isinstance(input_data,ChatResponse):
-            messages=input_data['content']
-        else:
-            return ""
-        res=""
-        # try:
-        res="\n".join(msg.get("content", "").strip() for msg in messages if msg.get("content"))
-        # except Exception as e:
-        #     print("Exception occured for: ",e)
-        #     print("Input: ",input_data,"Meeage: ",messages)
-        #     # import sys
-        #     # sys.exit()
+                return ""
+            res=""
+            res="\n".join(msg.get("content", "").strip() for msg in messages if msg.get("content"))
+        except Exception as e:
+            res=str(input_data)
         return res
 
     def process_content(content):
@@ -968,6 +961,10 @@ class LLMTracerMixin:
             metrics: List[Dict[str, Any]] = [],
             feedback: Optional[Any] = None,
     ):
+
+        start_memory = psutil.Process().memory_info().rss
+        start_time = datetime.now().astimezone().isoformat()
+
         if name not in self.span_attributes_dict:
             self.span_attributes_dict[name] = SpanAttributes(name)
         if tags:
@@ -999,7 +996,6 @@ class LLMTracerMixin:
         self.current_llm_call_name.set(name)
 
         def decorator(func):
-            @self.file_tracker.trace_decorator
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 gt = kwargs.get("gt") if kwargs else None
@@ -1021,14 +1017,34 @@ class LLMTracerMixin:
                     result = await func(*args, **kwargs)
                     return result
                 except Exception as e:
-                    error_info = {
-                        "error": {
-                            "type": type(e).__name__,
-                            "message": str(e),
-                            "traceback": traceback.format_exc(),
-                            "timestamp": datetime.now().astimezone().isoformat(),
-                        }
+                    error_component = {
+                        "type": type(e).__name__,
+                        "message": str(e),
+                        "traceback": traceback.format_exc(),
+                        "timestamp": datetime.now().astimezone().isoformat(),
                     }
+
+                    # End tracking network calls for this component
+                    self.end_component(component_id)
+
+                    end_memory = psutil.Process().memory_info().rss
+                    memory_used = max(0, end_memory - start_memory)
+
+                    llm_component = self.create_llm_component(
+                        component_id=component_id,
+                        hash_id=generate_unique_hash(func, args, kwargs),
+                        name=name,
+                        llm_type="unknown",
+                        version=None,
+                        memory_used=memory_used,
+                        start_time=start_time,
+                        input_data=extract_input_data(args, kwargs, None),
+                        output_data=None,
+                        error=error_component,
+                    )
+                    self.llm_data = llm_component
+                    self.add_component(llm_component, is_error=True)
+
                     raise
                 finally:
 
@@ -1073,7 +1089,6 @@ class LLMTracerMixin:
                     )
                     self.add_component(llm_component)
 
-            @self.file_tracker.trace_decorator
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 gt = kwargs.get("gt") if kwargs else None
@@ -1096,14 +1111,34 @@ class LLMTracerMixin:
                     result = func(*args, **kwargs)
                     return result
                 except Exception as e:
-                    error_info = {
-                        "error": {
-                            "type": type(e).__name__,
-                            "message": str(e),
-                            "traceback": traceback.format_exc(),
-                            "timestamp": datetime.now().astimezone().isoformat(),
-                        }
+                    error_component = {
+                        "type": type(e).__name__,
+                        "message": str(e),
+                        "traceback": traceback.format_exc(),
+                        "timestamp": datetime.now().astimezone().isoformat(),
                     }
+
+                    # End tracking network calls for this component
+                    self.end_component(component_id)
+
+                    end_memory = psutil.Process().memory_info().rss
+                    memory_used = max(0, end_memory - start_memory)
+
+                    llm_component = self.create_llm_component(
+                        component_id=component_id,
+                        hash_id=generate_unique_hash(func, args, kwargs),
+                        name=name,
+                        llm_type="unknown",
+                        version=None,
+                        memory_used=memory_used,
+                        start_time=start_time,
+                        input_data=extract_input_data(args, kwargs, None),
+                        output_data=None,
+                        error=error_component,
+                    )
+                    self.llm_data = llm_component
+                    self.add_component(llm_component, is_error=True)
+
                     raise
                 finally:
                     llm_component = self.llm_data

@@ -159,7 +159,7 @@ class LangchainTracer(BaseCallbackHandler):
         else:
             asyncio.run(self._async_save_trace(force))
 
-    def _create_safe_wrapper(self, original_func, component_name):
+    def _create_safe_wrapper(self, original_func, component_name, method_name):
         """Create a safely wrapped version of an original function with enhanced error handling"""
 
         @wraps(original_func)
@@ -209,7 +209,59 @@ class LangchainTracer(BaseCallbackHandler):
                 
                 # Fallback to calling the original function without modifications
                 return original_func(*args, **kwargs)
+            
+        @wraps(original_func)
+        def wrapped_invoke(*args, **kwargs):
+            if not self._active:
+                return original_func(*args, **kwargs)
+            
+            try:
+                # Deep copy kwargs to avoid modifying the original
+                kwargs_copy = kwargs.copy() if kwargs is not None else {}
 
+                # Handle different calling conventions
+                if 'config' not in kwargs_copy:
+                    kwargs_copy['config'] = {'callbacks': [self]}
+                elif 'callbacks' not in kwargs_copy['config']:
+                    kwargs_copy['config']['callbacks'] = [self]
+                elif self not in kwargs_copy['config']['callbacks']:
+                    kwargs_copy['config']['callbacks'].append(self)
+
+                # Store model name if available
+                if component_name in ["OpenAI", "ChatOpenAI_LangchainOpenAI", "ChatOpenAI_ChatModels",
+                                    "ChatVertexAI", "VertexAI", "ChatGoogleGenerativeAI", "ChatAnthropic", 
+                                    "ChatLiteLLM", "ChatBedrock", "AzureChatOpenAI", "ChatAnthropicVertex"]:
+                    instance = args[0] if args else None
+                    model_name = kwargs.get('model_name') or kwargs.get('model') or kwargs.get('model_id')
+
+                    if instance and model_name:
+                        self.model_names[id(instance)] = model_name
+                
+                # Try different method signatures
+                try:
+                    # First, try calling with modified kwargs
+                    return original_func(*args, **kwargs_copy)
+                except TypeError:
+                    # If that fails, try without kwargs
+                    try:
+                        return original_func(*args)
+                    except Exception as e:
+                        # If all else fails, use original call
+                        logger.error(f"Failed to invoke {component_name} with modified callbacks: {e}")
+                        return original_func(*args, **kwargs)
+            
+            except Exception as e:
+                # Log any errors that occur during the function call
+                logger.error(f"Error in {component_name} wrapper: {e}")
+                
+                # Record the error using the tracer's error handling method
+                self.on_error(e, context=f"wrapper_{component_name}")
+                
+                # Fallback to calling the original function without modifications
+                return original_func(*args, **kwargs)
+        
+        if method_name == 'invoke':
+            return wrapped_invoke
         return wrapped
 
 
@@ -287,6 +339,7 @@ class LangchainTracer(BaseCallbackHandler):
             from langchain.chains import create_retrieval_chain, RetrievalQA
             components_to_patch["RetrievalQA"] = (RetrievalQA, "from_chain_type")
             components_to_patch["create_retrieval_chain"] = (create_retrieval_chain, None)
+            components_to_patch['RetrievalQA.invoke'] = (RetrievalQA, 'invoke')
         except ImportError:
             logger.debug("Langchain chains not available for patching")
 
@@ -295,20 +348,20 @@ class LangchainTracer(BaseCallbackHandler):
                 if method_name == "__init__":
                     original = component.__init__
                     self._original_inits[name] = original
-                    component.__init__ = self._create_safe_wrapper(original, name)
+                    component.__init__ = self._create_safe_wrapper(original, name, method_name)
                 elif method_name:
                     original = getattr(component, method_name)
                     self._original_methods[name] = original
                     if isinstance(original, classmethod):
                         wrapped = classmethod(
-                            self._create_safe_wrapper(original.__func__, name)
+                            self._create_safe_wrapper(original.__func__, name, method_name)
                         )
                     else:
-                        wrapped = self._create_safe_wrapper(original, name)
+                        wrapped = self._create_safe_wrapper(original, name, method_name)
                     setattr(component, method_name, wrapped)
                 else:
                     self._original_methods[name] = component
-                    globals()[name] = self._create_safe_wrapper(component, name)
+                    globals()[name] = self._create_safe_wrapper(component, name, method_name)
             except Exception as e:
                 logger.error(f"Error patching {name}: {e}")
                 self.on_error(e, context=f"patch_{name}")
@@ -354,7 +407,7 @@ class LangchainTracer(BaseCallbackHandler):
                     elif name == "ChatOpenAI_ChatModels":
                         from langchain.chat_models import ChatOpenAI as ChatOpenAI_ChatModels
                         imported_components[name] = ChatOpenAI_ChatModels
-                    elif name in ["RetrievalQA", "create_retrieval_chain"]:
+                    elif name in ["RetrievalQA", "create_retrieval_chain", 'RetrievalQA.invoke']:
                         from langchain.chains import create_retrieval_chain, RetrievalQA
                         imported_components["RetrievalQA"] = RetrievalQA
                         imported_components["create_retrieval_chain"] = create_retrieval_chain

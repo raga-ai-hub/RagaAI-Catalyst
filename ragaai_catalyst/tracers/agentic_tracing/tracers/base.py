@@ -137,6 +137,7 @@ class BaseTracer:
         """Initialize a new trace"""
         self.tracking = True
         self.trace_id = str(uuid.uuid4())
+        self.file_tracker.trace_main_file()
         self.system_monitor = SystemMonitor(self.trace_id)
         threading.Thread(target=self._track_memory_usage).start()
         threading.Thread(target=self._track_cpu_usage).start()
@@ -1055,30 +1056,20 @@ class BaseTracer:
         return self.span_attributes_dict[span_name]
 
     @staticmethod
-    def get_formatted_metric(span_attributes_dict, project_id, name, prompt, span_context, response, span_gt):
+    def get_formatted_metric(span_attributes_dict, project_id, name):
         if name in span_attributes_dict:
             local_metrics = span_attributes_dict[name].local_metrics or []
             local_metrics_results = []
             for metric in local_metrics:
                 try:
-                    if metric.get("prompt") is not None:
-                        prompt = metric['prompt']
-                    if metric.get("response") is not None:
-                        response = metric['response']
-                    if metric.get('context') is not None:
-                        span_context = metric['context']
-                    if metric.get('gt') is not None:
-                        span_gt = metric['gt']
-
                     logger.info("calculating the metric, please wait....")
+
+                    mapping = metric.get("mapping", {})
                     result = calculate_metric(project_id=project_id,
                                               metric_name=metric.get("name"),
                                               model=metric.get("model"),
                                               provider=metric.get("provider"),
-                                              prompt=prompt,
-                                              context=span_context,
-                                              response=response,
-                                              expected_response=span_gt
+                                              **mapping
                                               )
 
                     result = result['data']['data'][0]

@@ -4,6 +4,7 @@ import pandas as pd
 import io
 from .ragaai_catalyst import RagaAICatalyst
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class Evaluation:
         self.project_name = project_name
         self.dataset_name = dataset_name
         self.base_url = f"{RagaAICatalyst.BASE_URL}"
-        self.timeout = 10
+        self.timeout = 20
         self.jobId = None
         self.num_projects=99999
 
@@ -357,6 +358,52 @@ class Evaluation:
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
 
+    def append_metrics(self, display_name):
+        if not isinstance(display_name, str):
+            raise ValueError("display_name should be a string")
+        
+        headers = {
+            "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
+            'X-Project-Id': str(self.project_id),
+            'Content-Type': 'application/json',
+        }
+
+        payload = json.dumps({
+        "datasetId": self.dataset_id,
+        "metricParams": [
+            {
+            "metricSpec": {
+                "displayName": display_name
+            }
+            }
+        ]
+        })
+        
+        try:
+            response = requests.request(
+                "POST", 
+                f'{self.base_url}/v2/llm/metric-evaluation-rerun', 
+                headers=headers, 
+                data=payload, 
+                timeout=self.timeout)
+            if response.status_code == 400:
+                raise ValueError(response.json()["message"])
+            response.raise_for_status()
+            if response.json()["success"]:
+                print(response.json()["message"])
+                self.jobId = response.json()["data"]["jobId"]
+
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error occurred: {http_err}")
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error occurred: {conn_err}")
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error occurred: {timeout_err}")
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"An error occurred: {req_err}")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred: {e}")
+
     def get_status(self):
         headers = {
             'Content-Type': 'application/json',
@@ -463,8 +510,11 @@ class Evaluation:
             df = pd.read_csv(io.StringIO(response_text))
 
             column_list = df.columns.to_list()
+            # Remove unwanted columns
             column_list = [col for col in column_list if not col.startswith('_')]
             column_list = [col for col in column_list if '.' not in col]
+            # Remove _claims_ columns
+            column_list = [col for col in column_list if '_claims_' not in col]
             return df[column_list]
         else:
             return pd.DataFrame()

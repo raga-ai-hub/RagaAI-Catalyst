@@ -7,6 +7,7 @@ import functools
 from typing import Optional, Any, Dict, List
 
 from pydantic import tools
+from .base import BaseTracer
 from ..utils.unique_decorator import generate_unique_hash_simple
 import contextvars
 import asyncio
@@ -254,7 +255,6 @@ class ToolTracerMixin:
             # Check if the function is async
             is_async = asyncio.iscoroutinefunction(func)
 
-            @self.file_tracker.trace_decorator
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 async_wrapper.metadata = metadata
@@ -266,7 +266,6 @@ class ToolTracerMixin:
                     func, name, tool_type, version, *args, **kwargs
                 )
 
-            @self.file_tracker.trace_decorator
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 sync_wrapper.metadata = metadata
@@ -308,7 +307,7 @@ class ToolTracerMixin:
 
         try:
             # Execute the tool
-            result = self.file_tracker.trace_wrapper(func)(*args, **kwargs)
+            result = func(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
@@ -358,7 +357,7 @@ class ToolTracerMixin:
                 error=error_component,
             )
 
-            self.add_component(tool_component)
+            self.add_component(tool_component, is_error=True)
 
             raise
         finally:
@@ -390,7 +389,7 @@ class ToolTracerMixin:
         self.start_component(component_id)
         try:
             # Execute the tool
-            result = await self.file_tracker.trace_wrapper(func)(*args, **kwargs)
+            result = await func(*args, **kwargs)
 
             # Calculate resource usage
             end_memory = psutil.Process().memory_info().rss
@@ -433,7 +432,7 @@ class ToolTracerMixin:
                 output_data=None,
                 error=error_component,
             )
-            self.add_component(tool_component)
+            self.add_component(tool_component, is_error=True)
 
             raise
         finally:
@@ -482,6 +481,10 @@ class ToolTracerMixin:
                 self.visited_metrics.append(metric_name)
                 metric["name"] = metric_name  
                 metrics.append(metric)
+
+        formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name)
+        if formatted_metrics:
+            metrics.extend(formatted_metrics)
 
         start_time = kwargs["start_time"]
         component = {
