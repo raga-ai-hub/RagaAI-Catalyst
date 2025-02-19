@@ -14,10 +14,10 @@ RagaAI Catalyst is a comprehensive platform designed to enhance the management a
     - [Dataset Management](#dataset-management)
     - [Evaluation Management](#evaluation)
     - [Trace Management](#trace-management)
+    - [Agentic Tracing](#agentic-tracing)
     - [Prompt Management](#prompt-management)
     - [Synthetic Data Generation](#synthetic-data-generation)
     - [Guardrail Management](#guardrail-management)
-    - [Agentic Tracing](#agentic-tracing)
     - [Red-teaming](#red-teaming)
 
 ## Installation
