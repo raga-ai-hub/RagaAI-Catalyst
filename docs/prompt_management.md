@@ -70,8 +70,14 @@ prompt_variables = prompt.get_variables()
 print("prompt_variables: ",prompt_variables)
 ```
 
+### 6. Get Prompt Versions
 
-### 6. Compile Prompt
+```python
+prompt_versions = prompt.list_prompt_versions()
+print("prompt_versions: ",prompt_versions)
+```
+
+### 7. Compile Prompt
 
 Once you have a prompt, you can compile it with variables:
 
@@ -80,7 +86,7 @@ compiled_prompt = prompt.compile(query="What's the weather?", context="sunny", l
 print("Compiled prompt:", compiled_prompt)
 ```
 
-### 7. Get Parameters
+### 8. Get Parameters
 
 ```python
 parameters = prompt.get_parameters()
