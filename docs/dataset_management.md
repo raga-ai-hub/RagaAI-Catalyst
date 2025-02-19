@@ -17,43 +17,20 @@ datasets = dataset_manager.list_datasets()
 print("Existing Datasets:", datasets)
 ```
 
-#### 1. Create a New Dataset from Trace
-
-Create a dataset by applying filters to trace data. Below is an example of creating a dataset with specific criteria.
-
-```python
-dataset_manager.create_from_trace(
-    dataset_name='Test-dataset-1',
-    filter_list=[
-        {
-            "name": "llm_model",
-            "values": ["gpt-3.5-turbo", "gpt-4"]
-        },
-        {
-            "name": "prompt_length",
-            "lte": 27,
-            "gte": 23
-        }
-    ]
-)
-```
-
-#### 2. Create a New Dataset from CSV
+#### 1. Create a New Dataset from CSV
 
 You can create a new dataset by uploading a CSV file and mapping its columns to the required schema elements.
 
-##### a. Retrieve CSV Schema Elements with `get_csv_schema()`
+##### a. Retrieve CSV Schema Elements with `get_schema_mapping()`
 
 This function retrieves the valid schema elements that the CSV column names must map to. It helps ensure that your CSV column names align correctly with the expected schema.
 
 ###### Returns
 
-- A dictionary containing schema information:
-  - `success`: A Boolean indicating whether the schema elements were fetched successfully.
-  - `data['schemaElements']`: A list of valid schema column names.
+- A list containing schema information
 
 ```python
-schemaElements = dataset_manager.get_csv_schema()['data']['schemaElements']
+schemaElements = dataset_manager.get_schema_mapping()
 print('Supported column names: ', schemaElements)
 ```
 
@@ -98,3 +75,87 @@ schema_mapping = {
 ```
 
 This mapping ensures that when the CSV is uploaded, the data in `user_id` is understood as `user_identifier`, and `response_time` is understood as `response_duration`, aligning the data with the system's expectations.
+
+
+##### c. Add rows in the existing dataset from CSV
+
+```python
+add_rows_csv_path = "path to dataset"
+dataset_manager.add_rows(csv_path=add_rows_csv_path, dataset_name=dataset_name)
+```
+
+##### d. Add columns in the existing dataset from CSV
+
+```python
+text_fields = [
+      {
+        "role": "system",
+        "content": "you are an evaluator, which answers only in yes or no."
+      },
+      {
+        "role": "user",
+        "content": "are any of the {{context1}} {{feedback1}} related to broken hand"
+      }
+    ]
+column_name = "column_name"
+provider = "openai"
+model = "gpt-4o-mini"
+
+variables={
+    "context1": "context",
+    "feedback1": "feedback"
+}
+```
+
+```python
+dataset_manager.add_columns(
+    text_fields=text_fields,
+    dataset_name=dataset_name,
+    column_name=column_name,
+    provider=provider,
+    model=model,
+    variables=variables
+)
+```
+
+#### 2. Create a New Dataset from JSONl
+
+##### a. Create a Dataset from JSONl with `create_from_jsonl()`
+
+```python
+dataset_manager.create_from_jsonl(
+    jsonl_path='jsonl_path',
+    dataset_name='MyDataset',
+    schema_mapping={'column1': 'schema_element1', 'column2': 'schema_element2'}
+)
+```
+
+##### b. Add rows from JSONl with `add_rows_from_jsonl()`
+
+```python
+dataset_manager.add_rows_from_jsonl(
+    jsonl_path='jsonl_path',
+    dataset_name='MyDataset',
+)
+```
+
+#### 3. Create a New Dataset from DataFrame
+
+##### a. Create a Dataset from DataFrame with `create_from_df()`
+
+```python
+dataset_manager.create_from_df(
+    df=df,
+    dataset_name='MyDataset',
+    schema_mapping={'column1': 'schema_element1', 'column2': 'schema_element2'}
+)
+```
+
+##### b. Add rows from DataFrame with `add_rows_from_df()`
+
+```python
+dataset_manager.add_rows_from_df(
+    df=df.tail(2),
+    dataset_name='MyDataset',
+)
+```
