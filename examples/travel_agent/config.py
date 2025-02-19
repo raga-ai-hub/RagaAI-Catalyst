@@ -11,11 +11,11 @@ def initialize_tracing():
     catalyst = RagaAICatalyst(
         access_key=os.getenv("RAGAAI_CATALYST_ACCESS_KEY"),
         secret_key=os.getenv("RAGAAI_CATALYST_SECRET_KEY"),
-        # base_url=os.getenv("RAGAAI_CATALYST_BASE_URL"),
+        base_url=os.getenv("RAGAAI_CATALYST_BASE_URL"),
     )
 
     tracer = Tracer(
-        project_name="Trace_testing",
+        project_name="swarnendu-4",
         dataset_name="travel_agent_dataset",
         tracer_type="Agentic",
     )

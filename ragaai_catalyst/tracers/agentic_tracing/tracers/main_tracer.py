@@ -6,6 +6,7 @@ import uuid
 import os
 import builtins
 from pathlib import Path
+import logging
 
 from .base import BaseTracer
 from .llm_tracer import LLMTracerMixin
@@ -57,10 +58,12 @@ class AgenticTracing(
 
         self.project_name = user_detail["project_name"]
         self.project_id = user_detail["project_id"]
-        # self.dataset_name = user_detail["dataset_name"]
         self.trace_user_detail = user_detail["trace_user_detail"]
         self.base_url = f"{RagaAICatalyst.BASE_URL}"
         self.timeout = 10
+        
+        # Add warning flag
+        self._warning_shown = False
 
         BaseTracer.__init__(self, user_detail)
 
@@ -116,9 +119,6 @@ class AgenticTracing(
         self.component_network_calls = {}  # Store network calls per component
         self.component_user_interaction = {}
 
-        # Create output directory if it doesn't exist
-        self.output_dir = Path("./traces")  # Using default traces directory
-        self.output_dir.mkdir(exist_ok=True)
 
     def start_component(self, component_id: str):
         """Start tracking network calls for a component"""
@@ -158,8 +158,7 @@ class AgenticTracing(
 
     def start(self):
         """Start tracing"""
-        if not self.is_active:
-            return
+        self.is_active = True
 
         # Setup user interaction tracing
         self.user_interaction_tracer.project_id.set(self.project_id)
@@ -174,18 +173,6 @@ class AgenticTracing(
         self.network_tracer.activate_patches()
 
         # take care of the auto instrumentation
-        if self.auto_instrument_llm:
-            self.instrument_llm_calls()
-
-        if self.auto_instrument_tool:
-            self.instrument_tool_calls()
-
-        if self.auto_instrument_agent:
-            self.instrument_agent_calls()
-
-        if self.auto_instrument_custom:
-            self.instrument_custom_calls()
-
         if self.auto_instrument_user_interaction:
             ToolTracerMixin.instrument_user_interaction_calls(self)
             LLMTracerMixin.instrument_user_interaction_calls(self)
@@ -206,6 +193,18 @@ class AgenticTracing(
             AgentTracerMixin.instrument_file_io_calls(self)
             CustomTracerMixin.instrument_file_io_calls(self)
             builtins.open = self.user_interaction_tracer.traced_open
+            
+        if self.auto_instrument_llm:
+            self.instrument_llm_calls()
+
+        if self.auto_instrument_tool:
+            self.instrument_tool_calls()
+
+        if self.auto_instrument_agent:
+            self.instrument_agent_calls()
+
+        if self.auto_instrument_custom:
+            self.instrument_custom_calls()
 
     def stop(self):
         """Stop tracing and save results"""
@@ -237,12 +236,19 @@ class AgenticTracing(
         total_cost = 0.0
         total_tokens = 0
 
+        processed_components = set()
+
         def process_component(component):
             nonlocal total_cost, total_tokens
             # Convert component to dict if it's an object
             comp_dict = (
                 component.__dict__ if hasattr(component, "__dict__") else component
             )
+
+            comp_id = comp_dict.get("id") or comp_dict.get("component_id")
+            if comp_id in processed_components:
+                return  # Skip if already processed
+            processed_components.add(comp_id)
 
             if comp_dict.get("type") == "llm":
                 info = comp_dict.get("info", {})
@@ -310,6 +316,47 @@ class AgenticTracing(
             ]
         }
 
+        if component_data == None or component_data == {} or component_data.get("type", None) == None:
+            # Only show warning if it hasn't been shown before
+            if not self._warning_shown:
+                import toml
+                import os
+                from pathlib import Path
+
+                # Load supported LLM calls from TOML file
+                current_dir = Path(__file__).parent
+                toml_path = current_dir / "../utils/supported_llm_provider.toml"
+                try:
+                    with open(toml_path, "r") as f:
+                        config = toml.load(f)
+                        supported_calls = ", ".join(config["supported_llm_calls"])
+                except Exception as e:
+                    supported_calls = "Error loading supported LLM calls"
+
+                # ANSI escape codes for colors and formatting
+                RED = "\033[91m"
+                BOLD = "\033[1m"
+                RESET = "\033[0m"
+                BIG = "\033[1;2m"  # Makes text slightly larger in supported terminals
+
+                warning_msg = f"""{RED}{BOLD}{BIG}
+╔════════════════════════ COMPONENT DATA INCOMPLETE ════════════════════════╗
+║                                                                          ║
+║  Please ensure these requirements:                                       ║
+║  ✗ trace_llm decorator must have a stand alone llm call                 ║
+║  ✗ trace_tool decorator must be a stand alone tool/function call        ║
+║  ✗ trace_agent decorator can have multiple/nested llm/tool/agent calls  ║
+║                                                                          ║
+║  Supported LLM calls:                                                    ║
+║  {supported_calls}                                                       ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+{RESET}"""
+                # Use logger.warning for the message
+                logging.warning(warning_msg)
+                self._warning_shown = True
+            return
+
         if component_data["type"] == "llm":
             component = LLMComponent(**filtered_data)
         elif component_data["type"] == "agent":
@@ -321,7 +368,7 @@ class AgenticTracing(
 
         # Check if there's an active agent context
         current_agent_id = self.current_agent_id.get()
-        if current_agent_id and component_data["type"] in ["llm", "tool"]:
+        if current_agent_id and component_data["type"] in ["llm", "tool", "custom"]:
             # Add this component as a child of the current agent
             current_children = self.agent_children.get()
             current_children.append(component_data)
@@ -332,66 +379,6 @@ class AgenticTracing(
 
         # Handle error case
         if is_error:
-            # Get the parent component if it exists
-            parent_id = component_data.get("parent_id")
-            children = self.agent_children.get()
-
-            # Set parent_id for all children
-            for child in children:
-                child["parent_id"] = parent_id
-
-            agent_tracer_mixin = AgentTracerMixin()
-            agent_tracer_mixin.component_network_calls = self.component_network_calls
-            agent_tracer_mixin.component_user_interaction = (
-                self.component_user_interaction
-            )
-
-            agent_tracer_mixin.span_attributes_dict[self.current_agent_name.get()] = (
-                SpanAttributes(self.current_agent_name.get())
-            )
-
-            # Create parent component with error info
-            parent_component = agent_tracer_mixin.create_agent_component(
-                component_id=parent_id,
-                hash_id=str(uuid.uuid4()),
-                source_hash_id=None,
-                type="agent",
-                name=self.current_agent_name.get(),
-                agent_type=self.agent_type.get(),
-                version=self.version.get(),
-                capabilities=self.capabilities.get(),
-                start_time=self.start_time,
-                end_time=datetime.now().astimezone().isoformat(),
-                memory_used=0,
-                input_data=self.input_data,
-                output_data=None,
-                children=children,
-                parent_id=None,  # Add parent ID if exists
-            )
-
-            filtered_data = {
-                k: v
-                for k, v in parent_component.items()
-                if k
-                in [
-                    "id",
-                    "hash_id",
-                    "source_hash_id",
-                    "type",
-                    "name",
-                    "start_time",
-                    "end_time",
-                    "parent_id",
-                    "info",
-                    "data",
-                    "network_calls",
-                    "interactions",
-                    "error",
-                ]
-            }
-            parent_agent_component = AgentComponent(**filtered_data)
-            # Add the parent component to trace and stop tracing
-            super().add_component(parent_agent_component)
             self.stop()
 
     def __enter__(self):

@@ -1,5 +1,7 @@
 import os
+import csv
 import json
+import tempfile
 import requests
 from .utils import response_checker
 from typing import Union
@@ -9,6 +11,10 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 get_token = RagaAICatalyst.get_token
 
+# Job status constants
+JOB_STATUS_FAILED = "failed"
+JOB_STATUS_IN_PROGRESS = "in_progress"
+JOB_STATUS_COMPLETED = "success"
 
 class Dataset:
     BASE_URL = None
@@ -18,6 +24,7 @@ class Dataset:
         self.project_name = project_name
         self.num_projects = 99999
         Dataset.BASE_URL = RagaAICatalyst.BASE_URL
+        self.jobId = None
         headers = {
             "Authorization": f'Bearer {os.getenv("RAGAAI_CATALYST_TOKEN")}',
         }
@@ -219,7 +226,6 @@ class Dataset:
         try:
 
             put_csv_response = put_csv_to_presignedUrl(url)
-            print(put_csv_response)
             if put_csv_response.status_code not in (200, 201):
                 raise ValueError('Unable to put csv to the presignedUrl')
         except Exception as e:
@@ -269,6 +275,7 @@ class Dataset:
                 raise ValueError('Unable to upload csv')
             else:
                 print(upload_csv_response['message'])
+                self.jobId = upload_csv_response['data']['jobId']
         except Exception as e:
             logger.error(f"Error in create_from_csv: {e}")
             raise
@@ -436,6 +443,7 @@ class Dataset:
             response_data = response.json()
             if response_data.get('success', False):
                 print(f"{response_data['message']}")
+                self.jobId = response_data['data']['jobId']
             else:
                 raise ValueError(response_data.get('message', 'Failed to add rows'))
         
@@ -594,6 +602,7 @@ class Dataset:
             
             if response_data.get('success', False):
                 print(f"Column '{column_name}' added successfully to dataset '{dataset_name}'")
+                self.jobId = response_data['data']['jobId']
             else:
                 raise ValueError(response_data.get('message', 'Failed to add column'))
         
@@ -601,3 +610,125 @@ class Dataset:
             print(f"Error adding column: {e}")
             raise
 
+    def get_status(self):
+        headers = {
+            'Content-Type': 'application/json',
+            "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
+            'X-Project-Id': str(self.project_id),
+        }
+        try:
+            response = requests.get(
+                f'{Dataset.BASE_URL}/job/status', 
+                headers=headers, 
+                timeout=30)
+            response.raise_for_status()
+            if response.json()["success"]:
+
+                status_json = [item["status"] for item in response.json()["data"]["content"] if item["id"]==self.jobId]
+                status_json = status_json[0]
+                if status_json == "Failed":
+                    print("Job failed. No results to fetch.")
+                    return JOB_STATUS_FAILED
+                elif status_json == "In Progress":
+                    print(f"Job in progress. Please wait while the job completes.\nVisit Job Status: {Dataset.BASE_URL.removesuffix('/api')}/projects/job-status?projectId={self.project_id} to track")
+                    return JOB_STATUS_IN_PROGRESS
+                elif status_json == "Completed":
+                    print(f"Job completed. Fetching results.\nVisit Job Status: {Dataset.BASE_URL.removesuffix('/api')}/projects/job-status?projectId={self.project_id} to check")
+                    return JOB_STATUS_COMPLETED
+                else:
+                    logger.error(f"Unknown status received: {status_json}")
+                    return JOB_STATUS_FAILED
+            else:
+                logger.error("Request was not successful")
+                return JOB_STATUS_FAILED
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error occurred: {http_err}")
+            return JOB_STATUS_FAILED
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error occurred: {conn_err}")
+            return JOB_STATUS_FAILED
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error occurred: {timeout_err}")
+            return JOB_STATUS_FAILED
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"An error occurred: {req_err}")
+            return JOB_STATUS_FAILED
+        except Exception as e:
+            logger.error(f"An unexpected error occurred: {e}")
+            return JOB_STATUS_FAILED
+
+    def _jsonl_to_csv(self, jsonl_file, csv_file):
+        """Convert a JSONL file to a CSV file."""
+        with open(jsonl_file, 'r', encoding='utf-8') as infile:
+            data = [json.loads(line) for line in infile]
+        
+        if not data:
+            print("Empty JSONL file.")
+            return
+        
+        with open(csv_file, 'w', newline='', encoding='utf-8') as outfile:
+            writer = csv.DictWriter(outfile, fieldnames=data[0].keys())
+            writer.writeheader()
+            writer.writerows(data)
+        
+        print(f"Converted {jsonl_file} to {csv_file}")
+
+    def create_from_jsonl(self, jsonl_path, dataset_name, schema_mapping):
+        tmp_csv_path = os.path.join(tempfile.gettempdir(), f"{dataset_name}.csv")
+        try:
+            self._jsonl_to_csv(jsonl_path, tmp_csv_path)
+            self.create_from_csv(tmp_csv_path, dataset_name, schema_mapping)
+        except (IOError, UnicodeError) as e:
+            logger.error(f"Error converting JSONL to CSV: {e}")
+            raise
+        finally:
+            if os.path.exists(tmp_csv_path):
+                try:
+                    os.remove(tmp_csv_path)
+                except Exception as e:
+                    logger.error(f"Error removing temporary CSV file: {e}")
+
+    def add_rows_from_jsonl(self, jsonl_path, dataset_name):
+        tmp_csv_path = os.path.join(tempfile.gettempdir(), f"{dataset_name}.csv")
+        try:
+            self._jsonl_to_csv(jsonl_path, tmp_csv_path)
+            self.add_rows(tmp_csv_path, dataset_name)
+        except (IOError, UnicodeError) as e:
+            logger.error(f"Error converting JSONL to CSV: {e}")
+            raise
+        finally:
+            if os.path.exists(tmp_csv_path):
+                try:
+                    os.remove(tmp_csv_path)
+                except Exception as e:
+                    logger.error(f"Error removing temporary CSV file: {e}")
+
+    def create_from_df(self, df, dataset_name, schema_mapping):
+        tmp_csv_path = os.path.join(tempfile.gettempdir(), f"{dataset_name}.csv")
+        try:
+            df.to_csv(tmp_csv_path, index=False)
+            self.create_from_csv(tmp_csv_path, dataset_name, schema_mapping)
+        except (IOError, UnicodeError) as e:
+            logger.error(f"Error converting DataFrame to CSV: {e}")
+            raise
+        finally:
+            if os.path.exists(tmp_csv_path):
+                try:
+                    os.remove(tmp_csv_path)
+                except Exception as e:
+                    logger.error(f"Error removing temporary CSV file: {e}")
+
+    def add_rows_from_df(self, df, dataset_name):
+        tmp_csv_path = os.path.join(tempfile.gettempdir(), f"{dataset_name}.csv")
+        try:
+            df.to_csv(tmp_csv_path, index=False)
+            self.add_rows(tmp_csv_path, dataset_name)
+        except (IOError, UnicodeError) as e:
+            logger.error(f"Error converting DataFrame to CSV: {e}")
+            raise
+        finally:
+            if os.path.exists(tmp_csv_path):
+                try:
+                    os.remove(tmp_csv_path)
+                except Exception as e:
+                    logger.error(f"Error removing temporary CSV file: {e}")

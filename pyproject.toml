@@ -8,15 +8,15 @@ description = "RAGA AI CATALYST"
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 # license = {file = "LICENSE"}
-
-version = "2.1.4.1"
+version = "2.1.5.b28"
 authors = [
     {name = "Kiran Scaria", email = "kiran.scaria@raga.ai"},
     {name = "Kedar Gaikwad", email = "kedar.gaikwad@raga.ai"},
     {name = "Dushyant Mahajan", email = "dushyant.mahajan@raga.ai"},
     {name = "Siddhartha Kosti", email = "siddhartha.kosti@raga.ai"},
     {name = "Ritika Goel", email = "ritika.goel@raga.ai"},
-    {name = "Vijay Chaurasia", email="vijay.chaurasia@raga.ai"}
+    {name = "Vijay Chaurasia", email="vijay.chaurasia@raga.ai"},
+    {name = "Tushar Kumar", email="tushar.kumar@raga.ai"}
 ]
 
 dependencies = [
@@ -42,13 +42,15 @@ dependencies = [
     "litellm==1.51.1",  
     "tenacity==8.3.0",
     "tqdm>=4.66.5",
-    "llama-index>=0.10.0,<0.11.0",
+    "llama-index>=0.10.0",
     "pyopenssl>=24.2.1",
     "psutil~=6.0.0",
     "py-cpuinfo~=9.0.0",
     "requests~=2.32.3",
     "GPUtil~=1.4.0",
     "ipynbname",
+    "tiktoken>=0.7.0",
+    "giskard~=2.16.0"
 ]
 
 [project.optional-dependencies]

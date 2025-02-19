@@ -1,7 +1,7 @@
 import json
 import uuid
 
-def langchain_tracer_extraction(data):
+def langchain_tracer_extraction(data, user_context=""):
     trace_aggregate = {}
     import uuid
 
@@ -49,30 +49,31 @@ def langchain_tracer_extraction(data):
     def get_response(data):
         for item in data["llm_calls"]:
             if item["event"] == "llm_end":
-                # import pdb; pdb.set_trace()
                 llm_end_responses = item["response"]["generations"][0]
                 for llm_end_response in llm_end_responses:
                     response = llm_end_response["text"]
                 return response.strip()
 
-    def get_context(data):
+    def get_context(data, user_context):
+        if user_context:
+            return user_context
         if "retriever_actions" in data and data["retriever_actions"] != []:
             for item in data["retriever_actions"]:
                 if item["event"] == "retriever_end":
                     context = item["documents"][0]["page_content"].replace('\n', ' ')
                     return context
-        if "chat_model_calls" in data and data["chat_model_calls"] != []:
-            for item in data["chat_model_calls"]:
-                messages = item["messages"][0]
-                for message in messages:
-                    if message["type"]=="system":
-                        content = message["content"].strip().replace('\n', ' ')
-                        return content
+        # if "chat_model_calls" in data and data["chat_model_calls"] != []:
+        #     for item in data["chat_model_calls"]:
+        #         messages = item["messages"][0]
+        #         for message in messages:
+        #             if message["type"]=="system":
+        #                 content = message["content"].strip().replace('\n', ' ')
+        #                 return content
 
 
     prompt = get_prompt(data)
     response = get_response(data)
-    context = get_context(data)
+    context = get_context(data, user_context)
 
     trace_aggregate["data"]["prompt"]=prompt
     trace_aggregate["data"]["response"]=response

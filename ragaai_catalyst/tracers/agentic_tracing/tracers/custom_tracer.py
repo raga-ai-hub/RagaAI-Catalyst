@@ -41,20 +41,24 @@ class CustomTracerMixin:
             # Check if the function is async
             is_async = asyncio.iscoroutinefunction(func)
 
-            @self.file_tracker.trace_decorator
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
                 async_wrapper.metadata = metadata
-                self.gt = kwargs.get('gt', None) if kwargs else None
+                gt = kwargs.get('gt') if kwargs else None
+                if gt is not None:
+                    span = self.span(name)
+                    span.add_gt(gt)
                 return await self._trace_custom_execution(
                     func, name or func.__name__, custom_type, version, trace_variables, *args, **kwargs
                 )
 
-            @self.file_tracker.trace_decorator
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 sync_wrapper.metadata = metadata
-                self.gt = kwargs.get('gt', None) if kwargs else None
+                gt = kwargs.get('gt') if kwargs else None
+                if gt is not None:
+                    span = self.span(name)
+                    span.add_gt(gt)
                 return self._trace_sync_custom_execution(
                     func, name or func.__name__, custom_type, version, trace_variables, *args, **kwargs
                 )
@@ -154,7 +158,7 @@ class CustomTracerMixin:
                 error=error_component
             )
 
-            self.add_component(custom_component)
+            self.add_component(custom_component, is_error=True)
             raise
 
     async def _trace_custom_execution(self, func, name, custom_type, version, trace_variables, *args, **kwargs):
@@ -234,7 +238,7 @@ class CustomTracerMixin:
                 output_data=None,
                 error=error_component
             )
-            self.add_component(custom_component)
+            self.add_component(custom_component, is_error=True)
             raise
 
     def create_custom_component(self, **kwargs):
@@ -284,9 +288,13 @@ class CustomTracerMixin:
             "interactions": interactions
         }
 
-        if self.gt:
-            component["data"]["gt"] = self.gt
-
+        if kwargs["name"] in self.span_attributes_dict:
+            span_gt = self.span_attributes_dict[kwargs["name"]].gt
+            if span_gt is not None:
+                component["data"]["gt"] = span_gt
+            span_context = self.span_attributes_dict[kwargs["name"]].context
+            if span_context:
+                component["data"]["context"] = span_context
         return component
 
     def start_component(self, component_id):
@@ -297,15 +305,23 @@ class CustomTracerMixin:
         """End tracking network calls for a component"""
         pass
 
-    def _sanitize_input(self, args: tuple, kwargs: dict) -> Dict:
-        """Sanitize and format input data"""
-        return {
-            "args": [str(arg) if not isinstance(arg, (int, float, bool, str, list, dict)) else arg for arg in args],
-            "kwargs": {
-                k: str(v) if not isinstance(v, (int, float, bool, str, list, dict)) else v 
-                for k, v in kwargs.items()
+    def _sanitize_input(self, args: tuple, kwargs: dict) -> dict:
+            """Sanitize and format input data, including handling of nested lists and dictionaries."""
+
+            def sanitize_value(value):
+                if isinstance(value, (int, float, bool, str)):
+                    return value
+                elif isinstance(value, list):
+                    return [sanitize_value(item) for item in value]
+                elif isinstance(value, dict):
+                    return {key: sanitize_value(val) for key, val in value.items()}
+                else:
+                    return str(value)  # Convert non-standard types to string
+
+            return {
+                "args": [sanitize_value(arg) for arg in args],
+                "kwargs": {key: sanitize_value(val) for key, val in kwargs.items()},
             }
-        }
 
     def _sanitize_output(self, output: Any) -> Any:
         """Sanitize and format output data"""

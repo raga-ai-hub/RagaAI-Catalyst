@@ -6,6 +6,8 @@ import logging
 import asyncio
 import aiohttp
 import requests
+from litellm import model_cost
+
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 from ragaai_catalyst.tracers.langchain_callback import LangchainTracer
@@ -15,7 +17,7 @@ from ragaai_catalyst.tracers.utils.langchain_tracer_extraction_logic import lang
 from ragaai_catalyst.tracers.upload_traces import UploadTraces
 import tempfile
 import json
-
+import numpy as np
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from ragaai_catalyst.tracers.exporters.file_span_exporter import FileSpanExporter
@@ -27,10 +29,10 @@ from ragaai_catalyst.tracers.instrumentators import (
 )
 from ragaai_catalyst.tracers.utils import get_unique_key
 # from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
+from ragaai_catalyst.tracers.llamaindex_instrumentation import LlamaIndexInstrumentationTracer
 from ragaai_catalyst import RagaAICatalyst
 from ragaai_catalyst.tracers.agentic_tracing import AgenticTracing, TrackName
 from ragaai_catalyst.tracers.agentic_tracing.tracers.llm_tracer import LLMTracerMixin
-from ragaai_catalyst.tracers.agentic_tracing.utils.trace_utils import load_model_costs, update_model_costs_from_github
 
 logger = logging.getLogger(__name__)
 
@@ -127,11 +129,8 @@ class Tracer(AgenticTracing):
         self.timeout = 30
         self.num_projects = 100
         self.start_time = datetime.datetime.now().astimezone().isoformat()
-        self.model_cost_dict = load_model_costs()
-
-        if update_llm_cost:
-            # First update the model costs file from GitHub
-            update_model_costs_from_github()
+        self.model_cost_dict = model_cost
+        self.user_context = ""  # Initialize user_context to store context from add_context
         
         try:
             response = requests.get(
@@ -171,7 +170,7 @@ class Tracer(AgenticTracing):
             self._upload_task = None
         elif tracer_type == "llamaindex":
             self._upload_task = None
-            from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
+            self.llamaindex_tracer = None
 
         else:
             self._upload_task = None
@@ -257,8 +256,8 @@ class Tracer(AgenticTracing):
             self.langchain_tracer = LangchainTracer()
             return self.langchain_tracer.start()
         elif self.tracer_type == "llamaindex":
-            from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
-            return LlamaIndexTracer(self._pass_user_data()).start()
+            self.llamaindex_tracer = LlamaIndexInstrumentationTracer(self._pass_user_data())
+            return self.llamaindex_tracer.start()
         else:
             super().start()
             return self
@@ -275,54 +274,71 @@ class Tracer(AgenticTracing):
             # self._upload_task = self._run_async(self._upload_traces())
             # self.is_active = False
             # self.dataset_name = None
-
-            # filename = f"langchain_callback_traces.json"
-            # filepath = os.path.join(tempfile.gettempdir(), filename) 
             
             user_detail = self._pass_user_data()
             data, additional_metadata = self.langchain_tracer.stop()
 
             # Add cost if possible
-            # import pdb; pdb.set_trace()
-            if additional_metadata['model_name']:
+            if additional_metadata.get('model_name'):
                 try:
                     model_cost_data = self.model_cost_dict[additional_metadata['model_name']]
-                    prompt_cost = additional_metadata["tokens"]["prompt"]*model_cost_data["input_cost_per_token"]
-                    completion_cost = additional_metadata["tokens"]["completion"]*model_cost_data["output_cost_per_token"]
-                    # additional_metadata.setdefault('cost', {})["prompt_cost"] = prompt_cost
-                    # additional_metadata.setdefault('cost', {})["completion_cost"] = completion_cost
-                    additional_metadata.setdefault('cost', {})["total_cost"] = prompt_cost + completion_cost 
+                    if 'tokens' in additional_metadata and all(k in additional_metadata['tokens'] for k in ['prompt', 'completion']):
+                        prompt_cost = additional_metadata["tokens"]["prompt"]*model_cost_data["input_cost_per_token"]
+                        completion_cost = additional_metadata["tokens"]["completion"]*model_cost_data["output_cost_per_token"]
+                        additional_metadata["cost"] = prompt_cost + completion_cost 
+
+                        additional_metadata["prompt_tokens"] = float(additional_metadata["tokens"].get("prompt", 0.0))
+                        additional_metadata["completion_tokens"] = float(additional_metadata["tokens"].get("completion", 0.0))
+
+                        logger.debug("Metadata added successfully")
+                    else:
+                        logger.warning("Token information missing in additional_metadata")
+
+                    if 'cost' in additional_metadata:
+                        additional_metadata["cost"] = float(additional_metadata["cost"])
+                    else:
+                        additional_metadata["cost"] = 0.0
+                        logger.warning("Total cost information not available")
+
+
                 except Exception as e:
                     logger.warning(f"Error adding cost: {e}")
-
-            # with open(filepath, 'r') as f:
-            #     data = json.load(f)
-            additional_metadata["total_tokens"] = additional_metadata["tokens"]["total"]
-            additional_metadata["total_cost"] = additional_metadata["cost"]["total_cost"]
-
-            del additional_metadata["tokens"]
-            del additional_metadata["cost"]
+            else:
+                logger.debug("Model name not available in additional_metadata, skipping cost calculation")
             
-            combined_metadata = user_detail['trace_user_detail']['metadata'].copy()
-            combined_metadata.update(additional_metadata)
-            combined_metadata
 
-            langchain_traces = langchain_tracer_extraction(data)
+            # Safely remove tokens and cost dictionaries if they exist
+            additional_metadata.pop("tokens", None)
+            # additional_metadata.pop("cost", None)
+            
+            # Safely merge metadata
+            combined_metadata = {}
+            if user_detail.get('trace_user_detail', {}).get('metadata'):
+                combined_metadata.update(user_detail['trace_user_detail']['metadata'])
+            if additional_metadata:
+                combined_metadata.update(additional_metadata)
+
+            langchain_traces = langchain_tracer_extraction(data, self.user_context)
             final_result = convert_langchain_callbacks_output(langchain_traces)
-            final_result[0]['project_name'] = user_detail['project_name']
-            final_result[0]['trace_id'] = str(uuid.uuid4())
-            final_result[0]['session_id'] = None
-            final_result[0]['metadata'] = combined_metadata
-            final_result[0]['pipeline'] = user_detail['trace_user_detail']['pipeline']
-
-            filepath_3 = os.path.join(os.getcwd(), "final_result.json")
-            with open(filepath_3, 'w') as f:
-                json.dump(final_result, f, indent=2)
             
-            
-            print(filepath_3)
+            # Safely set required fields in final_result
+            if final_result and isinstance(final_result, list) and len(final_result) > 0:
+                final_result[0]['project_name'] = user_detail.get('project_name', '')
+                final_result[0]['trace_id'] = str(uuid.uuid4())
+                final_result[0]['session_id'] = None
+                final_result[0]['metadata'] = combined_metadata
+                final_result[0]['pipeline'] = user_detail.get('trace_user_detail', {}).get('pipeline')
 
-            additional_metadata_keys = additional_metadata.keys() if additional_metadata else None
+                filepath_3 = os.path.join(os.getcwd(), "final_result.json")
+                with open(filepath_3, 'w') as f:
+                    json.dump(final_result, f, indent=2)
+                
+                print(filepath_3)
+            else:
+                logger.warning("No valid langchain traces found in final_result")
+
+            # additional_metadata_keys = list(additional_metadata.keys()) if additional_metadata else None
+            additional_metadata_dict = additional_metadata if additional_metadata else {}
 
             UploadTraces(json_file_path=filepath_3,
                          project_name=self.project_name,
@@ -330,13 +346,30 @@ class Tracer(AgenticTracing):
                          dataset_name=self.dataset_name,
                          user_detail=user_detail,
                          base_url=self.base_url
-                         ).upload_traces(additional_metadata_keys=additional_metadata_keys)
+                         ).upload_traces(additional_metadata_keys=additional_metadata_dict)
             
             return 
 
         elif self.tracer_type == "llamaindex":
-            from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
-            return LlamaIndexTracer(self._pass_user_data()).stop()
+            if self.llamaindex_tracer is None:
+                raise ValueError("LlamaIndex tracer was not started")
+
+            user_detail = self._pass_user_data()
+            converted_back_to_callback = self.llamaindex_tracer.stop()
+
+            filepath_3 = os.path.join(os.getcwd(), "llama_final_result.json")
+            with open(filepath_3, 'w') as f:
+                json.dump(converted_back_to_callback, f, default=str, indent=2)
+
+            if converted_back_to_callback:
+                UploadTraces(json_file_path=filepath_3,
+                             project_name=self.project_name,
+                             project_id=self.project_id,
+                             dataset_name=self.dataset_name,
+                             user_detail=user_detail,
+                             base_url=self.base_url
+                             ).upload_traces()
+            return 
         else:
             super().stop()
 
@@ -449,3 +482,22 @@ class Tracer(AgenticTracing):
                 }
             }
         return user_detail
+
+    def add_context(self, context):
+        """
+        Add context information to the trace. This method is only supported for 'langchain' and 'llamaindex' tracer types.
+
+        Args:
+            context: Additional context information to be added to the trace. Can be a string.
+
+        Raises:
+            ValueError: If tracer_type is not 'langchain' or 'llamaindex'.
+        """
+        if self.tracer_type not in ["langchain", "llamaindex"]:
+            raise ValueError("add_context is only supported for 'langchain' and 'llamaindex' tracer types")
+        
+        # Convert string context to string if needed
+        if isinstance(context, str):
+            self.user_context = context
+        else:
+            raise TypeError("context must be a string")

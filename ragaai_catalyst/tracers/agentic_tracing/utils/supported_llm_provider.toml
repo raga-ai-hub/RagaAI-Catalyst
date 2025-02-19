@@ -1,0 +1,34 @@
+# List of all supported LLM method calls
+
+supported_llm_calls = [
+    # OpenAI
+    "OpenAI.chat.completions.create()",
+    "AsyncOpenAI.chat.completions.create()",
+    
+    # OpenAI Beta
+    "OpenAI.beta.threads.create()",
+    "OpenAI.beta.threads.messages.create()",
+    "OpenAI.beta.threads.runs.create()",
+    
+    # Anthropic
+    "Anthropic.messages.create()",
+    "Anthropic.messages.acreate()",
+    
+    # Google VertexAI/PaLM
+    "GenerativeModel.generate_content()",
+    "GenerativeModel.generate_content_async()",
+    "ChatVertexAI._generate()",
+    "ChatVertexAI._agenerate()",
+    "ChatVertexAI.complete()",
+    "ChatVertexAI.acomplete()",
+    
+    # Google GenerativeAI
+    "ChatGoogleGenerativeAI._generate()",
+    "ChatGoogleGenerativeAI._agenerate()",
+    "ChatGoogleGenerativeAI.complete()",
+    "ChatGoogleGenerativeAI.acomplete()",
+    
+    # LiteLLM
+    "litellm.completion()",
+    "litellm.acompletion()"
+]

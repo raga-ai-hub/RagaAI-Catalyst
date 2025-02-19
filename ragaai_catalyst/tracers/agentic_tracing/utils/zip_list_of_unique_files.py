@@ -1,4 +1,6 @@
 import os
+import sys
+import importlib
 import hashlib
 import zipfile
 import re
@@ -6,7 +8,7 @@ import ast
 import importlib.util
 import json
 import ipynbname
-import sys
+from copy import deepcopy
 
 from pathlib import Path
 from IPython import get_ipython
@@ -22,7 +24,7 @@ logger = logging.getLogger(__name__)
 logging_level = logger.setLevel(logging.DEBUG) if os.getenv("DEBUG") == "1" else logging.INFO
 
 
-# Define the PackageUsageRemover class
+# PackageUsageRemover class
 class PackageUsageRemover(ast.NodeTransformer):
     def __init__(self, package_name):
         self.package_name = package_name
@@ -48,7 +50,12 @@ class PackageUsageRemover(ast.NodeTransformer):
         return node
     
     def visit_Assign(self, node):
-        if self._uses_package(node.value):
+        if isinstance(node.value, ast.Expr):  
+            node_value = node.value.body   
+        else:
+            node_value = node.value
+
+        if self._uses_package(node_value):
             return None
         return node
     
@@ -59,8 +66,10 @@ class PackageUsageRemover(ast.NodeTransformer):
             if isinstance(node.func.value, ast.Name) and node.func.value.id in self.imported_names:
                 return None
         return node
-    
+
     def _uses_package(self, node):
+        if isinstance(node, ast.Expr):
+            return self._uses_package(node.body)
         if isinstance(node, ast.Name) and node.id in self.imported_names:
             return True
         if isinstance(node, ast.Call):
@@ -69,13 +78,14 @@ class PackageUsageRemover(ast.NodeTransformer):
             return self._uses_package(node.value)
         return False
 
-# Define the function to remove package code from a source code string
+
+# Remove package code from a source code string
 def remove_package_code(source_code: str, package_name: str) -> str:
     try:
         tree = ast.parse(source_code)
-        remover = PackageUsageRemover(package_name)
-        modified_tree = remover.visit(tree)
-        modified_code = ast.unparse(modified_tree)
+        # remover = PackageUsageRemover(package_name)
+        # modified_tree = remover.visit(tree)
+        modified_code = ast.unparse(tree)
 
         return modified_code
     except Exception as e:
@@ -202,7 +212,6 @@ def comment_magic_commands(script_content: str) -> str:
 class TraceDependencyTracker:
     def __init__(self, output_dir=None):
         self.tracked_files = set()
-        self.python_imports = set()
         self.notebook_path = None
         self.colab_content = None  
         
@@ -293,7 +302,7 @@ class TraceDependencyTracker:
                     except (UnicodeDecodeError, IOError):
                         pass
 
-    def analyze_python_imports(self, filepath):
+    def analyze_python_imports(self, filepath, ignored_locations):
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 tree = ast.parse(file.read(), filename=filepath)
@@ -306,47 +315,74 @@ class TraceDependencyTracker:
                             module_name = name.name.split('.')[0]
                     try:
                         spec = importlib.util.find_spec(module_name)
-                        if spec and spec.origin and not spec.origin.startswith(os.path.dirname(importlib.__file__)):
-                            self.python_imports.add(spec.origin)
+                        if spec and spec.origin:    
+                            if not (any(spec.origin.startswith(location) for location in ignored_locations) or (spec.origin in ['built-in', 'frozen'])):
+                                self.tracked_files.add(spec.origin)
+                                self.analyze_python_imports(spec.origin, ignored_locations)
                     except (ImportError, AttributeError):
                         pass
         except Exception as e:
             pass
 
+    def get_env_location(self):
+        return sys.prefix
+    
+    def get_catalyst_location(self):
+        try:
+            imported_module = importlib.import_module("ragaai_catalyst")
+            return os.path.dirname(os.path.abspath(imported_module.__file__))
+        except ImportError:
+            logger.error("Error getting Catalyst location")
+            return 'ragaai_catalyst'
+    
+    def should_ignore_path(self, path, main_filepaths):
+        if any(os.path.abspath(path) in os.path.abspath(main_filepath) for main_filepath in main_filepaths):
+            return False
+        if path in ['', os.path.abspath('')]:
+            return False
+        return True
+
     def create_zip(self, filepaths):
         self.track_jupyter_notebook()
-        # logger.info("Tracked Jupyter notebook and its dependencies")
 
         # Ensure output directory exists
         os.makedirs(self.output_dir, exist_ok=True)
-        # logger.info(f"Using output directory: {self.output_dir}")
 
         # Special handling for Colab
         if self.jupyter_handler.is_running_in_colab():
-            # logger.info("Running in Google Colab environment")
-            # Try to get the Colab notebook path
+            # Get the Colab notebook path
             colab_notebook = self.jupyter_handler.get_notebook_path()
             if colab_notebook:
                 self.tracked_files.add(os.path.abspath(colab_notebook))
-                # logger.info(f"Added Colab notebook to tracked files: {colab_notebook}")
 
             # Get current cell content
             self.check_environment_and_save()
 
+        env_location = self.get_env_location()
+        catalyst_location = self.get_catalyst_location()
+
         # Process all files (existing code)
+        ignored_locations = [env_location, catalyst_location] + [path for path in sys.path if self.should_ignore_path(path, filepaths)]
         for filepath in filepaths:
             abs_path = os.path.abspath(filepath)
             self.track_file_access(abs_path)
             try:
-                with open(abs_path, 'r', encoding='utf-8') as file:
+                if filepath.endswith('.py'):
+                    self.analyze_python_imports(abs_path, ignored_locations)
+            except Exception as e:
+                pass
+        
+        curr_tracked_files = deepcopy(self.tracked_files)
+        for filepath in curr_tracked_files:
+            try:
+                with open(filepath, 'r', encoding='utf-8') as file:
                     content = file.read()
                     # Comment out magic commands before processing
                     content = comment_magic_commands(content)
-                self.find_config_files(content, abs_path)
-                if filepath.endswith('.py'):
-                    self.analyze_python_imports(abs_path)
+                self.find_config_files(content, filepath)
             except Exception as e:
                 pass
+
 
         notebook_content_str = None
         if self.notebook_path and os.path.exists(self.notebook_path):
@@ -371,13 +407,12 @@ class TraceDependencyTracker:
                 pass
 
         # Calculate hash and create zip
-        self.tracked_files.update(self.python_imports)
         hash_contents = []
 
         for filepath in sorted(self.tracked_files):
             if not filepath.endswith('.py'):
                 continue
-            elif '/envs' in filepath or '__init__' in filepath:
+            elif env_location in filepath or '__init__' in filepath:
                 continue
             try:
                 with open(filepath, 'rb') as file:
@@ -410,11 +445,15 @@ class TraceDependencyTracker:
 
         with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for filepath in sorted(self.tracked_files):
-                if 'env' in filepath or 'ragaai_catalyst' in filepath:
+                if env_location in filepath or catalyst_location in filepath:
                     continue
                 try:
                     relative_path = os.path.relpath(filepath, base_path)
-                    zipf.write(filepath, relative_path)
+                    if relative_path in ['', '.']:
+                        zipf.write(filepath, os.path.basename(filepath))
+                    else:
+                        zipf.write(filepath, relative_path)
+                    
                     logger.debug(f"Added python script to zip: {relative_path}")
                 except Exception as e:
                     pass
@@ -447,9 +486,9 @@ def zip_list_of_unique_files(filepaths, output_dir=None):
     return tracker.create_zip(filepaths)
 
 
-# Example usage
-if __name__ == "__main__":
-    filepaths = ["script1.py", "script2.py"]
-    hash_id, zip_path = zip_list_of_unique_files(filepaths)
-    print(f"Created zip file: {zip_path}")
-    print(f"Hash ID: {hash_id}")
+# # Example usage
+# if __name__ == "__main__":
+#     filepaths = ["script1.py", "script2.py"]
+#     hash_id, zip_path = zip_list_of_unique_files(filepaths)
+#     print(f"Created zip file: {zip_path}")
+#     print(f"Hash ID: {hash_id}")

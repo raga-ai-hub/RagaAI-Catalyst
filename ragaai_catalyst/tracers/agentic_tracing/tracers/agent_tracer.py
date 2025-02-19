@@ -9,6 +9,7 @@ import contextvars
 import asyncio
 from ..utils.file_name_tracker import TrackName
 from ..utils.span_attributes import SpanAttributes
+from .base import BaseTracer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -48,15 +49,15 @@ class AgentTracerMixin:
         self.auto_instrument_network = False
 
     def trace_agent(
-        self,
-        name: str,
-        agent_type: str = None,
-        version: str = None,
-        capabilities: List[str] = None,
-        tags: List[str] = [],
-        metadata: Dict[str, Any] = {},
-        metrics: List[Dict[str, Any]] = [],
-        feedback: Optional[Any] = None,
+            self,
+            name: str,
+            agent_type: str = None,
+            version: str = None,
+            capabilities: List[str] = None,
+            tags: List[str] = [],
+            metadata: Dict[str, Any] = {},
+            metrics: List[Dict[str, Any]] = [],
+            feedback: Optional[Any] = None,
     ):
         if name not in self.span_attributes_dict:
             self.span_attributes_dict[name] = SpanAttributes(name)
@@ -101,49 +102,46 @@ class AgentTracerMixin:
                 original_init = target.__init__
 
                 def wrapped_init(self, *args, **kwargs):
-                    self.gt = kwargs.get("gt", None) if kwargs else None
-                    # Set agent context before initializing
-                    component_id = str(uuid.uuid4())
-                    hash_id = top_level_hash_id
+                    gt = kwargs.get("gt") if kwargs else None
+                    if gt is not None:
+                        span = self.span(name)
+                        span.add_gt(gt)
 
-                    # Store the component ID in the instance
-                    self._agent_component_id = component_id
-
-                    # Get parent agent ID if exists
-                    parent_agent_id = tracer.current_agent_id.get()
-
-                    # Create agent component
-                    agent_component = tracer.create_agent_component(
-                        component_id=component_id,
-                        hash_id=hash_id,
-                        name=name,
-                        agent_type=agent_type,
-                        version=version,
-                        capabilities=capabilities or [],
-                        start_time=datetime.now().astimezone().isoformat(),
-                        memory_used=0,
-                        input_data=tracer._sanitize_input(args, kwargs),
-                        output_data=None,
-                        children=[],
-                        parent_id=parent_agent_id,
-                    )
-
-                    # Store component for later updates
-                    if not hasattr(tracer, "_agent_components"):
-                        tracer._agent_components = {}
-                    tracer._agent_components[component_id] = agent_component
-
-                    # If this is a nested agent, add it to parent's children
-                    if parent_agent_id:
-                        parent_children = tracer.agent_children.get()
-                        parent_children.append(agent_component)
-                        tracer.agent_children.set(parent_children)
-                    else:
-                        # Only add to root components if no parent
-                        tracer.add_component(agent_component)
-
-                    # Call original __init__ with this agent as current
-                    token = tracer.current_agent_id.set(component_id)
+                    if not hasattr(self, '_agent_component_id'):
+                        component_id = str(uuid.uuid4())
+                        self._agent_component_id = component_id
+                        
+                        # Get parent agent ID if exists
+                        parent_agent_id = tracer.current_agent_id.get()
+                        
+                        agent_component = tracer.create_agent_component(
+                            component_id=component_id,
+                            hash_id=top_level_hash_id,
+                            name=name,
+                            agent_type=agent_type,
+                            version=version,
+                            capabilities=capabilities or [],
+                            start_time=datetime.now().astimezone().isoformat(),
+                            memory_used=0,
+                            input_data=tracer._sanitize_input(args, kwargs),
+                            output_data=None,
+                            children=[],
+                            parent_id=parent_agent_id,
+                        )
+                        
+                        if not hasattr(tracer, "_agent_components"):
+                            tracer._agent_components = {}
+                        tracer._agent_components[component_id] = agent_component
+                        
+                        # For class agents, only add to parent's children if parent exists
+                        if parent_agent_id and parent_agent_id in tracer._agent_components:
+                            parent_component = tracer._agent_components[parent_agent_id]
+                            if not hasattr(parent_component, "children"):
+                                parent_component["children"] = []
+                            if component_id not in parent_component["children"]:
+                                parent_component["children"].append(component_id)
+                    
+                    token = tracer.current_agent_id.set(self._agent_component_id)
                     try:
                         original_init(self, *args, **kwargs)
                     finally:
@@ -156,10 +154,12 @@ class AgentTracerMixin:
                         if callable(attr_value):
 
                             def wrap_method(method):
-                                @self.file_tracker.trace_decorator
                                 @functools.wraps(method)
                                 def wrapped_method(self, *args, **kwargs):
-                                    self.gt = kwargs.get("gt", None) if kwargs else None
+                                    gt = kwargs.get("gt") if kwargs else None
+                                    if gt is not None:
+                                        span = tracer.span(name)
+                                        span.add_gt(gt)
                                     # Set this agent as current during method execution
                                     token = tracer.current_agent_id.set(
                                         self._agent_component_id
@@ -193,8 +193,8 @@ class AgentTracerMixin:
                                                 children = tracer.agent_children.get()
                                                 if children:
                                                     if (
-                                                        "children"
-                                                        not in component["data"]
+                                                            "children"
+                                                            not in component["data"]
                                                     ):
                                                         component["data"][
                                                             "children"
@@ -218,15 +218,60 @@ class AgentTracerMixin:
                             setattr(target, attr_name, wrap_method(attr_value))
 
                 # Replace __init__ with wrapped version
+
                 target.__init__ = wrapped_init
+
+                # Wrap all methods to maintain parent-child relationship
+                for attr_name, attr_value in target.__dict__.items():
+                    if callable(attr_value) and not attr_name.startswith('__'):
+                        original_method = attr_value
+                        
+                        def create_wrapper(method):
+                            @self.file_tracker.trace_decorator
+                            @functools.wraps(method)
+                            def method_wrapper(self, *args, **kwargs):
+                                gt = kwargs.get("gt") if kwargs else None
+                                if gt is not None:
+                                    span = tracer.span(name)
+                                    span.add_gt(gt)
+                                # Use the class instance's agent ID as parent
+                                parent_id = getattr(self, '_agent_component_id', None)
+                                if parent_id:
+                                    if asyncio.iscoroutinefunction(method):
+                                        return tracer._trace_agent_execution(
+                                            method.__get__(self, type(self)),
+                                            name,
+                                            agent_type,
+                                            version,
+                                            capabilities,
+                                            top_level_hash_id,
+                                            *args,
+                                            **kwargs,
+                                        )
+                                    else:
+                                        return tracer._trace_sync_agent_execution(
+                                            method.__get__(self, type(self)),
+                                            name,
+                                            agent_type,
+                                            version,
+                                            capabilities,
+                                            top_level_hash_id,
+                                            *args,
+                                            **kwargs,
+                                        )
+                                else:
+                                    return method(self, *args, **kwargs)
+                            return method_wrapper
+                        
+                        setattr(target, attr_name, create_wrapper(original_method))
+
                 return target
             else:
-                # For function decorators, use existing sync/async tracing
-                is_async = asyncio.iscoroutinefunction(target)
-                if is_async:
-
-                    async def wrapper(*args, **kwargs):
-                        return await self._trace_agent_execution(
+                # For non-class targets (e.g., functions), use existing function wrapping logic
+                @functools.wraps(target)
+                def wrapper(*args, **kwargs):
+                    if asyncio.iscoroutinefunction(target):
+                        return tracer._trace_agent_execution(
                             target,
                             name,
                             agent_type,
@@ -236,31 +281,24 @@ class AgentTracerMixin:
                             *args,
                             **kwargs,
                         )
-
-                    return wrapper
-                else:
-
-                    def wrapper(*args, **kwargs):
-                        return self._trace_sync_agent_execution(
+                    else:
+                        return tracer._trace_sync_agent_execution(
                             target,
                             name,
                             agent_type,
                             version,
                             capabilities,
+                            top_level_hash_id,
                             *args,
                             **kwargs,
                         )
-
-                    return wrapper
+                return wrapper
 
         return decorator
 
     def _trace_sync_agent_execution(
-        self, func, name, agent_type, version, capabilities, *args, **kwargs
+        self, func, name, agent_type, version, capabilities, top_level_hash_id, *args, **kwargs
     ):
-        # Generate a unique hash_id for this execution context
-        hash_id = str(uuid.uuid4())
-
         """Synchronous version of agent tracing"""
         if not self.is_active:
             return func(*args, **kwargs)
@@ -276,6 +314,9 @@ class AgentTracerMixin:
 
         # Extract ground truth if present
         ground_truth = kwargs.pop("gt", None) if kwargs else None
+        if ground_truth is not None:
+            span = self.span(name)
+            span.add_gt(ground_truth)
 
         # Get parent agent ID if exists
         parent_agent_id = self.current_agent_id.get()
@@ -308,7 +349,7 @@ class AgentTracerMixin:
             # Create agent component with children and parent if exists
             agent_component = self.create_agent_component(
                 component_id=component_id,
-                hash_id=hash_id,
+                hash_id=top_level_hash_id,
                 name=name,
                 agent_type=agent_type,
                 version=version,
@@ -320,16 +361,18 @@ class AgentTracerMixin:
                 children=children,
                 parent_id=parent_agent_id,
             )
-            # Add ground truth to component data if present
-            if ground_truth is not None:
-                agent_component["data"]["gt"] = ground_truth
 
-            # Add this component as a child to parent's children list
-            parent_children.append(agent_component)
-            self.agent_children.set(parent_children)
+            # Store component for updates
+            if not hasattr(self, "_agent_components"):
+                self._agent_components = {}
+            self._agent_components[component_id] = agent_component
 
-            # Only add to root components if no parent
-            if not parent_agent_id:
+            # Only add to hierarchy if this is a root component (no parent)
+            # or if the parent explicitly added it as a child
+            if parent_agent_id:
+                parent_children.append(agent_component)
+                self.agent_children.set(parent_children)
+            else:
                 self.add_component(agent_component)
 
             return result
@@ -344,16 +387,10 @@ class AgentTracerMixin:
             # Get children even in case of error
             children = self.agent_children.get()
 
-            # Set parent_id for all children
-            for child in children:
-                child["parent_id"] = component_id
-
-            # End tracking network calls for this component
-            self.end_component(component_id)
-
+            # Create error component
             agent_component = self.create_agent_component(
                 component_id=component_id,
-                hash_id=hash_id,
+                hash_id=top_level_hash_id,
                 name=name,
                 agent_type=agent_type,
                 version=version,
@@ -366,16 +403,20 @@ class AgentTracerMixin:
                 children=children,
                 parent_id=parent_agent_id,  # Add parent ID if exists
             )
-            # If this is a nested agent, add it to parent's children
+
+            # Store component for updates
+            if not hasattr(self, "_agent_components"):
+                self._agent_components = {}
+            self._agent_components[component_id] = agent_component
+
+            # Only add to hierarchy if this is a root component (no parent)
+            # or if the parent explicitly added it as a child
             if parent_agent_id:
-                parent_component = self._agent_components.get(parent_agent_id)
-                if parent_component:
-                    if "children" not in parent_component["data"]:
-                        parent_component["data"]["children"] = []
-                    parent_component["data"]["children"].append(agent_component)
+                parent_children.append(agent_component)
+                self.agent_children.set(parent_children)
             else:
                 # Only add to root components if no parent
-                self.add_component(agent_component)
+                self.add_component(agent_component, is_error=True)
 
             raise
         finally:
@@ -384,7 +425,7 @@ class AgentTracerMixin:
             self.agent_children.reset(children_token)
 
     async def _trace_agent_execution(
-        self, func, name, agent_type, version, capabilities, hash_id, *args, **kwargs
+            self, func, name, agent_type, version, capabilities, hash_id, *args, **kwargs
     ):
         """Asynchronous version of agent tracing"""
         if not self.is_active:
@@ -399,6 +440,9 @@ class AgentTracerMixin:
 
         # Extract ground truth if present
         ground_truth = kwargs.pop("gt", None) if kwargs else None
+        if ground_truth is not None:
+            span = self.span(name)
+            span.add_gt(ground_truth)
 
         # Get parent agent ID if exists
         parent_agent_id = self.current_agent_id.get()
@@ -441,16 +485,17 @@ class AgentTracerMixin:
                 parent_id=parent_agent_id,
             )
 
-            # Add ground truth to component data if present
-            if ground_truth is not None:
-                agent_component["data"]["gt"] = ground_truth
+            # Store component for updates
+            if not hasattr(self, "_agent_components"):
+                self._agent_components = {}
+            self._agent_components[component_id] = agent_component
 
-            # Add this component as a child to parent's children list
-            parent_children.append(agent_component)
-            self.agent_children.set(parent_children)
-
-            # Only add to root components if no parent
-            if not parent_agent_id:
+            # Only add to hierarchy if this is a root component (no parent)
+            # or if the parent explicitly added it as a child
+            if parent_agent_id:
+                parent_children.append(agent_component)
+                self.agent_children.set(parent_children)
+            else:
                 self.add_component(agent_component)
 
             return result
@@ -465,13 +510,7 @@ class AgentTracerMixin:
             # Get children even in case of error
             children = self.agent_children.get()
 
-            # Set parent_id for all children
-            for child in children:
-                child["parent_id"] = component_id
-
-            # End tracking network calls for this component
-            self.end_component(component_id)
-
+            # Create error component
             agent_component = self.create_agent_component(
                 component_id=component_id,
                 hash_id=hash_id,
@@ -488,16 +527,19 @@ class AgentTracerMixin:
                 parent_id=parent_agent_id,  # Add parent ID if exists
             )
 
-            # If this is a nested agent, add it to parent's children
+            # Store component for updates
+            if not hasattr(self, "_agent_components"):
+                self._agent_components = {}
+            self._agent_components[component_id] = agent_component
+
+            # Only add to hierarchy if this is a root component (no parent)
+            # or if the parent explicitly added it as a child
             if parent_agent_id:
-                parent_component = self._agent_components.get(parent_agent_id)
-                if parent_component:
-                    if "children" not in parent_component["data"]:
-                        parent_component["data"]["children"] = []
-                    parent_component["data"]["children"].append(agent_component)
+                parent_children.append(agent_component)
+                self.agent_children.set(parent_children)
             else:
                 # Only add to root components if no parent
-                self.add_component(agent_component)
+                self.add_component(agent_component, is_error=True)
 
             raise
         finally:
@@ -517,7 +559,7 @@ class AgentTracerMixin:
             for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
                 if interaction["interaction_type"] in ["input", "output"]:
                     input_output_interactions.append(interaction)
-            interactions.extend(input_output_interactions) 
+            interactions.extend(input_output_interactions)
         if self.auto_instrument_file_io:
             file_io_interactions = []
             for interaction in self.component_user_interaction.get(kwargs["component_id"], []):
@@ -546,8 +588,13 @@ class AgentTracerMixin:
                 counter = sum(1 for x in self.visited_metrics if x.startswith(base_metric_name))
                 metric_name = f'{base_metric_name}_{counter}' if counter > 0 else base_metric_name
                 self.visited_metrics.append(metric_name)
-                metric["name"] = metric_name  
+                metric["name"] = metric_name
                 metrics.append(metric)
+
+        # TODO agent_trace execute metric
+        formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name)
+        if formatted_metrics:
+            metrics.extend(formatted_metrics)
 
         component = {
             "id": kwargs["component_id"],
@@ -576,8 +623,13 @@ class AgentTracerMixin:
             "interactions": interactions,
         }
 
-        if self.gt:
-            component["data"]["gt"] = self.gt
+        if name in self.span_attributes_dict:
+            span_gt = self.span_attributes_dict[name].gt
+            if span_gt is not None:
+                component["data"]["gt"] = span_gt
+            span_context = self.span_attributes_dict[name].context
+            if span_context:
+                component["data"]["context"] = span_context
 
         # Reset the SpanAttributes context variable
         self.span_attributes_dict[kwargs["name"]] = SpanAttributes(kwargs["name"])
@@ -598,27 +650,23 @@ class AgentTracerMixin:
             component_network_calls[component_id] = []
         self.component_network_calls.set(component_network_calls)
 
-    def _sanitize_input(self, args: tuple, kwargs: dict) -> str:
-        """Convert input arguments to text format.
+    def _sanitize_input(self, args: tuple, kwargs: dict) -> dict:
+        """Sanitize and format input data, including handling of nested lists and dictionaries."""
 
-        Args:
-            args: Input arguments tuple
-            kwargs: Input keyword arguments dict
+        def sanitize_value(value):
+            if isinstance(value, (int, float, bool, str)):
+                return value
+            elif isinstance(value, list):
+                return [sanitize_value(item) for item in value]
+            elif isinstance(value, dict):
+                return {key: sanitize_value(val) for key, val in value.items()}
+            else:
+                return str(value)  # Convert non-standard types to string
 
-        Returns:
-            str: Text representation of the input arguments
-        """
-
-        def _sanitize_value(value):
-            if isinstance(value, dict):
-                return str({k: _sanitize_value(v) for k, v in value.items()})
-            elif isinstance(value, (list, tuple)):
-                return str([_sanitize_value(item) for item in value])
-            return str(value)
-
-        sanitized_args = [_sanitize_value(arg) for arg in args]
-        sanitized_kwargs = {k: _sanitize_value(v) for k, v in kwargs.items()}
-        return str({"args": sanitized_args, "kwargs": sanitized_kwargs})
+        return {
+            "args": [sanitize_value(arg) for arg in args],
+            "kwargs": {key: sanitize_value(val) for key, val in kwargs.items()},
+        }
 
     def _sanitize_output(self, output: Any) -> Any:
         """Sanitize and format output data"""
@@ -634,6 +682,6 @@ class AgentTracerMixin:
 
     def instrument_network_calls(self):
         self.auto_instrument_network = True
-        
+
     def instrument_file_io_calls(self):
         self.auto_instrument_file_io = True
