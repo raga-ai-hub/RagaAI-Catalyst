@@ -103,6 +103,13 @@ dataset_manager.create_from_jsonl(
     schema_mapping={'column1': 'schema_element1', 'column2': 'schema_element2'}
 )
 
+# Create a dataset from dataframe
+dataset_manager.create_from_df(
+    df=df,
+    dataset_name='MyDataset',
+    schema_mapping={'column1': 'schema_element1', 'column2': 'schema_element2'}
+)
+
 # Get project schema mapping
 dataset_manager.get_schema_mapping()
 
