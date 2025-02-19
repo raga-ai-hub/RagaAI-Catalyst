@@ -702,3 +702,33 @@ class Dataset:
                     os.remove(tmp_csv_path)
                 except Exception as e:
                     logger.error(f"Error removing temporary CSV file: {e}")
+
+    def create_from_df(self, df, dataset_name, schema_mapping):
+        tmp_csv_path = os.path.join(tempfile.gettempdir(), f"{dataset_name}.csv")
+        try:
+            df.to_csv(tmp_csv_path, index=False)
+            self.create_from_csv(tmp_csv_path, dataset_name, schema_mapping)
+        except (IOError, UnicodeError) as e:
+            logger.error(f"Error converting DataFrame to CSV: {e}")
+            raise
+        finally:
+            if os.path.exists(tmp_csv_path):
+                try:
+                    os.remove(tmp_csv_path)
+                except Exception as e:
+                    logger.error(f"Error removing temporary CSV file: {e}")
+
+    def add_rows_from_df(self, df, dataset_name):
+        tmp_csv_path = os.path.join(tempfile.gettempdir(), f"{dataset_name}.csv")
+        try:
+            df.to_csv(tmp_csv_path, index=False)
+            self.add_rows(tmp_csv_path, dataset_name)
+        except (IOError, UnicodeError) as e:
+            logger.error(f"Error converting DataFrame to CSV: {e}")
+            raise
+        finally:
+            if os.path.exists(tmp_csv_path):
+                try:
+                    os.remove(tmp_csv_path)
+                except Exception as e:
+                    logger.error(f"Error removing temporary CSV file: {e}")
