@@ -159,13 +159,9 @@ print("Experiment Status:", status)
 # Get the results of the experiment
 results = evaluation.get_results()
 print("Experiment Results:", results)
-```
 
-1- Appending Metrics for New Data
-
-If you've added new rows to your dataset, you can calculate metrics just for the new data:
-
-```python
+# Appending Metrics for New Data
+# If you've added new rows to your dataset, you can calculate metrics just for the new data:
 evaluation.append_metrics(display_name="Faithfulness_v1")
 ```
 
