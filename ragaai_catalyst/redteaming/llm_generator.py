@@ -19,7 +19,7 @@ class LLMGenerator:
         # Initialize OpenAI client with API key from environment
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
-    def generate_response(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
+    def generate_response(self, system_prompt: str, user_prompt: str, max_tokens: int = 1000) -> Dict[str, Any]:
         """
         Generate a response using the OpenAI API.
         
@@ -39,7 +39,7 @@ class LLMGenerator:
                     {"role": "user", "content": user_prompt}
                 ],
                 "temperature": self.temperature,
-                "max_tokens": 1000
+                "max_tokens": max_tokens
             }
             
             # Add response_format for JSON-capable models

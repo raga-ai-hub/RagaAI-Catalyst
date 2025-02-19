@@ -81,51 +81,104 @@ class RedTeaming:
         # Create a short slug from the description
         slug = description.lower()[:30].replace(" ", "_")
         return os.path.join(output_dir, f"red_teaming_{slug}_{timestamp}.csv")
-        
-    def run(
-        self,
-        description: str,
-        detectors: List[str],
-        response_model: Any,
-        model_input_format: Dict[str, Any] = {
-            "user_input": "Hi, I am looking for job recommendations",
-            "user_name": "John"
-        },
-        num_requirements: int = 3,
-        num_test_cases: int = 2
-    ) -> pd.DataFrame:
-        """
-        Run the complete red teaming pipeline.
-        
-        Args:
-            description: Description of the agent being tested
-            detectors: List of detector names to test against (e.g., ["stereotypes", "harmful_content"])
-            response_model: Function that takes a user message and returns the agent's response
-            model_input_format: Format for test case generation
-            num_requirements: Number of requirements to generate per detector
-            num_test_cases: Number of test cases to generate per requirement
+
+    def _save_results_to_csv(self, result_df: pd.DataFrame, description: str) -> str:
+        # Save DataFrame
+        save_path = self._get_save_path(description)
+        result_df.to_csv(save_path, index=False)
+        print(f"\nResults saved to: {save_path}")
+        return save_path
+
+
+    def _run_with_examples(self, description: str, detectors: List[str], response_model: Any, examples: List[str], num_requirements: int) -> pd.DataFrame:
+        # take care of total no of requirements limit
+        MAX_TOTAL_REQUIREMENTS = 5
+        if len(detectors) >= MAX_TOTAL_REQUIREMENTS:
+            num_requirements = 1
+        elif len(detectors) * num_requirements >= MAX_TOTAL_REQUIREMENTS:
+            k = 1
+            while len(detectors) * k <= MAX_TOTAL_REQUIREMENTS:
+                k += 1
+            num_requirements = k - 1
+
+        # generate the requirements
+        requirements = []
+        for detector in tqdm(detectors, desc=f"Generating requirements"):
+            # issue_description = get_issue_description(detector)
+            if type(detector) == str:
+            # Get issue description for this detector
+                issue_description = get_issue_description(detector)
+            else:
+                issue_description = detector.get("custom", "")
             
-        Returns:
-            DataFrame containing all test results with columns:
-            - detector: The detector being tested
-            - requirement: The requirement being tested
-            - user_message: The test input
-            - agent_response: The model's response
-            - evaluation_passed: Whether the response passed evaluation
-            - evaluation_reason: Reason for pass/fail
-        """
+            # Generate requirements for this detector
+            req_input = RequirementsInput(
+                description=description,
+                category=issue_description,
+                num_requirements=num_requirements
+            )
+            requirement = self.req_generator.generate_requirements(req_input)
+            requirements.extend(requirement)
+
+        # Evaluate the examples against the requirements
         results = []
+        failed_tests = 0
+        print('-'*100)
+        for example in tqdm(examples, desc=f"Evaluating examples"):
+                user_message = example
+                agent_response = response_model(user_message)
+                
+                # Evaluate the conversation
+                eval_input = EvaluationInput(
+                    description=description,
+                    conversation=Conversation(
+                        user_message=user_message,
+                        agent_response=agent_response
+                    ),
+                    requirements=requirements
+                )
+                evaluation = self.evaluator.evaluate_conversation(eval_input)
+                
+                # Store results
+                results.append({
+                    "requirement": requirements,
+                    "user_message": user_message,
+                    "agent_response": agent_response,
+                    "evaluation_passed": evaluation["eval_passed"],
+                    "evaluation_reason": evaluation["reason"]
+                })
+                
+                if not evaluation["eval_passed"]:
+                    failed_tests += 1
         
-        # Validate detectors
-        self.validate_detectors(detectors)
-        
+        # Report results
+        total_examples = len(examples)
+        if failed_tests > 0:
+            print(f"{failed_tests}/{total_examples} tests failed")
+        else:
+            print(f"All {total_examples} tests passed")
+        print('-'*250)
+
+        # Save results to a CSV file
+        results_df = pd.DataFrame(results)
+        save_path = self._save_results_to_csv(results_df, description)
+
+        return results_df, save_path
+
+    
+    def _run_without_examples(self, description: str, detectors: List[str], response_model: Any, model_input_format: Dict[str, Any], num_requirements: int, num_test_cases_per_requirement: int) -> pd.DataFrame:
+        results = []
         # Process each detector
         for detector in detectors:
-            print('='*250)
+            print('='*50)
             print(f"Running detector: {detector}")
-            print('='*250)
+            print('='*50)
+
+            if type(detector) == str:
             # Get issue description for this detector
-            issue_description = get_issue_description(detector)
+                issue_description = get_issue_description(detector)
+            else:
+                issue_description = detector.get("custom", "")
             
             # Generate requirements for this detector
             req_input = RequirementsInput(
@@ -136,7 +189,7 @@ class RedTeaming:
             requirements = self.req_generator.generate_requirements(req_input)
             
             # Process each requirement
-            for r, req in enumerate(requirements["requirements"]):
+            for r, req in enumerate(requirements):
                 # Generate test cases
                 test_input = TestCaseInput(
                     description=description,
@@ -144,14 +197,14 @@ class RedTeaming:
                     requirement=req,
                     format_example=model_input_format,
                     languages=["English"],
-                    num_inputs=num_test_cases
+                    num_inputs=num_test_cases_per_requirement
                 )
                 test_cases = self.test_generator.generate_test_cases(test_input)
                 
                 # Evaluate test cases
                 failed_tests = 0
-                with tqdm(test_cases["inputs"], 
-                         desc=f"Evaluating {detector} requirement {r+1}/{len(requirements['requirements'])}") as pbar:
+                with tqdm(test_cases["inputs"],
+                         desc=f"Evaluating {detector} requirement {r+1}/{len(requirements)}") as pbar:
                     for test_case in pbar:
                         user_message = test_case["user_input"]
                         agent_response = response_model(user_message)
@@ -186,18 +239,67 @@ class RedTeaming:
                     print(f"{detector} requirement {r+1}: {failed_tests}/{total_tests} tests failed")
                 else:
                     print(f"{detector} requirement {r+1}: All {total_tests} tests passed")
-                print('-'*250)
+                print('-'*100)
+
+        # Save results to a CSV file
+        results_df = pd.DataFrame(results)
+        save_path = self._save_results_to_csv(results_df, description)
+
+        return results_df, save_path
 
         
-        # Create DataFrame
-        df = pd.DataFrame(results)
+    def run(
+        self,
+        description: str,
+        detectors: List[str],
+        response_model: Any,
+        examples: List[str] = [],
+        model_input_format: Dict[str, Any] = {
+            "user_input": "Hi, I am looking for job recommendations",
+            "user_name": "John"
+        },
+        num_requirements: int = 4,
+        num_test_cases_per_requirement: int = 5 # used only if examples are not provided
+    ) -> pd.DataFrame:
+        """
+        Run the complete red teaming pipeline.
         
-        # Save DataFrame
-        save_path = self._get_save_path(description)
-        df.to_csv(save_path, index=False)
-        print(f"\nResults saved to: {save_path}")
+        Args:
+            description: Description of the agent being tested
+            detectors: List of detector names to test against (e.g., ["stereotypes", "harmful_content"])
+            response_model: Function that takes a user message and returns the agent's response
+            model_input_format: Format for test case generation
+            examples: List of example inputs to test. If provided, uses these instead of generating test cases
+            num_requirements: Number of requirements to generate per detector
+            num_test_cases_per_requirement: Number of test cases to generate per requirement
+            
+        Returns:
+            DataFrame containing all test results with columns:
+            - requirement: The requirement being tested
+            - user_message: The test input
+            - agent_response: The model's response
+            - evaluation_passed: Whether the response passed evaluation
+            - evaluation_reason: Reason for pass/fail
+        """
+
+        # Validate detectors
+        inbuild_detector = []
+        for detector in detectors:
+            if type(detector) == str:
+                inbuild_detector.append(detector)
+            elif type(detector) == dict:
+                if 'custom' not in detector.keys() or len(detector.keys()) != 1:
+                    raise('The custom detector must be a dictionary with only key "custom" and a string as a value')
+            else:
+                raise('Detector must be a string or a dictionary with only key "custom" and a string as a value')
+
+        self.validate_detectors(inbuild_detector)
         
-        return df
+        if examples:
+            return self._run_with_examples(description, detectors, response_model, examples, num_requirements)
+            
+        return self._run_without_examples(description, detectors, response_model, model_input_format, num_requirements, num_test_cases_per_requirement)
+
 
 def main():
     """Example usage of the RedTeaming pipeline."""

@@ -8,5 +8,6 @@ detector_names = [
     "implausible_output",
     "information_disclosure",
     "output_formatting",
-    "prompt_injection"
+    "prompt_injection",
+    "custom"  # It must have this structure: {'custom': 'description'}
 ]
