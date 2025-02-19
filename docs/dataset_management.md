@@ -27,12 +27,10 @@ This function retrieves the valid schema elements that the CSV column names must
 
 ###### Returns
 
-- A dictionary containing schema information:
-  - `success`: A Boolean indicating whether the schema elements were fetched successfully.
-  - `data['schemaElements']`: A list of valid schema column names.
+- A list containing schema information
 
 ```python
-schemaElements = dataset_manager.get_schema_mapping()['data']['schemaElements']
+schemaElements = dataset_manager.get_schema_mapping()
 print('Supported column names: ', schemaElements)
 ```
 
