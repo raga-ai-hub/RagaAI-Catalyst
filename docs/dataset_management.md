@@ -139,6 +139,23 @@ dataset_manager.add_rows_from_jsonl(
 )
 ```
 
+#### 3. Create a New Dataset from DataFrame
 
+##### a. Create a Dataset from DataFrame with `create_from_df()`
 
+```python
+dataset_manager.create_from_df(
+    df=df,
+    dataset_name='MyDataset',
+    schema_mapping={'column1': 'schema_element1', 'column2': 'schema_element2'}
+)
+```
 
+##### b. Add rows from DataFrame with `add_rows_from_df()`
+
+```python
+dataset_manager.add_rows_from_df(
+    df=df.tail(2),
+    dataset_name='MyDataset',
+)
+```
