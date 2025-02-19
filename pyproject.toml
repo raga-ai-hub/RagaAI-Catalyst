@@ -39,7 +39,7 @@ dependencies = [
     "PyPDF2>=3.0.1",
     "google-generativeai>=0.8.2",
     "Markdown>=3.7",  
-    "litellm==1.51.1",  
+    "litellm==1.44.8",  
     "tenacity==8.3.0",
     "tqdm>=4.66.5",
     "llama-index>=0.10.0",
