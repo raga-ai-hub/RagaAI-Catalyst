@@ -1,80 +1,70 @@
 from typing import Dict, Any, Optional, Literal
 import os
 import json
-from openai import OpenAI
+import litellm
 
 class LLMGenerator:
-    # Models that support JSON mode
-    JSON_MODELS = {"gpt-4-1106-preview", "gpt-3.5-turbo-1106"}
     
     def __init__(self, model_name: str = "gpt-4-1106-preview", temperature: float = 0.7, 
-                 provider: Literal["openai", "xai"] = "openai"):
+                 provider: str = "openai"):
         """
         Initialize the LLM generator with specified provider client.
         
         Args:
             model_name: The model to use (e.g., "gpt-4-1106-preview" for OpenAI, "grok-2-latest" for X.AI)
             temperature: The sampling temperature to use for generation (default: 0.7)
-            provider: The LLM provider to use, either "openai" or "xai" (default: "openai")
+            provider: The LLM provider to use (default: "openai"), can be any provider supported by LiteLLM
         """
         self.model_name = model_name
         self.temperature = temperature
         self.provider = provider
         
-        # Initialize client based on provider
-        if provider == "openai":
-            self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        elif provider == "xai":
-            self.client = OpenAI(
-                api_key=os.getenv("XAI_API_KEY"),
-                base_url="https://api.x.ai/v1"
-            )
-        
+        # Set API key based on provider
+        try:
+            self.api_key = os.getenv(f"{provider.upper()}_API_KEY")
+            if not self.api_key:
+                raise ValueError(f"API key for provider '{provider}' is not set.\n set it as: {provider.upper()}_API_KEY")
+        except Exception as e:
+            raise ValueError(f"Error retrieving API key: {str(e)}")
+    
     def generate_response(self, system_prompt: str, user_prompt: str, max_tokens: int = 1000) -> Dict[str, Any]:
         """
-        Generate a response using the OpenAI API.
+        Generate a response using LiteLLM.
         
         Args:
             system_prompt: The system prompt to guide the model's behavior
             user_prompt: The user's input prompt
+            max_tokens: The maximum number of tokens to generate (default: 1000)
             
         Returns:
-            Dict containing the generated requirements
+            Dict containing the generated response
         """
         try:
-            # Configure API call
             kwargs = {
-                "model": self.model_name,
+                "model": f"{self.provider}/{self.model_name}",
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
                 "temperature": self.temperature,
-                "max_tokens": max_tokens
+                "max_tokens": max_tokens,
+                "api_key": self.api_key,
             }
             
-            # Add response_format for JSON-capable models
-            if self.model_name in self.JSON_MODELS:
-                kwargs["response_format"] = {"type": "json_object"}
+            response = litellm.completion(**kwargs)
+            content = response["choices"][0]["message"]["content"]
             
-            response = self.client.chat.completions.create(**kwargs)
-            content = response.choices[0].message.content
-
             if isinstance(content, str):
-                # Remove code block markers if present
                 content = content.strip()
                 if content.startswith("```"):
-                    # Remove language identifier if present (e.g., ```json)
                     content = content.split("\n", 1)[1] if content.startswith("```json") else content[3:]
-                    # Find the last code block marker and remove everything after it
                     if "```" in content:
                         content = content[:content.rfind("```")].strip()
                     else:
-                        # If no closing marker is found, just use the content as is
                         content = content.strip()
                 
                 content = json.loads(content)
-
+            
             return content
             
         except Exception as e:

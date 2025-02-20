@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 import os
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Literal
 
 import pandas as pd
 import tomli
@@ -16,10 +16,11 @@ from .upload_result import UploadResult
 class RedTeaming:
     def __init__(
         self,
-        model_name: str = "gpt-4-1106-preview",
+        model_name: Literal["gpt-4-1106-preview", "grok-2-latest"] = "grok-2-latest",
+        provider: Literal["openai", "xai"] = "xai",
         scenario_temperature: float = 0.7,
         test_temperature: float = 0.8,
-        eval_temperature: float = 0.3
+        eval_temperature: float = 0.3,
     ):
         """
         Initialize the red teaming pipeline.
@@ -34,9 +35,9 @@ class RedTeaming:
         self._load_supported_detectors()
         
         # Initialize generators and evaluator
-        self.scenario_generator = ScenarioGenerator(model_name=model_name, temperature=scenario_temperature)
-        self.test_generator = TestCaseGenerator(model_name=model_name, temperature=test_temperature)
-        self.evaluator = Evaluator(model_name=model_name, temperature=eval_temperature)
+        self.scenario_generator = ScenarioGenerator(model_name=model_name, temperature=scenario_temperature, provider=provider)
+        self.test_generator = TestCaseGenerator(model_name=model_name, temperature=test_temperature, provider=provider)
+        self.evaluator = Evaluator(model_name=model_name, temperature=eval_temperature, provider=provider)
 
         self.save_path = None
 
