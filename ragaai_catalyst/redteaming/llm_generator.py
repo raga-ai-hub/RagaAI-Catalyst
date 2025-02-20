@@ -8,7 +8,7 @@ class LLMGenerator:
     JSON_MODELS = {"gpt-4-1106-preview", "gpt-3.5-turbo-1106"}
     
     def __init__(self, model_name: str = "gpt-4-1106-preview", temperature: float = 0.7, 
-                 provider: Literal["openai", "xai"] = "openai"):
+                 provider: Literal["openai", "xai"] = "openai", api_key: str = 'your_api_key'):
         """
         Initialize the LLM generator with specified provider client.
         
@@ -16,17 +16,19 @@ class LLMGenerator:
             model_name: The model to use (e.g., "gpt-4-1106-preview" for OpenAI, "grok-2-latest" for X.AI)
             temperature: The sampling temperature to use for generation (default: 0.7)
             provider: The LLM provider to use, either "openai" or "xai" (default: "openai")
+            api_key: The API key for the provider
         """
         self.model_name = model_name
         self.temperature = temperature
         self.provider = provider
+        self.api_key = api_key
         
         # Initialize client based on provider
         if provider == "openai":
-            self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            self.client = OpenAI(api_key=self.api_key)       
         elif provider == "xai":
             self.client = OpenAI(
-                api_key=os.getenv("XAI_API_KEY"),
+                api_key=self.api_key,
                 base_url="https://api.x.ai/v1"
             )
         

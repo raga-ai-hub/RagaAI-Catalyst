@@ -6,7 +6,7 @@ import litellm
 class LLMGenerator:
     
     def __init__(self, model_name: str = "gpt-4-1106-preview", temperature: float = 0.7, 
-                 provider: str = "openai"):
+                 provider: str = "openai", api_key: str = 'your_api_key'):
         """
         Initialize the LLM generator with specified provider client.
         
@@ -14,18 +14,13 @@ class LLMGenerator:
             model_name: The model to use (e.g., "gpt-4-1106-preview" for OpenAI, "grok-2-latest" for X.AI)
             temperature: The sampling temperature to use for generation (default: 0.7)
             provider: The LLM provider to use (default: "openai"), can be any provider supported by LiteLLM
+            api_key: The API key for the provider
         """
         self.model_name = model_name
         self.temperature = temperature
         self.provider = provider
+        self.api_key = api_key
         
-        # Set API key based on provider
-        try:
-            self.api_key = os.getenv(f"{provider.upper()}_API_KEY")
-            if not self.api_key:
-                raise ValueError(f"API key for provider '{provider}' is not set.\n set it as: {provider.upper()}_API_KEY")
-        except Exception as e:
-            raise ValueError(f"Error retrieving API key: {str(e)}")
     
     def generate_response(self, system_prompt: str, user_prompt: str, max_tokens: int = 1000) -> Dict[str, Any]:
         """

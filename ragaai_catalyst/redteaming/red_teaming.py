@@ -18,6 +18,7 @@ class RedTeaming:
         self,
         model_name: Literal["gpt-4-1106-preview", "grok-2-latest"] = "grok-2-latest",
         provider: Literal["openai", "xai"] = "xai",
+        api_key: str = 'your_api_key',  
         scenario_temperature: float = 0.7,
         test_temperature: float = 0.8,
         eval_temperature: float = 0.3,
@@ -28,6 +29,7 @@ class RedTeaming:
         Args:
             model_name: The OpenAI model to use
             scenario_temperature: Temperature for scenario generation
+            api_key: Api Key for the provider
             test_temperature: Temperature for test case generation
             eval_temperature: Temperature for evaluation (lower for consistency)
         """
@@ -35,9 +37,9 @@ class RedTeaming:
         self._load_supported_detectors()
         
         # Initialize generators and evaluator
-        self.scenario_generator = ScenarioGenerator(model_name=model_name, temperature=scenario_temperature, provider=provider)
-        self.test_generator = TestCaseGenerator(model_name=model_name, temperature=test_temperature, provider=provider)
-        self.evaluator = Evaluator(model_name=model_name, temperature=eval_temperature, provider=provider)
+        self.scenario_generator = ScenarioGenerator(model_name=model_name, temperature=scenario_temperature, provider=provider, api_key=api_key)
+        self.test_generator = TestCaseGenerator(model_name=model_name, temperature=test_temperature, provider=provider, api_key=api_key)
+        self.evaluator = Evaluator(model_name=model_name, temperature=eval_temperature, provider=provider, api_key=api_key)
 
         self.save_path = None
 
