@@ -11,6 +11,7 @@ from .data_generator.scenario_generator import ScenarioGenerator, ScenarioInput
 from .data_generator.test_case_generator import TestCaseGenerator, TestCaseInput
 from .evaluator import Evaluator, EvaluationInput, Conversation
 from .utils.issue_description import get_issue_description
+from .upload_result import UploadResult
 
 class RedTeaming:
     def __init__(
@@ -20,7 +21,6 @@ class RedTeaming:
         test_temperature: float = 0.8,
         eval_temperature: float = 0.3
     ):
-        self._load_supported_detectors()
         """
         Initialize the red teaming pipeline.
         
@@ -37,6 +37,16 @@ class RedTeaming:
         self.scenario_generator = ScenarioGenerator(model_name=model_name, temperature=scenario_temperature)
         self.test_generator = TestCaseGenerator(model_name=model_name, temperature=test_temperature)
         self.evaluator = Evaluator(model_name=model_name, temperature=eval_temperature)
+
+        self.save_path = None
+
+    def upload_result(self, project_name, dataset_name):
+        upload_result = UploadResult(project_name)
+        if self.save_path is None:
+            print('Please execute the RedTeaming run() method before uploading the result')
+            return
+        upload_result.upload_result(csv_path=self.save_path, dataset_name=dataset_name)
+
         
     def _load_supported_detectors(self) -> None:
         """Load supported detectors from TOML configuration file."""
@@ -143,7 +153,7 @@ class RedTeaming:
                     "scenario": scenarios,
                     "user_message": user_message,
                     "app_response": app_response,
-                    "evaluation_score": 1 if evaluation["eval_passed"] else 0,
+                    "evaluation_score": "pass" if evaluation["eval_passed"] else "fail",
                     "evaluation_reason": evaluation["reason"]
                 })
                 
@@ -161,6 +171,7 @@ class RedTeaming:
         # Save results to a CSV file
         results_df = pd.DataFrame(results)
         save_path = self._save_results_to_csv(results_df, description)
+        self.save_path = save_path
 
         return results_df, save_path
 
@@ -225,7 +236,7 @@ class RedTeaming:
                             "scenario": scenario,
                             "user_message": user_message,
                             "app_response": app_response,
-                            "evaluation_score": 1 if evaluation["eval_passed"] else 0,
+                            "evaluation_score": "pass" if evaluation["eval_passed"] else "fail",
                             "evaluation_reason": evaluation["reason"]
                         })
                         
@@ -243,6 +254,7 @@ class RedTeaming:
         # Save results to a CSV file
         results_df = pd.DataFrame(results)
         save_path = self._save_results_to_csv(results_df, description)
+        self.save_path = save_path
 
         return results_df, save_path
 
