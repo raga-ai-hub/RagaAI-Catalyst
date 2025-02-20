@@ -84,7 +84,6 @@ class SyntheticDataGeneration:
                 
             try:
                 system_message = self._get_system_message(question_type, current_batch_size)
-                
                 if "internal_llm_proxy" in kwargs:
                     batch_df = self._generate_internal_response(text, system_message, model_config, kwargs)
                 else:
@@ -232,7 +231,8 @@ class SyntheticDataGeneration:
             ValueError: If an invalid question type is specified.
         """
         if question_type == 'simple':
-            return f'''Generate a set of {n} very simple questions answerable in a single phrase. 
+            return f'''Generate a set of {n} very simple questions answerable in a single phrase using the below text.
+                Only generate questions answerable from the text given, to cover all parts of the given document. 
                 Also return the answers for the generated questions.
                 Return the response in a list of object format. 
                 Each object in list should have Question and corresponding answer.
@@ -241,6 +241,7 @@ class SyntheticDataGeneration:
             '''
         elif question_type == 'mcq':
             return f'''Generate a set of {n} questions with 4 probable answers from the given text. 
+                Only generate questions answerable from the text given, to cover all parts of the given document. 
                 The options should not be longer than a phrase. There should be only 1 correct answer.
                 There should not be any ambiguity between correct and incorrect options.
                 Return the response in a list of object format. 
@@ -250,6 +251,7 @@ class SyntheticDataGeneration:
             '''
         elif question_type == 'complex':
             return f'''Can you generate a set of {n} complex questions answerable in long form from the below texts.
+                Only generate questions answerable from the text given, to cover all parts of the given document. 
                 Make sure the questions are important and provide new information to the user.
                 Return the response in a list of object format. Enclose any quotes in single quote. 
                 Do not use double quotes within questions or answers.
