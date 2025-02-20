@@ -1,3 +1,4 @@
+from .custom_metric import CustomMetric
 from .experiment import Experiment
 from .ragaai_catalyst import RagaAICatalyst
 from .utils import response_checker
@@ -26,5 +27,6 @@ __all__ = [
     "trace_llm",
     "trace_tool",
     "current_span",
-    "trace_custom"
+    "trace_custom",
+    "CustomMetric"
 ]
