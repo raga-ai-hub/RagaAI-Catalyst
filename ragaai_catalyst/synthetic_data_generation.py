@@ -1,25 +1,24 @@
 import os
-from groq import Groq
-import google.generativeai as genai
-import openai
-import PyPDF2
+import ast
 import csv
+import json
+import random
+import PyPDF2
 import markdown
 import pandas as pd
-import json
-from litellm import completion
-import litellm
 from tqdm import tqdm
+
+import openai
 import tiktoken
-# import internal_api_completion
-# import proxy_call
+import litellm
+import google.generativeai as genai
+from groq import Groq
+from litellm import completion
+
 from .internal_api_completion import api_completion as internal_api_completion
 from .proxy_call import api_completion as proxy_api_completion
-# from ragaai_catalyst import internal_api_completion
-# from ragaai_catalyst import proxy_call
-import ast
 
-# dotenv.load_dotenv()
+from typing import Optional, List, Dict, Any
 
 class SyntheticDataGeneration:
     """
@@ -327,6 +326,59 @@ class SyntheticDataGeneration:
 
         json_data = json.loads(content)
         return pd.DataFrame(json_data)
+    
+    def _generate_raw_llm_response(self, text, system_message: Optional[str] = None, model_config: Dict[str, Any] = dict(), api_key=None):
+        """
+        Generate questions using LiteLLM which supports multiple providers (OpenAI, Groq, Gemini, etc.).
+
+        Args:
+            text (str): The input text to generate questions from.
+            system_message (str): The system message for the AI model.
+            model_config (dict): Configuration dictionary containing model details.
+                Required keys:
+                - model: The model identifier (e.g., "gpt-4", "gemini-pro", "mixtral-8x7b-32768")
+                Optional keys:
+                - api_base: Custom API base URL if needed
+                - max_tokens: Maximum tokens in response
+                - temperature: Temperature for response generation
+            api_key (str, optional): The API key for the model provider.
+
+        Returns:
+            pandas.DataFrame: A DataFrame containing the generated questions and answers.
+
+        Raises:
+            Exception: If there's an error in generating the response.
+        """
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": text}
+        ]
+
+        completion_params = {
+            "model": model_config.get("model", 'gpt-4o'),
+            "messages": messages,
+            "api_key": api_key
+        }
+
+        if "api_base" in model_config:
+            completion_params["api_base"] = model_config["api_base"]
+        if "api_version" in model_config:
+            completion_params["api_version"] = model_config["api_version"]
+        if "max_tokens" in model_config:
+            completion_params["max_tokens"] = model_config["max_tokens"]
+        if "temperature" in model_config:
+            completion_params["temperature"] = model_config["temperature"]
+        if 'provider' in model_config:
+            completion_params['model'] = f'{model_config["provider"]}/{model_config["model"]}'
+
+        try:
+            response = completion(**completion_params)
+        except Exception as e:
+            if any(error in str(e).lower() for error in ["invalid api key", "incorrect api key", "unauthorized", "authentication"]):
+                raise ValueError(f"Invalid API key provided for {model_config.get('provider', 'the specified')} provider")
+            raise Exception(f"Error calling LLM API: {str(e)}")
+
+        return response.choices[0].message.content
 
     def _parse_response(self, response, provider):
         """
@@ -476,6 +528,228 @@ class SyntheticDataGeneration:
             list: A list of supported AI providers.
         """
         return ['gemini', 'openai','azure']
+    
+    def _get_init_ex_gen_prompt(self):
+        prompt = '''
+You are an expert example generator. Your task is to produce creative, relevant and varied examples according to the user instructions. 
+
+**Inputs**
+User Instruction: The user will provide guidance on how to generate examples, possibly accompanied by their own examples.
+User Examples[Optional]: The user may supply examples.
+User Context[Optional]: The user may supply context to generate the examples from.
+No of Examples: The total number of examples to produce.
+
+**Steps to follow**
+1. Carefully analyze the user's instruction
+2. If user examples are provided, check whether the user’s instructions refer to them specifically.
+3. If user context is provided, understand it thoroughly and identify relevant parts to generate examples.
+4. Comply with the system’s guidelines to generate examples, incorporating any user examples or user context as needed.
+
+**Output Format**:  
+- Present examples in a multiline string with each line a separate example.  
+- Avoid markdown or special formatting.
+- Omit any boilerplate texts.
+
+**Instructions for Diversity**:  
+- Vary the examples by context, tone, and (if applicable) technical complexity.
+- Include edge cases or unconventional scenarios.  
+- Ensure no two examples are conceptually identical.
+
+**Final Notes**:  
+- Focus on both originality and practical relevance.
+- Avoid repetitiveness in the examples.
+'''
+        return prompt
+    
+    def _get_iter_ex_gen_prompt(self):
+        prompt = '''
+You are an expert example generator. Your task is to produce creative, relevant and varied examples according to the user instructions. 
+
+**Inputs**
+User Instruction: The user will provide guidance on how to generate examples, possibly accompanied by their own examples.
+User Examples[Optional]: The user may supply examples.
+User Context[Optional]: The user may supply context to generate the examples from.
+No of Examples: The total number of examples to produce.
+Relevant Examples: Any examples that are relevant to the user's instruction.
+Irrelevant Examples: Any examples that are not relevant to the user's instruction.
+
+**Steps to follow**
+1. Carefully analyze the user's instruction
+2. If user examples are provided, check whether the user’s instructions refer to them specifically.
+3. If user context is provided, understand it thoroughly and identify relevant parts to generate examples.
+4. Review the relevant and irrelevant examples present, understanding the differences in them.
+5. Comply with the user's instruction to generate examples, similar to relevant examples and dissimilar to irrelevant ones.
+
+**Output Format**:  
+- Present examples in a multiline sting with each line a separate example.  
+- Avoid markdown or special formatting.
+- Omit any boilerplate texts.
+
+**Instructions for Diversity**:  
+- Vary the examples by context, tone, and (if applicable) technical complexity.
+- Include edge cases or unconventional scenarios.  
+- Ensure no two examples are conceptually identical.
+
+**Final Notes**:  
+- Focus on both originality and practical relevance.
+- Avoid repetitiveness in the examples.
+'''
+        return prompt
+    
+    def _generate_examples_iter(
+            self, 
+            user_instruction: str, 
+            user_examples: Optional[List[str] | str] = None, 
+            user_context: Optional[str] = None, 
+            relevant_examples: List[str]=[], irrelevant_examples: List[str]=[], 
+            no_examples: Optional[int] = None, 
+            model_config: Dict[str, Any] = dict(), 
+            api_key: Optional[str] = None
+            ):
+        if not no_examples:
+            no_examples = 5
+        relevant_examples_str = '\n'.join(relevant_examples)
+        irrelevant_examples_str = '\n'.join(irrelevant_examples)
+        user_message = f'**User Instruction:** {user_instruction}'
+        user_message += f'\n\n**No of Examples:** {no_examples}'
+        if user_examples:
+            if isinstance(user_examples, str):
+                user_examples_str = user_examples
+            elif isinstance(user_examples, list):
+                user_examples_str = "\n".join(user_examples)
+            else:
+                raise ValueError(f'Expected string or list of strings as user_examples got {type(user_examples)}')
+            user_message += f"\n\n**User Examples:** \n{user_examples_str}"
+        if relevant_examples:
+            user_message += f'\n\n**Relevant Examples:** \n{relevant_examples_str}'
+        if irrelevant_examples:
+            user_message += f'\n\n**Irrelevant Examples:** \n{irrelevant_examples_str}'
+        if user_context:
+            user_message += f'\n\n**User Context:** \n{user_context}'
+        system_prompt = self._get_iter_ex_gen_prompt()
+        return self._generate_raw_llm_response(user_message, system_prompt, model_config=model_config, api_key=api_key)
+    
+    def _generate_examples(
+            self, 
+            user_instruction:str, 
+            user_examples:Optional[List[str]|str]=None, 
+            user_context: Optional[str] = None, 
+            no_examples:Optional[int]=None, 
+            model_config: Dict[str, Any] = dict(), 
+            api_key: Optional[str] = None
+            ):
+        if not no_examples:
+            no_examples = 5
+        user_message = f"**User Instruction:** {user_instruction}"
+        if user_examples:
+            if isinstance(user_examples, str):
+                user_examples_str = user_examples
+            elif isinstance(user_examples, list):
+                user_examples_str = "\n".join(user_examples)
+            else:
+                raise ValueError(f'Expected string or list of strings as user_examples got {type(user_examples)}')
+            user_message += f"\n\n**User Examples:** \n{user_examples_str}"
+        if user_context:
+            user_message += f'\n\n**User Context:** \n{user_context}'
+        user_message += f'\n\n**No of Examples:** {no_examples}'
+        init_system_prompt = self._get_init_ex_gen_prompt()
+        return self._generate_raw_llm_response(user_message, init_system_prompt, model_config=model_config, api_key=api_key)
+    
+    def _get_valid_examples(self, user_indices_str: str, examples: List[str]):
+        valid_examples = []
+        try:
+            user_indices = user_indices_str.strip().split(',')
+            for index_str in user_indices:
+                try:
+                    index = int(index_str)
+                    if index <= 0 or index > len(examples):
+                        continue
+                except ValueError as e:
+                    continue
+                valid_examples.append(examples[index-1])
+        except Exception as e:
+            print(f'Error: {e}')
+        return valid_examples
+    
+    def generate_examples(
+        self, 
+        user_instruction: str, 
+        user_examples:Optional[List[str] | str] = None, 
+        no_examples: Optional[int] = None, 
+        model_config: Dict[str, Any] = dict(), 
+        api_key: Optional[str] = None, 
+        **kwargs
+        ):
+        provider = model_config.get("provider")
+        api_base = model_config.get("api_base")
+        api_version = model_config.get("api_version")
+        self._initialize_client(provider, api_key, api_base, api_version, internal_llm_proxy=kwargs.get("internal_llm_proxy", None))
+
+        if not no_examples:
+            no_examples = 5
+        relevant_examples = []
+        irrelevant_examples = []
+        max_relevant_examples = 5
+        max_irrelevant_examples = 10
+        max_iter = 1
+        while len(relevant_examples) <= max_relevant_examples or len(irrelevant_examples) <= max_irrelevant_examples:
+            if len(relevant_examples) > max_relevant_examples:
+                relevant_examples = random.sample(relevant_examples, max_relevant_examples)
+            if len(irrelevant_examples) > max_irrelevant_examples:
+                irrelevant_examples = random.sample(irrelevant_examples, max_irrelevant_examples)
+            if relevant_examples or irrelevant_examples:
+                examples_str = self._generate_examples_iter(
+                    user_instruction = user_instruction, 
+                    user_examples = user_examples, 
+                    relevant_examples = relevant_examples, 
+                    irrelevant_examples = irrelevant_examples, 
+                    model_config = model_config, 
+                    api_key = api_key
+                    )
+            else:
+                examples_str = self._generate_examples(
+                    user_instruction = user_instruction, 
+                    user_examples = user_examples, 
+                    model_config = model_config, 
+                    api_key = api_key
+                )
+            examples = [example for example in examples_str.split('\n') if example.strip()]
+            print('Generated Examples:')
+            for i, example in enumerate(examples):
+                print(f'{i+1}. {example}')
+            relevant_indices = input('Enter the indices of relevant examples (comma-separated): ').strip()
+            if relevant_indices:
+                relevant_examples.extend(self._get_valid_examples(relevant_indices, examples))
+            irrelevant_indices = input('Enter the indices of irrelevant examples (comma-separated): ').strip()
+            if irrelevant_indices:
+                irrelevant_examples.extend(self._get_valid_examples(irrelevant_indices, examples))
+            max_iter -= 1
+            if max_iter == 0:
+                break
+        if len(relevant_examples) > max_relevant_examples:
+            fin_relevant_examples = random.sample(relevant_examples, max_relevant_examples)
+        else:
+            fin_relevant_examples = relevant_examples
+        if len(irrelevant_examples) > max_irrelevant_examples:
+            fin_irrelevant_examples = random.sample(irrelevant_examples, max_irrelevant_examples)
+        else:
+            fin_irrelevant_examples = irrelevant_examples
+        if len(relevant_examples) < no_examples:
+            more_no_examples = no_examples - len(relevant_examples)
+            final_examples_str = self._generate_examples_iter(
+                user_instruction = user_instruction, 
+                user_examples = user_examples, 
+                relevant_examples = fin_relevant_examples, 
+                irrelevant_examples = fin_irrelevant_examples, 
+                no_examples = more_no_examples, 
+                model_config = model_config, 
+                api_key = api_key
+                )
+            final_examples = [example for example in final_examples_str.split('\n') if example.strip()]
+            final_examples.extend(relevant_examples)
+        else:
+            final_examples = random.sample(relevant_examples, no_examples)
+        return final_examples
 
 # Usage:
 # from synthetic_data_generation import SyntheticDataGeneration
