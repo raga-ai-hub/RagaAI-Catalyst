@@ -129,25 +129,12 @@ class JupyterNotebookHandler:
             # Check if running in Colab
             if JupyterNotebookHandler.is_running_in_colab():
                 try:
-                    from google.colab import drive
-                    if not os.path.exists('/content/drive'):
-                        drive.mount('/content/drive')
-                        # logger.info("Google Drive mounted successfully")
-
                     # Look for notebooks in /content first
                     ipynb_files = list(Path('/content').glob('*.ipynb'))
                     if ipynb_files:
                         current_nb = max(ipynb_files, key=os.path.getmtime)
                         # logger.info(f"Found current Colab notebook: {current_nb}")
                         return str(current_nb)
-                        
-                    # Then check Drive if mounted
-                    if os.path.exists('/content/drive'):
-                        drive_ipynb_files = list(Path('/content/drive').rglob('*.ipynb'))
-                        if drive_ipynb_files:
-                            current_nb = max(drive_ipynb_files, key=os.path.getmtime)
-                            # logger.info(f"Found Colab notebook in Drive: {current_nb}")
-                            return str(current_nb)
                 except Exception as e:
                     logger.warning(f"Error in Colab notebook detection: {str(e)}")
 
