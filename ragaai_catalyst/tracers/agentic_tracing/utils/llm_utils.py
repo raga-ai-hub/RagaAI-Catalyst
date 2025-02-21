@@ -305,15 +305,16 @@ def extract_input_data(args, kwargs, result):
     }
 
 
-def calculate_llm_cost(token_usage, model_name, model_costs):
+def calculate_llm_cost(token_usage, model_name, model_costs, model_custom_cost={}):
     """Calculate cost based on token usage and model"""
-    #import pdb; pdb.set_trace()
+    model_costs.update(model_custom_cost)
     if not isinstance(token_usage, dict):
         token_usage = {
             "prompt_tokens": 0,
             "completion_tokens": 0,
             "total_tokens": token_usage if isinstance(token_usage, (int, float)) else 0
         }
+    
     # Get model costs, defaulting to default costs if unknown
     model_cost = model_cost = model_costs.get(model_name, {
         "input_cost_per_token": 0.0,   
