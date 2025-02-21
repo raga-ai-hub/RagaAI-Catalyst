@@ -676,10 +676,13 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
         user_instruction: str, 
         user_examples:Optional[List[str] | str] = None, 
         no_examples: Optional[int] = None, 
-        model_config: Dict[str, Any] = dict(), 
+        model_config: Optional[Dict[str, Any]] = None, 
         api_key: Optional[str] = None, 
+        max_iter: int = 0,
         **kwargs
         ):
+        if not model_config:
+            model_config = {}
         provider = model_config.get("provider")
         api_base = model_config.get("api_base")
         api_version = model_config.get("api_version")
@@ -691,8 +694,9 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
         irrelevant_examples = []
         max_relevant_examples = 5
         max_irrelevant_examples = 10
-        max_iter = 1
         while len(relevant_examples) <= max_relevant_examples or len(irrelevant_examples) <= max_irrelevant_examples:
+            if max_iter <= 0:
+                break
             if len(relevant_examples) > max_relevant_examples:
                 relevant_examples = random.sample(relevant_examples, max_relevant_examples)
             if len(irrelevant_examples) > max_irrelevant_examples:
@@ -724,8 +728,6 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
             if irrelevant_indices:
                 irrelevant_examples.extend(self._get_valid_examples(irrelevant_indices, examples))
             max_iter -= 1
-            if max_iter == 0:
-                break
         if len(relevant_examples) > max_relevant_examples:
             fin_relevant_examples = random.sample(relevant_examples, max_relevant_examples)
         else:
@@ -734,22 +736,67 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
             fin_irrelevant_examples = random.sample(irrelevant_examples, max_irrelevant_examples)
         else:
             fin_irrelevant_examples = irrelevant_examples
-        if len(relevant_examples) < no_examples:
-            more_no_examples = no_examples - len(relevant_examples)
-            final_examples_str = self._generate_examples_iter(
+        if relevant_examples or irrelevant_examples:
+            if len(relevant_examples) < no_examples:
+                more_no_examples = no_examples - len(relevant_examples)
+                final_examples_str = self._generate_examples_iter(
+                    user_instruction = user_instruction, 
+                    user_examples = user_examples, 
+                    relevant_examples = fin_relevant_examples, 
+                    irrelevant_examples = fin_irrelevant_examples, 
+                    no_examples = more_no_examples, 
+                    model_config = model_config, 
+                    api_key = api_key
+                    )
+                final_examples = [example for example in final_examples_str.split('\n') if example.strip()]
+                final_examples.extend(relevant_examples)
+            else:
+                final_examples = random.sample(relevant_examples, no_examples)
+        else:
+            final_examples_str = self._generate_examples(
                 user_instruction = user_instruction, 
                 user_examples = user_examples, 
-                relevant_examples = fin_relevant_examples, 
-                irrelevant_examples = fin_irrelevant_examples, 
-                no_examples = more_no_examples, 
+                no_examples = no_examples, 
                 model_config = model_config, 
                 api_key = api_key
-                )
+            )
             final_examples = [example for example in final_examples_str.split('\n') if example.strip()]
-            final_examples.extend(relevant_examples)
-        else:
-            final_examples = random.sample(relevant_examples, no_examples)
         return final_examples
+
+    
+    def generate_examples_from_csv(
+            self, 
+            csv_path: str, 
+            no_examples: Optional[int] = None, 
+            model_config: Optional[Dict[str, Any]] = None, 
+            api_key: Optional[str] = None, 
+            **kwargs
+            ):
+        if not no_examples:
+            no_examples = 5
+        df = pd.read_csv(csv_path)
+        assert 'user_instruction' in df.columns, 'The csv must have a column named user_instruction'
+        fin_df_list = []
+        for i, row in df.iterrows():
+            user_instruction = row['user_instruction']
+            user_examples = row.get('user_examples')
+            user_context = row.get('user_context')
+            row_dict = row.to_dict()
+            examples = self.generate_examples(
+                user_instruction = user_instruction, 
+                user_examples = user_examples, 
+                user_context = user_context, 
+                no_examples = no_examples, 
+                model_config = model_config, 
+                api_key = api_key
+            )
+            row_dict['generated_examples'] = examples
+            fin_df_list.append(row_dict)
+        fin_df = pd.DataFrame(fin_df_list)
+        csv_file, csv_ext = os.path.splitext(csv_path)
+        fin_csv_path = csv_file + '_with_examples' + csv_ext
+        fin_df.to_csv(fin_csv_path)
+
 
 # Usage:
 # from synthetic_data_generation import SyntheticDataGeneration
