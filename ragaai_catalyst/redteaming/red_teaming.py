@@ -107,19 +107,13 @@ class RedTeaming:
         return save_path
 
     def _run_with_examples(self, description: str, detectors: List[str], response_model: Any, examples: List[str], scenarios_per_detector: int) -> pd.DataFrame:
-        # take care of total no of scenarios limit
-        MAX_TOTAL_SCENARIOS = 5
-        if len(detectors) >= MAX_TOTAL_SCENARIOS:
-            scenarios_per_detector = 1
-        elif len(detectors) * scenarios_per_detector >= MAX_TOTAL_SCENARIOS:
-            k = 1
-            while len(detectors) * k <= MAX_TOTAL_SCENARIOS:
-                k += 1
-            scenarios_per_detector = k - 1
+        results = []
+        # Process each detector
+        for detector in detectors:
+            print('='*50)
+            print(f"Running detector: [yellow2]{detector}[/yellow2]")
+            print('='*50)
 
-        # generate the scenarios
-        scenarios = []
-        for detector in tqdm(detectors, desc=f"Generating scenarios"):
             if type(detector) == str:
             # Get issue description for this detector
                 issue_description = get_issue_description(detector)
@@ -132,50 +126,61 @@ class RedTeaming:
                 category=issue_description,
                 scenarios_per_detector=scenarios_per_detector
             )
-            scenario = self.scenario_generator.generate_scenarios(scenario_input)
-            scenarios.extend(scenario)
+            scenarios = self.scenario_generator.generate_scenarios(scenario_input)
+            
+            # Process each scenario
+            for r, scenario in enumerate(scenarios):
 
-        # Evaluate the examples against the scenarios
-        results = []
-        failed_tests = 0
-        print('-'*100)
-        for example in tqdm(examples, desc=f"Evaluating examples"):
-                user_message = example
-                app_response = response_model(user_message)
-                
-                # Evaluate the conversation
-                eval_input = EvaluationInput(
-                    description=description,
-                    conversation=Conversation(
-                        user_message=user_message,
-                        app_response=app_response
-                    ),
-                    scenarios=scenarios
-                )
-                evaluation = self.evaluator.evaluate_conversation(eval_input)
-                
-                # Store results
-                results.append({
-                    "detector": detectors,
-                    "scenario": scenarios,
-                    "user_message": user_message,
-                    "app_response": app_response,
-                    "evaluation_score": "pass" if evaluation["eval_passed"] else "fail",
-                    "evaluation_reason": evaluation["reason"]
-                })
-                
-                if not evaluation["eval_passed"]:
-                    failed_tests += 1
-        
-        # Report results
+                if type(examples[0]) == str:
+                    test_examples = examples
+                    test_detectors = [detectors] * len(examples)
+                elif type(examples[0]) == dict:
+                    test_examples = [example["input"] for example in examples]
+                    test_detectors = [example["detectors"] for example in examples]
+                    
+                # Evaluate test cases
+                failed_tests = 0
+                total_tests = 0
+                for test_example, test_detector in tqdm(zip(test_examples, test_detectors), desc=f"Running {detector} scenario {r+1}/{len(scenarios)}", total=len(scenarios)):
+                    if detector in test_detector:
+                        user_message = test_example
+                        app_response = response_model(user_message)
+                        
+                        # Evaluate the conversation
+                        eval_input = EvaluationInput(
+                            description=description,
+                            conversation=Conversation(
+                                user_message=user_message,
+                                app_response=app_response
+                            ),
+                            scenarios=[scenario]
+                        )
+                        evaluation = self.evaluator.evaluate_conversation(eval_input)
 
-        total_examples = len(examples)
-        if failed_tests > 0:
-            print(f"[bright_red]{failed_tests}/{total_examples} tests failed[/bright_red]")
-        else:
-            print(f"[green]All {total_examples} tests passed[/green]")
+                        # Store results
+                        results.append({
+                            "detector": detector,
+                            "scenario": scenario,
+                            "user_message":test_example,
+                            "app_response": app_response,
+                            "evaluation_score": "pass" if evaluation["eval_passed"] else "fail",
+                            "evaluation_reason": evaluation["reason"]
+                        })
+                        
+                        if not evaluation["eval_passed"]:
+                            failed_tests += 1
 
-        print('-' * 250)
+                        total_tests += 1
+                
+                # Report results for this scenario
+                if failed_tests > 0:
+                    print(f"{detector} scenario {r+1}: [bright_red]{failed_tests}/{total_tests} examples failed[/bright_red]")
+                elif total_tests > 0:
+                    print(f"{detector} scenario {r+1}: [green]All {total_tests} examples passed[/green]")
+                else:
+                    print(f"No examples provided to test {detector} scenario {r+1}")
+                print('-'*100)
+
         # Save results to a CSV file
         results_df = pd.DataFrame(results)
         save_path = self._save_results_to_csv(results_df, description)
@@ -274,7 +279,7 @@ class RedTeaming:
         examples: Optional[List[str]] = None,
         model_input_format: Optional[Dict[str, Any]] = None,
         scenarios_per_detector: int = 4,
-        test_cases_per_scenario: int = 5 # used only if examples are not provided
+        examples_per_scenario: int = 5 # used only if examples are not provided
     ) -> pd.DataFrame:
         """
         Run the complete red teaming pipeline.
@@ -286,7 +291,7 @@ class RedTeaming:
             model_input_format: Format for test case generation
             examples: List of example inputs to test. If provided, uses these instead of generating test cases
             scenarios_per_detector: Number of test scenarios to generate per detector
-            test_cases_per_scenario: Number of test cases to generate per scenario
+            examples_per_scenario: Number of test cases to generate per scenario
             
         Returns:
             DataFrame containing all test results with columns:
@@ -321,4 +326,4 @@ class RedTeaming:
         if examples:
             return self._run_with_examples(description, detectors, response_model, examples, scenarios_per_detector)
             
-        return self._run_without_examples(description, detectors, response_model, model_input_format, scenarios_per_detector, test_cases_per_scenario)
+        return self._run_without_examples(description, detectors, response_model, model_input_format, scenarios_per_detector, examples_per_scenario)
