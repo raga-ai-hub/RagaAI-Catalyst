@@ -496,6 +496,13 @@ examples = sdg.generate_examples(
     no_examples = 10, 
     model_config = {"provider":"openai","model":"gpt-4o-mini"}
 )
+
+# Generate examples from a csv
+sdg.generate_examples_from_csv(
+    csv_path = 'path/to/csv', 
+    no_examples = 5, 
+    model_config = {'provider': 'openai', 'model': 'gpt-4o-mini'}
+)
 ```
 
 
