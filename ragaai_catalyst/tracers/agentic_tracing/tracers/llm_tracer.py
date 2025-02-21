@@ -777,9 +777,7 @@ class LLMTracerMixin:
                 else:
                     token_usage = extract_token_usage(result)
             else:
-                print("Here", model_name)
                 token_usage = extract_token_usage(result)
-                print("token usage: ",result)
             cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
