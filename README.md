@@ -487,6 +487,15 @@ sdg.get_supported_qna()
 
 # Get supported providers
 sdg.get_supported_providers()
+
+# Generate examples
+examples = sdg.generate_examples(
+    user_instruction = 'Generate query like this.', 
+    user_examples = 'How to do it?', # Can be a string or list of strings.
+    user_context = 'Context to generate examples', 
+    no_examples = 10, 
+    model_config = {"provider":"openai","model":"gpt-4o-mini"}
+)
 ```
 
 
