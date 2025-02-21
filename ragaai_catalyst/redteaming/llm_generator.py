@@ -7,8 +7,8 @@ class LLMGenerator:
     # Models that support JSON mode
     JSON_MODELS = {"gpt-4-1106-preview", "gpt-3.5-turbo-1106"}
     
-    def __init__(self, model_name: str = "gpt-4-1106-preview", temperature: float = 0.7, 
-                 provider: Literal["openai", "xai"] = "openai", api_key: str = 'your_api_key'):
+    def __init__(self, api_key: str, model_name: str = "gpt-4-1106-preview", temperature: float = 0.7, 
+                 provider: Literal["openai", "xai"] = "openai"):
         """
         Initialize the LLM generator with specified provider client.
         

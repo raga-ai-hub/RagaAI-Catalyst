@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 import os
-from typing import Dict, List, Any, Tuple, Literal
+from typing import Dict, List, Any, Tuple, Literal, Optional
 
 import pandas as pd
 import tomli
@@ -12,13 +12,14 @@ from .data_generator.test_case_generator import TestCaseGenerator, TestCaseInput
 from .evaluator import Evaluator, EvaluationInput, Conversation
 from .utils.issue_description import get_issue_description
 from .upload_result import UploadResult
+from rich import print
 
 class RedTeaming:
     def __init__(
         self,
         model_name: Literal["gpt-4-1106-preview", "grok-2-latest"] = "grok-2-latest",
         provider: Literal["openai", "xai"] = "xai",
-        api_key: str = 'your_api_key',  
+        api_key: str = "",  
         scenario_temperature: float = 0.7,
         test_temperature: float = 0.8,
         eval_temperature: float = 0.3,
@@ -33,13 +34,16 @@ class RedTeaming:
             test_temperature: Temperature for test case generation
             eval_temperature: Temperature for evaluation (lower for consistency)
         """
+        if api_key == "":
+            raise ValueError("Api Key is required")
+
         # Load supported detectors configuration
         self._load_supported_detectors()
         
         # Initialize generators and evaluator
-        self.scenario_generator = ScenarioGenerator(model_name=model_name, temperature=scenario_temperature, provider=provider, api_key=api_key)
-        self.test_generator = TestCaseGenerator(model_name=model_name, temperature=test_temperature, provider=provider, api_key=api_key)
-        self.evaluator = Evaluator(model_name=model_name, temperature=eval_temperature, provider=provider, api_key=api_key)
+        self.scenario_generator = ScenarioGenerator(api_key=api_key, model_name=model_name, temperature=scenario_temperature, provider=provider)
+        self.test_generator = TestCaseGenerator(api_key=api_key, model_name=model_name, temperature=test_temperature, provider=provider)
+        self.evaluator = Evaluator(api_key=api_key, model_name=model_name, temperature=eval_temperature, provider=provider)
 
         self.save_path = None
 
@@ -164,13 +168,14 @@ class RedTeaming:
                     failed_tests += 1
         
         # Report results
+
         total_examples = len(examples)
         if failed_tests > 0:
-            print(f"{failed_tests}/{total_examples} tests failed")
+            print(f"[bright_red]{failed_tests}/{total_examples} tests failed[/bright_red]")
         else:
-            print(f"All {total_examples} tests passed")
-        print('-'*250)
+            print(f"[green]All {total_examples} tests passed[/green]")
 
+        print('-' * 250)
         # Save results to a CSV file
         results_df = pd.DataFrame(results)
         save_path = self._save_results_to_csv(results_df, description)
@@ -178,13 +183,12 @@ class RedTeaming:
 
         return results_df, save_path
 
-    
     def _run_without_examples(self, description: str, detectors: List[str], response_model: Any, model_input_format: Dict[str, Any], scenarios_per_detector: int, test_cases_per_scenario: int) -> pd.DataFrame:
         results = []
         # Process each detector
         for detector in detectors:
             print('='*50)
-            print(f"Running detector: {detector}")
+            print(f"Running detector: [yellow2]{detector}[/yellow2]")
             print('='*50)
 
             if type(detector) == str:
@@ -249,9 +253,9 @@ class RedTeaming:
                 # Report results for this scenario
                 total_tests = len(test_cases["inputs"])
                 if failed_tests > 0:
-                    print(f"{detector} scenario {r+1}: {failed_tests}/{total_tests} tests failed")
+                    print(f"{detector} scenario {r+1}: [bright_red]{failed_tests}/{total_tests} tests failed[/bright_red]")
                 else:
-                    print(f"{detector} scenario {r+1}: All {total_tests} tests passed")
+                    print(f"{detector} scenario {r+1}: [green]All {total_tests} tests passed[/green]")
                 print('-'*100)
 
         # Save results to a CSV file
@@ -267,11 +271,8 @@ class RedTeaming:
         description: str,
         detectors: List[str],
         response_model: Any,
-        examples: List[str] = [],
-        model_input_format: Dict[str, Any] = {
-            "user_input": "Hi, I am looking for job recommendations",
-            "user_name": "John"
-        },
+        examples: Optional[List[str]] = None,
+        model_input_format: Optional[Dict[str, Any]] = None,
         scenarios_per_detector: int = 4,
         test_cases_per_scenario: int = 5 # used only if examples are not provided
     ) -> pd.DataFrame:
@@ -296,6 +297,14 @@ class RedTeaming:
             - evaluation_reason: Reason for pass/fail
         """
 
+        if examples is None:
+            examples = []
+        if model_input_format is None:
+            model_input_format = {
+                "user_input": "Hi, I am looking for job recommendations",
+                "user_name": "John"
+            }
+
         # Validate detectors
         inbuild_detector = []
         for detector in detectors:
@@ -303,9 +312,9 @@ class RedTeaming:
                 inbuild_detector.append(detector)
             elif type(detector) == dict:
                 if 'custom' not in detector.keys() or len(detector.keys()) != 1:
-                    raise('The custom detector must be a dictionary with only key "custom" and a string as a value')
+                    raise ValueError('The custom detector must be a dictionary with only key "custom" and a string as a value')
             else:
-                raise('Detector must be a string or a dictionary with only key "custom" and a string as a value')
+                raise ValueError('Detector must be a string or a dictionary with only key "custom" and a string as a value')
 
         self.validate_detectors(inbuild_detector)
         

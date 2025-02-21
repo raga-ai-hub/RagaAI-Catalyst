@@ -5,8 +5,8 @@ import litellm
 
 class LLMGenerator:
     
-    def __init__(self, model_name: str = "gpt-4-1106-preview", temperature: float = 0.7, 
-                 provider: str = "openai", api_key: str = 'your_api_key'):
+    def __init__(self, api_key: str, model_name: str = "gpt-4-1106-preview", temperature: float = 0.7, 
+                 provider: str = "openai"):
         """
         Initialize the LLM generator with specified provider client.
         
