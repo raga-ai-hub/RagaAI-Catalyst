@@ -58,7 +58,7 @@ tracer = Tracer(
     dataset_name="ReactAgent_tracing_fixed",
     tracer_type="Agentic",
 )
-tracer.set_model_cost({"model_name":deployment,"input_cost_per_token":6,"output_cost_per_token":240})
+tracer.set_model_cost({"model_name":deployment,"input_cost_per_million_token":6,"output_cost_per_million_token":2.40})
 init_tracing(catalyst=catalyst, tracer=tracer)
 
 """**Workflow Events**"""
