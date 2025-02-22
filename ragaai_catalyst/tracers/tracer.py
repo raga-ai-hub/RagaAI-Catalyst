@@ -189,21 +189,21 @@ class Tracer(AgenticTracing):
         Example:
             tracer.set_model_cost({
                 "model_name": "gpt-4",
-                "input_cost_per_token": 0.0000006,
-                "output_cost_per_token": 0.00000240
+                "input_cost_per_million_token": 6,
+                "output_cost_per_million_token": 2.40
             })
         """
         if not isinstance(cost_config, dict):
             raise TypeError("cost_config must be a dictionary")
 
-        required_keys = {"model_name", "input_cost_per_token", "output_cost_per_token"}
+        required_keys = {"model_name", "input_cost_per_million_token", "output_cost_per_million_token"}
         if not all(key in cost_config for key in required_keys):
             raise ValueError(f"cost_config must contain all required keys: {required_keys}")
 
         model_name = cost_config["model_name"]
         self.model_custom_cost[model_name] = {
-            "input_cost_per_token": float(cost_config["input_cost_per_token"]),
-            "output_cost_per_token": float(cost_config["output_cost_per_token"])
+            "input_cost_per_token": float(cost_config["input_cost_per_million_token"])/ 1000000,
+            "output_cost_per_token": float(cost_config["output_cost_per_million_token"]) /1000000
         }
 
 
