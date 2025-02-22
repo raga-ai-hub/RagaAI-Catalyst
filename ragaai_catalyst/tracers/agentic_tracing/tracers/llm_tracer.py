@@ -626,12 +626,8 @@ class LLMTracerMixin:
             # TODO TO check i/p and o/p is according or not
             input = input_data["args"] if hasattr(input_data, "args") else input_data
             output = output_data.output_response if output_data else None
-            #print("Prompt input:",input)
             prompt = self.convert_to_content(input)
-            #print("Prompt Output: ",prompt)
-            #print("Response input: ",output)
             response = self.convert_to_content(output)
-            #print("Response output: ",response)
 
             # TODO: Execute & Add the User requested metrics here
             formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name)
@@ -778,7 +774,7 @@ class LLMTracerMixin:
                     token_usage = extract_token_usage(result)
             else:
                 token_usage = extract_token_usage(result)
-            cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
+            cost = calculate_llm_cost(token_usage, model_name, self.model_costs, self.model_custom_cost)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
 
@@ -887,7 +883,7 @@ class LLMTracerMixin:
                     token_usage = extract_token_usage(result)
             else:
                 token_usage = extract_token_usage(result)
-            cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
+            cost = calculate_llm_cost(token_usage, model_name, self.model_costs, self.model_custom_cost)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
 

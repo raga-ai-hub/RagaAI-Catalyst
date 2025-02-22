@@ -45,6 +45,11 @@ def extract_model_name(args, kwargs, result):
             result = result.to_dict()
             if 'model_version' in result:
                 model = result['model_version']  
+    try:
+        if not model:
+            model = result.raw.model
+    except Exception as e:
+        pass
     
     
     # Normalize Google model names
@@ -150,6 +155,15 @@ def extract_token_usage(result):
             "total_tokens": getattr(metadata, "total_token_count", 0)
         }
     
+    # Handle ChatResponse format with raw usuage
+    if hasattr(result, "raw") and hasattr(result.raw, "usage"):
+        usage = result.raw.usage
+        return {
+            "prompt_tokens": getattr(usage, "prompt_tokens", 0),
+            "completion_tokens": getattr(usage, "completion_tokens", 0),
+            "total_tokens": getattr(usage, "total_tokens", 0)
+        }
+    
     # Handle ChatResult format with generations
     if hasattr(result, "generations") and result.generations:
         # Get the first generation
@@ -195,6 +209,7 @@ def num_tokens_from_messages(model="gpt-4o-mini-2024-07-18", prompt_messages=Non
             - completion_tokens: Number of tokens in the completion
             - total_tokens: Total number of tokens
     """
+    #import pdb; pdb.set_trace()
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -207,8 +222,8 @@ def num_tokens_from_messages(model="gpt-4o-mini-2024-07-18", prompt_messages=Non
         "gpt-4-32k-0314",
         "gpt-4-0613",
         "gpt-4-32k-0613",
-        "gpt-4o-mini-2024-07-18",
-        "gpt-4o-2024-08-06"
+        "gpt-4o-2024-08-06",
+        "gpt-4o-mini-2024-07-18"
         }:
         tokens_per_message = 3
         tokens_per_name = 1
@@ -290,15 +305,18 @@ def extract_input_data(args, kwargs, result):
     }
 
 
-def calculate_llm_cost(token_usage, model_name, model_costs):
+def calculate_llm_cost(token_usage, model_name, model_costs, model_custom_cost=None):
     """Calculate cost based on token usage and model"""
+    if model_custom_cost is None:
+        model_custom_cost = {}
+    model_costs.update(model_custom_cost)
     if not isinstance(token_usage, dict):
         token_usage = {
             "prompt_tokens": 0,
             "completion_tokens": 0,
             "total_tokens": token_usage if isinstance(token_usage, (int, float)) else 0
         }
-
+    
     # Get model costs, defaulting to default costs if unknown
     model_cost = model_cost = model_costs.get(model_name, {
         "input_cost_per_token": 0.0,   
