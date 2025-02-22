@@ -50,7 +50,8 @@ dependencies = [
     "GPUtil~=1.4.0",
     "ipynbname",
     "tiktoken>=0.7.0",
-    "giskard~=2.16.0"
+    "tomli>=2.0.0",
+    "rich>=13.9.4"
 ]
 
 [project.optional-dependencies]
