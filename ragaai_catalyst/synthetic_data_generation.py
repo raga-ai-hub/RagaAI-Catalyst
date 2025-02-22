@@ -20,6 +20,10 @@ from .proxy_call import api_completion as proxy_api_completion
 
 from typing import Optional, List, Dict, Any
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class SyntheticDataGeneration:
     """
     A class for generating synthetic data using various AI models and processing different document types.
@@ -769,6 +773,7 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
     def generate_examples_from_csv(
             self, 
             csv_path: str, 
+            dst_csv_path: Optional[str] = None, 
             no_examples: Optional[int] = None, 
             model_config: Optional[Dict[str, Any]] = None, 
             api_key: Optional[str] = None, 
@@ -796,8 +801,13 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
             fin_df_list.append(row_dict)
         fin_df = pd.DataFrame(fin_df_list)
         csv_file, csv_ext = os.path.splitext(csv_path)
-        fin_csv_path = csv_file + '_with_examples' + csv_ext
-        fin_df.to_csv(fin_csv_path)
+        if not dst_csv_path:
+            dst_csv_path = csv_file + '_with_examples' + csv_ext
+        dst_dir = os.path.dirname(dst_csv_path)
+        if dst_dir:
+            os.makedirs(dst_dir, exist_ok=True)
+        fin_df.to_csv(dst_csv_path)
+        logger.info(f'CSV with generated examples saved at {dst_csv_path}')
 
 
 # Usage:
