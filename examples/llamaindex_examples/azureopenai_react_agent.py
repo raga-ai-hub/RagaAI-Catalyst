@@ -18,10 +18,13 @@ nest_asyncio.apply()
 
 import os
 from llama_index.llms.azure_openai import AzureOpenAI
+from dotenv import load_dotenv
 
-endpoint = "https://dsragaai.openai.azure.com/"
-deployment = "azure-gpt-4o-mini"
-subscription_key = "49024331d17d4e79bbc729718afe1da2"
+load_dotenv() 
+
+endpoint = os.environ["AZURE_OPENAI_ENDPOINT"]
+deployment = os.environ["AZURE_DEPLOYMENT"]
+subscription_key = os.environ["AZURE_SUBSCRIPTION_KEY"]
 model = "gpt-4o-mini"
 
 llm = AzureOpenAI(
@@ -33,10 +36,9 @@ llm = AzureOpenAI(
     
 )
 
-#os.environ["OPENAI_API_KEY"] = userdata.get('OPENAI_API_KEY')
-os.environ["RAGAAI_CATALYST_BASE_URL"]="https://llm-dev5.ragaai.ai//api"
-os.environ["RAGAAI_CATALYST_SECRET_KEY"]="D38sFbbXRuU3KXkNFoYIGLfXyrMgjVFHdgMhUEyp"
-os.environ["RAGAAI_CATALYST_ACCESS_KEY"]="xHZgKSdfEDfCIhjcCn1a"
+base_url=os.environ["RAGAAI_CATALYST_STAGING_BASE_URL"]
+secret_key=os.environ["RAGAAI_CATALYST_STAGING_SECRET_KEY"]
+access_key=os.environ["RAGAAI_CATALYST_STAGING_ACCESS_KEY"]
 
 """**Initialize Tracer**"""
 
@@ -45,18 +47,18 @@ from ragaai_catalyst import RagaAICatalyst, init_tracing
 from ragaai_catalyst import trace_llm,trace_tool, trace_agent
 
 catalyst = RagaAICatalyst(
-    access_key="hmaCeq5L5SmjNr7oeoIy",
-    secret_key="jOMTMQIlFIEAkJW5F6ecs7bblq7VT9dDM7tUcZRW",
-    base_url="https://llm-dev5.ragaai.ai/api"
+    access_key=access_key,
+    secret_key=secret_key,
+    base_url=base_url
 )
 
 # Initialize tracer
 tracer = Tracer(
     project_name="LLAMAINDEX-AzureOpenAI",
-    dataset_name="ReactAgent_tracing_fix",
+    dataset_name="ReactAgent_tracing_fixed",
     tracer_type="Agentic",
 )
-#tracer.set_model_cost({"model_name":deployment,"input_cost_per_token":0.0000006,"output_cost_per_token":0.00000240})
+tracer.set_model_cost({"model_name":deployment,"input_cost_per_token":6,"output_cost_per_token":240})
 init_tracing(catalyst=catalyst, tracer=tracer)
 
 """**Workflow Events**"""
