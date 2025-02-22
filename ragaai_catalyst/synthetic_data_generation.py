@@ -801,6 +801,9 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
         csv_file, csv_ext = os.path.splitext(csv_path)
         if not dst_csv_path:
             dst_csv_path = csv_file + '_with_examples' + csv_ext
+        dst_dir = os.path.dirname(dst_csv_path)
+        if dst_dir:
+            os.makedirs(dst_dir, exist_ok=True)
         fin_df.to_csv(dst_csv_path)
         logger.info(f'CSV with generated examples saved at {dst_csv_path}')
 
