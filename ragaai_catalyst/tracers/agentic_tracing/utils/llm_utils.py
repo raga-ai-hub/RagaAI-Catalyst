@@ -48,7 +48,7 @@ def extract_model_name(args, kwargs, result):
     try:
         if not model:
             model = result.raw.model
-    except:
+    except Exception as e:
         pass
     
     
@@ -305,8 +305,10 @@ def extract_input_data(args, kwargs, result):
     }
 
 
-def calculate_llm_cost(token_usage, model_name, model_costs, model_custom_cost={}):
+def calculate_llm_cost(token_usage, model_name, model_costs, model_custom_cost=None):
     """Calculate cost based on token usage and model"""
+    if model_custom_cost is None:
+        model_custom_cost = {}
     model_costs.update(model_custom_cost)
     if not isinstance(token_usage, dict):
         token_usage = {
