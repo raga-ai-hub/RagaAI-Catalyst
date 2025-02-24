@@ -21,7 +21,7 @@ class EvaluationInput:
     scenarios: List[str]
 
 class Evaluator:
-    def __init__(self, api_key: str, model_name: str = "gpt-4-1106-preview", temperature: float = 0.3, provider: Literal["openai", "xai"] = "openai"):
+    def __init__(self, api_key: str, api_base: str = '', api_version: str = '', model_name: str = "gpt-4-1106-preview", temperature: float = 0.3, provider: Literal["openai", "xai"] = "openai"):
         """
         Args:
             model_name: The OpenAI model to use
@@ -35,7 +35,7 @@ Your response must be a valid JSON object with two keys:
 - 'eval_passed': boolean indicating if all scenarios were met
 - 'reason': string explaining why the evaluation passed or failed, citing specific scenarios that were violated"""
         
-        self.llm_generator = LLMGenerator(api_key=api_key, model_name=model_name, temperature=temperature, provider=provider)
+        self.llm_generator = LLMGenerator(api_key=api_key, api_base=api_base, api_version=api_version, model_name=model_name, temperature=temperature, provider=provider)
     
     def _create_input_template(self, input_data: EvaluationInput) -> str:
         """Creates the input template for the LLM."""
