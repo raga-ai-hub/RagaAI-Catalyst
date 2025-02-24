@@ -595,14 +595,16 @@ executor([message],prompt_params,model_params,llm_caller)
 
 ### Red-teaming
 
-The Red-teaming module provides comprehensive scans to detect model vulnerabilities, biases and misusage. It supports both built-in and custom detectors, with flexible test case generation and evaluation.
+The Red-teaming module provides comprehensive scans to detect model vulnerabilities, biases and misusage.
 
 #### Key Features
 - Support for multiple LLM providers (OpenAI, XAI, ..)
 - Built-in and custom detectors
 - Automatic test case generation
+- Allow users to add their own test cases
 - Flexible evaluation scenarios
 - Detailed reporting and analysis
+  
 ![RedTeam](ragaai_catalyst/redteaming/utils/rt.png)
 
 #### Initialization
@@ -689,18 +691,6 @@ df, save_path = rt.run(
     examples_per_scenario=5 # Number of test cases to generate per scenario
 )
 ```
-
-#### Results and Analysis
-
-The evaluation returns:
-- A pandas DataFrame with test results
-- Path to saved CSV file containing:
-  - Detector used
-  - Test scenario
-  - User message
-  - Model's response
-  - Evaluation score (pass/fail)
-  - Detailed evaluation reason
 
 #### Upload Results (Optional)
 ```python
