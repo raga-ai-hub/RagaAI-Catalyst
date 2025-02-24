@@ -78,7 +78,9 @@ class SyntheticDataGeneration:
             "No connection adapters", 
             "Required API Keys are not set",
             "litellm.BadRequestError",
-            "litellm.AuthenticationError"]
+            "litellm.AuthenticationError", 
+            "Max retries exceeded"
+            ]
         
         for _ in range(num_batches):
             current_batch_size = min(BATCH_SIZE, n - len(all_responses))
