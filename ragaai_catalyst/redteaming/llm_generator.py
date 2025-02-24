@@ -24,9 +24,9 @@ class LLMGenerator:
         self.api_key = api_key
         
         # Initialize client based on provider
-        if provider == "openai":
+        if provider.lower() == "openai":
             self.client = OpenAI(api_key=self.api_key)       
-        elif provider == "xai":
+        elif provider.lower() == "xai":
             self.client = OpenAI(
                 api_key=self.api_key,
                 base_url="https://api.x.ai/v1"
