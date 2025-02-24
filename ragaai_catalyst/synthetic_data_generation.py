@@ -794,14 +794,17 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
             user_examples = row.get('user_examples')
             user_context = row.get('user_context')
             row_dict = row.to_dict()
-            examples = self.generate_examples(
-                user_instruction = user_instruction, 
-                user_examples = user_examples, 
-                user_context = user_context, 
-                no_examples = no_examples, 
-                model_config = model_config, 
-                api_key = api_key
-            )
+            try:
+                examples = self.generate_examples(
+                    user_instruction = user_instruction, 
+                    user_examples = user_examples, 
+                    user_context = user_context, 
+                    no_examples = no_examples, 
+                    model_config = model_config, 
+                    api_key = api_key
+                )
+            except Exception as e:
+                continue
             row_dict['generated_examples'] = examples
             fin_df_list.append(row_dict)
         fin_df = pd.DataFrame(fin_df_list)
