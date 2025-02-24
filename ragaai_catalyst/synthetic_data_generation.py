@@ -611,7 +611,7 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
             model_config: Dict[str, Any] = dict(), 
             api_key: Optional[str] = None
             ):
-        if not no_examples:
+        if no_examples is None:
             no_examples = 5
         relevant_examples_str = '\n'.join(relevant_examples)
         irrelevant_examples_str = '\n'.join(irrelevant_examples)
@@ -643,7 +643,7 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
             model_config: Dict[str, Any] = dict(), 
             api_key: Optional[str] = None
             ):
-        if not no_examples:
+        if no_examples is None:
             no_examples = 5
         user_message = f"**User Instruction:** {user_instruction}"
         if user_examples:
@@ -694,8 +694,9 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
         api_version = model_config.get("api_version")
         self._initialize_client(provider, api_key, api_base, api_version, internal_llm_proxy=kwargs.get("internal_llm_proxy", None))
 
-        if not no_examples:
+        if no_examples is None:
             no_examples = 5
+        assert no_examples >= 0, 'The number of examples cannot be less than 0'
         relevant_examples = []
         irrelevant_examples = []
         max_relevant_examples = 5
@@ -782,8 +783,9 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
             api_key: Optional[str] = None, 
             **kwargs
             ):
-        if not no_examples:
+        if no_examples is None:
             no_examples = 5
+        assert no_examples >= 0, 'The number of examples cannot be less than  0'
         df = pd.read_csv(csv_path)
         assert 'user_instruction' in df.columns, 'The csv must have a column named user_instruction'
         fin_df_list = []
