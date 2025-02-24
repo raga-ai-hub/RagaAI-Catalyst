@@ -6,7 +6,7 @@ from openai import OpenAI
 
 class LLMGenerator:
     
-    def __init__(self, api_key: str, model_name: str = "gpt-4-1106-preview", temperature: float = 0.7, 
+    def __init__(self, api_key: str, api_base: str = '', api_version: str = '', model_name: str = "gpt-4-1106-preview", temperature: float = 0.7, 
                  provider: str = "openai"):
         """
         Initialize the LLM generator with specified provider client.
@@ -21,22 +21,28 @@ class LLMGenerator:
         self.temperature = temperature
         self.provider = provider
         self.api_key = api_key
+        self.api_base = api_base
+        self.api_version = api_version
 
-        self._validate_provider_api()
+        self._validate_api_key()
+        self._validate_provider()
 
-    
-    def _validate_provider_api(self):
+    def _validate_api_key(self):
+        if self.api_key == '' or self.api_key is None:
+            raise ValueError("Api Key is required")
+
+    def _validate_azure_keys(self):
+        if self.api_base == '' or self.api_base is None:
+            raise ValueError("Azure Api Base is required")
+        if self.api_version == '' or self.api_version is None:
+            raise ValueError("Azure Api Version is required")
+
+    def _validate_provider(self):
         if self.provider.lower() == 'azure':
+            self._validate_azure_keys()
             os.environ["AZURE_API_KEY"] = self.api_key
-            azure_api_base = os.getenv("AZURE_API_BASE", None)
-            if azure_api_base is None:
-                raise ValueError("AZURE_API_BASE must be provided in the environment for Azure.")
-            os.environ["AZURE_API_BASE"] = azure_api_base
-            
-            azure_api_version = os.getenv("AZURE_API_VERSION", None)
-            if azure_api_version is None:
-                raise ValueError("AZURE_API_VERSION must be provided in the environment for Azure.")
-            os.environ["AZURE_API_VERSION"] = azure_api_version
+            os.environ["AZURE_API_BASE"] = self.api_base
+            os.environ["AZURE_API_VERSION"] = self.api_version
         
     def get_xai_response(self, system_prompt: str, user_prompt: str, max_tokens: int = 1000) -> Dict[str, Any]:
         client = OpenAI(
