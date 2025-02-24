@@ -607,7 +607,8 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
             user_instruction: str, 
             user_examples: Optional[List[str] | str] = None, 
             user_context: Optional[str] = None, 
-            relevant_examples: List[str]=[], irrelevant_examples: List[str]=[], 
+            relevant_examples: List[str]=[], 
+            irrelevant_examples: List[str]=[], 
             no_examples: Optional[int] = None, 
             model_config: Dict[str, Any] = dict(), 
             api_key: Optional[str] = None
@@ -681,6 +682,7 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
         self, 
         user_instruction: str, 
         user_examples:Optional[List[str] | str] = None, 
+        user_context: Optional[str] = None, 
         no_examples: Optional[int] = None, 
         model_config: Optional[Dict[str, Any]] = None, 
         api_key: Optional[str] = None, 
@@ -720,6 +722,7 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
                 examples_str = self._generate_examples(
                     user_instruction = user_instruction, 
                     user_examples = user_examples, 
+                    user_context = user_context, 
                     model_config = model_config, 
                     api_key = api_key
                 )
@@ -748,6 +751,7 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
                 final_examples_str = self._generate_examples_iter(
                     user_instruction = user_instruction, 
                     user_examples = user_examples, 
+                    user_context = user_context, 
                     relevant_examples = fin_relevant_examples, 
                     irrelevant_examples = fin_irrelevant_examples, 
                     no_examples = more_no_examples, 
@@ -762,6 +766,7 @@ Irrelevant Examples: Any examples that are not relevant to the user's instructio
             final_examples_str = self._generate_examples(
                 user_instruction = user_instruction, 
                 user_examples = user_examples, 
+                user_context = user_context, 
                 no_examples = no_examples, 
                 model_config = model_config, 
                 api_key = api_key
