@@ -2,6 +2,8 @@ import requests
 import json
 import os
 from datetime import datetime
+from urllib.parse import urlparse, urlunparse
+import re
 
 
 class UploadAgenticTraces:
@@ -39,11 +41,27 @@ class UploadAgenticTraces:
                                         data=payload,
                                         timeout=self.timeout)
             if response.status_code == 200:
-                presignedUrls = response.json()["data"]["presignedUrls"][0]
-                return presignedUrls
+                presignedURLs = response.json()["data"]["presignedUrls"][0]
+                presignedurl = self.update_presigned_url(presignedURLs,self.base_url)
+                return presignedurl
+            
         except requests.exceptions.RequestException as e:
             print(f"Error while getting presigned url: {e}")
             return None
+        
+    def update_presigned_url(self, presigned_url, base_url):
+        """Replaces the domain (and port, if applicable) of the presigned URL 
+        with that of the base URL only if the base URL contains 'localhost' or an IP address."""
+        presigned_parts = urlparse(presigned_url)
+        base_parts = urlparse(base_url)
+        # Check if base_url contains localhost or an IP address
+        if re.match(r'^(localhost|\d{1,3}(\.\d{1,3}){3})$', base_parts.hostname):
+            new_netloc = base_parts.hostname  # Extract domain from base_url
+            if base_parts.port:  # Add port if present in base_url
+                new_netloc += f":{base_parts.port}"
+            updated_parts = presigned_parts._replace(netloc=new_netloc)
+            return urlunparse(updated_parts)
+        return presigned_url
 
     def _put_presigned_url(self, presignedUrl, filename):
         headers = {
