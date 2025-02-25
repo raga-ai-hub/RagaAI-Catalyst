@@ -14,7 +14,7 @@ logging_level = (
 )
 
 
-def upload_trace_metric(json_file_path, dataset_name, project_name):
+def upload_trace_metric(json_file_path, dataset_name, project_name, base_url=None):
     try:
         with open(json_file_path, "r") as f:
             traces = json.load(f)
@@ -43,8 +43,9 @@ def upload_trace_metric(json_file_path, dataset_name, project_name):
             "datasetName": dataset_name,
             "metrics": metrics
         })
+        url_base = base_url if base_url is not None else RagaAICatalyst.BASE_URL
         response = requests.request("POST",
-                                    f"{RagaAICatalyst.BASE_URL}/v1/llm/trace/metrics",
+                                    f"{url_base}/v1/llm/trace/metrics",
                                     headers=headers,
                                     data=payload,
                                     timeout=10)
