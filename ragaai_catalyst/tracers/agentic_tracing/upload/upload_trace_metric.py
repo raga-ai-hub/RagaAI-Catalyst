@@ -3,6 +3,7 @@ import logging
 import requests
 import os
 import json
+import time
 from ....ragaai_catalyst import RagaAICatalyst
 from ..utils.get_user_trace_metrics import get_user_trace_metrics
 
@@ -44,11 +45,16 @@ def upload_trace_metric(json_file_path, dataset_name, project_name, base_url=Non
             "metrics": metrics
         })
         url_base = base_url if base_url is not None else RagaAICatalyst.BASE_URL
+        start_time = time.time()
+        endpoint = f"{url_base}/v1/llm/trace/metrics"
         response = requests.request("POST",
-                                    f"{url_base}/v1/llm/trace/metrics",
+                                    endpoint,
                                     headers=headers,
                                     data=payload,
                                     timeout=10)
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.debug(
+            f"API Call: [POST] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
         if response.status_code != 200:
             raise ValueError(f"Error inserting agentic trace metrics")
     except requests.exceptions.RequestException as e:

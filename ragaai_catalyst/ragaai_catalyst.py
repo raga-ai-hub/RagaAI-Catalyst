@@ -1,6 +1,7 @@
 import os
 import logging
 import requests
+import time
 from typing import Dict, Optional, Union
 import re
 logger = logging.getLogger("RagaAICatalyst")
@@ -116,12 +117,17 @@ class RagaAICatalyst:
             for service, key in self.api_keys.items()
         ]
         json_data = {"secrets": secrets}
+        start_time = time.time()
+        endpoint = f"{RagaAICatalyst.BASE_URL}/v1/llm/secrets/upload"
         response = requests.post(
-            f"{RagaAICatalyst.BASE_URL}/v1/llm/secrets/upload",
+            endpoint,
             headers=headers,
             json=json_data,
             timeout=RagaAICatalyst.TIMEOUT,
         )
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.debug(
+            f"API Call: [POST] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
         if response.status_code == 200:
             print("API keys uploaded successfully")
         else:
@@ -162,12 +168,17 @@ class RagaAICatalyst:
         headers = {"Content-Type": "application/json"}
         json_data = {"accessKey": access_key, "secretKey": secret_key}
 
+        start_time = time.time()
+        endpoint = f"{RagaAICatalyst.BASE_URL}/token"
         response = requests.post(
-            f"{ RagaAICatalyst.BASE_URL}/token",
+            endpoint,
             headers=headers,
             json=json_data,
             timeout=RagaAICatalyst.TIMEOUT,
         )
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.debug(
+            f"API Call: [POST] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
 
         # Handle specific status codes before raising an error
         if response.status_code == 400:
@@ -202,11 +213,16 @@ class RagaAICatalyst:
             headers = {
             "Authorization": f'Bearer {os.getenv("RAGAAI_CATALYST_TOKEN")}',
             }
+            start_time = time.time()
+            endpoint = f"{RagaAICatalyst.BASE_URL}/v2/llm/usecase"
             response = requests.get(
-                f"{RagaAICatalyst.BASE_URL}/v2/llm/usecase",
+                endpoint,
                 headers=headers,
                 timeout=self.TIMEOUT
             )
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                f"API Call: [GET] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
             response.raise_for_status()  # Use raise_for_status to handle HTTP errors
             usecase = response.json()["data"]["usecase"]
             return usecase
@@ -241,12 +257,17 @@ class RagaAICatalyst:
             "Authorization": f'Bearer {os.getenv("RAGAAI_CATALYST_TOKEN")}',
         }
         try:
+            start_time = time.time()
+            endpoint = f"{RagaAICatalyst.BASE_URL}/v2/llm/project"
             response = requests.post(
-                f"{RagaAICatalyst.BASE_URL}/v2/llm/project",
+                endpoint,
                 headers=headers,
                 json=json_data,
                 timeout=self.TIMEOUT,
             )
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                f"API Call: [POST] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
             response.raise_for_status()
             print(
                 f"Project Created Successfully with name {response.json()['data']['name']} & usecase {usecase}"
@@ -310,11 +331,16 @@ class RagaAICatalyst:
             "Authorization": f'Bearer {os.getenv("RAGAAI_CATALYST_TOKEN")}',
         }
         try:
+            start_time = time.time()
+            endpoint = f"{RagaAICatalyst.BASE_URL}/v2/llm/projects?size={num_projects}"
             response = requests.get(
-                f"{RagaAICatalyst.BASE_URL}/v2/llm/projects?size={num_projects}",
+                endpoint,
                 headers=headers,
                 timeout=self.TIMEOUT,
             )
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                f"API Call: [GET] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
             response.raise_for_status()
             logger.debug("Projects list retrieved successfully")
 
@@ -378,11 +404,16 @@ class RagaAICatalyst:
             "Authorization": f'Bearer {os.getenv("RAGAAI_CATALYST_TOKEN")}',
         }
         try:
+            start_time = time.time()
+            endpoint = f"{RagaAICatalyst.BASE_URL}/v1/llm/llm-metrics"
             response = requests.get(
-                f"{RagaAICatalyst.BASE_URL}/v1/llm/llm-metrics",
+                endpoint,
                 headers=headers,
                 timeout=RagaAICatalyst.TIMEOUT,
             )
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                f"API Call: [GET] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
             response.raise_for_status()
             logger.debug("Metrics list retrieved successfully")
 
