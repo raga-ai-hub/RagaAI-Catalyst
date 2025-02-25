@@ -135,27 +135,43 @@ class UploadAgenticTraces:
                             "spanType": span["type"],
                         })
                 else:
-                    datasetSpans.append({
+                    datasetSpans.extend(self._get_agent_dataset_spans(span, datasetSpans))
+            datasetSpans = [dict(t) for t in set(tuple(sorted(d.items())) for d in datasetSpans)]
+            
+            return datasetSpans
+        except Exception as e:
+            print(f"Error while reading dataset spans: {e}")
+            return None
+
+    def _get_agent_dataset_spans(self, span, datasetSpans):
+        datasetSpans.append({
                                 "spanId": span["id"],
                                 "spanName": span["name"],
                                 "spanHash": span["hash_id"],
                                 "spanType": span["type"],
                             })
-                    children = span["data"]["children"]
-                    for child in children:
-                        existing_span = next((s for s in datasetSpans if s["spanHash"] == child["hash_id"]), None)
-                        if existing_span is None:
-                            datasetSpans.append({
-                                "spanId": child["id"],
-                                "spanName": child["name"],
-                                "spanHash": child["hash_id"],
-                                "spanType": child["type"],
-                            })
-            return datasetSpans
-        except Exception as e:
-            print(f"Error while reading dataset spans: {e}")
-            return None
-    
+        children = span["data"]["children"]
+        for child in children:
+            if child["type"] != "agent":
+                existing_span = next((s for s in datasetSpans if s["spanHash"] == child["hash_id"]), None)
+                if existing_span is None:
+                    datasetSpans.append({
+                        "spanId": child["id"],
+                        "spanName": child["name"],
+                        "spanHash": child["hash_id"],
+                        "spanType": child["type"],
+                    })
+            else:
+                datasetSpans.append({
+                            "spanId": child["id"],
+                            "spanName": child["name"],
+                            "spanHash": child["hash_id"],
+                            "spanType": child["type"],
+                        })
+                self._get_agent_dataset_spans(child, datasetSpans)
+        return datasetSpans
+        
+
     def upload_agentic_traces(self):
         try:
             presignedUrl = self._get_presigned_url()
