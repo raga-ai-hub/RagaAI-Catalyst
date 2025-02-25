@@ -1,7 +1,11 @@
 import requests
 import json
 import os
+import time
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 class UploadAgenticTraces:
@@ -33,11 +37,17 @@ class UploadAgenticTraces:
         }
 
         try:
+            start_time = time.time()
+            endpoint = f"{self.base_url}/v1/llm/presigned-url"
             response = requests.request("GET", 
-                                        f"{self.base_url}/v1/llm/presigned-url", 
+                                        endpoint, 
                                         headers=headers, 
                                         data=payload,
                                         timeout=self.timeout)
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                f"API Call: [GET] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
+            
             if response.status_code == 200:
                 presignedUrls = response.json()["data"]["presignedUrls"][0]
                 return presignedUrls
@@ -60,11 +70,15 @@ class UploadAgenticTraces:
             print(f"Error while reading file: {e}")
             return None
         try:
+            start_time = time.time()
             response = requests.request("PUT", 
                                         presignedUrl, 
                                         headers=headers, 
                                         data=payload,
                                         timeout=self.timeout)
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                f"API Call: [PUT] {presignedUrl} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
             if response.status_code != 200 or response.status_code != 201:
                 return response, response.status_code
         except requests.exceptions.RequestException as e:
@@ -83,11 +97,16 @@ class UploadAgenticTraces:
                 "datasetSpans": self._get_dataset_spans(), #Extra key for agentic traces
             })
         try:
+            start_time = time.time()
+            endpoint = f"{self.base_url}/v1/llm/insert/trace"
             response = requests.request("POST", 
-                                        f"{self.base_url}/v1/llm/insert/trace", 
+                                        endpoint, 
                                         headers=headers, 
                                         data=payload,
                                         timeout=self.timeout)
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                f"API Call: [POST] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
             if response.status_code != 200:
                 print(f"Error inserting traces: {response.json()['message']}")
                 return None
