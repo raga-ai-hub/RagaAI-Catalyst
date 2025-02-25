@@ -117,25 +117,7 @@ class UploadAgenticTraces:
                         })
                 else:
                     datasetSpans.extend(self._get_agent_dataset_spans(span, datasetSpans))
-                    # datasetSpans.append({
-                    #             "spanId": span["id"],
-                    #             "spanName": span["name"],
-                    #             "spanHash": span["hash_id"],
-                    #             "spanType": span["type"],
-                    #         })
-                    # children = span["data"]["children"]
-                    # for child in children:
-                    #     existing_span = next((s for s in datasetSpans if s["spanHash"] == child["hash_id"]), None)
-                    #     if existing_span is None:
-                    #         datasetSpans.append({
-                    #             "spanId": child["id"],
-                    #             "spanName": child["name"],
-                    #             "spanHash": child["hash_id"],
-                    #             "spanType": child["type"],
-                    #         })
             datasetSpans = [dict(t) for t in set(tuple(sorted(d.items())) for d in datasetSpans)]
-            with open("datasetSpans_new.json", "w") as f:
-                json.dump(datasetSpans, f, default=str, indent=4)
             
             return datasetSpans
         except Exception as e:
