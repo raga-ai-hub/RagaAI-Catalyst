@@ -4,7 +4,7 @@ from .trace_utils import (
     convert_usage_to_dict,
 )
 from importlib import resources
-from litellm import model_cost
+#from litellm import model_cost
 import json
 import os
 import asyncio
@@ -13,6 +13,15 @@ import tiktoken
 import logging
 
 logger = logging.getLogger(__name__)
+
+def get_model_cost():
+    file="model_prices_and_context_window_backup.json"
+    d={}
+    with resources.open_text("ragaai_catalyst.tracers.utils", file) as f:
+        d= json.load(f)
+    return d 
+
+model_cost = get_model_cost()
 
 def extract_model_name(args, kwargs, result):
     """Extract model name from kwargs or result"""

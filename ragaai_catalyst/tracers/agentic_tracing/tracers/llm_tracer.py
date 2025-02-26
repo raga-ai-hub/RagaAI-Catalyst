@@ -12,7 +12,6 @@ import contextvars
 import traceback
 import importlib
 import sys
-from litellm import model_cost
 import logging
 
 try:
@@ -29,7 +28,8 @@ from ..utils.llm_utils import (
     sanitize_api_keys,
     sanitize_input,
     extract_llm_output,
-    num_tokens_from_messages
+    num_tokens_from_messages,
+    get_model_cost
 )
 from ..utils.unique_decorator import generate_unique_hash
 from ..utils.file_name_tracker import TrackName
@@ -49,7 +49,7 @@ class LLMTracerMixin:
         self.file_tracker = TrackName()
         self.patches = []
         try:
-            self.model_costs = model_cost
+            self.model_costs = get_model_cost()
         except Exception as e:
             self.model_costs = {
                 "default": {"input_cost_per_token": 0.0, "output_cost_per_token": 0.0}
