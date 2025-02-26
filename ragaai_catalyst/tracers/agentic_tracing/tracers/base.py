@@ -18,14 +18,11 @@ from ragaai_catalyst.tracers.agentic_tracing.data.data_structure import (
     Resources,
     Component,
 )
-from ragaai_catalyst.tracers.agentic_tracing.upload.upload_agentic_traces import UploadAgenticTraces
-from ragaai_catalyst.tracers.agentic_tracing.upload.upload_code import upload_code
-from ragaai_catalyst.tracers.agentic_tracing.upload.upload_trace_metric import upload_trace_metric
 from ragaai_catalyst.tracers.agentic_tracing.utils.file_name_tracker import TrackName
 from ragaai_catalyst.tracers.agentic_tracing.utils.zip_list_of_unique_files import zip_list_of_unique_files
 from ragaai_catalyst.tracers.agentic_tracing.utils.span_attributes import SpanAttributes
-from ragaai_catalyst.tracers.agentic_tracing.utils.create_dataset_schema import create_dataset_schema_with_trace
 from ragaai_catalyst.tracers.agentic_tracing.utils.system_monitor import SystemMonitor
+from ragaai_catalyst.tracers.agentic_tracing.upload.trace_uploader import submit_upload_task, get_task_status, ensure_uploader_running
 
 import logging
 
@@ -67,6 +64,7 @@ class BaseTracer:
         self.dataset_name = self.user_details["dataset_name"]
         self.project_id = self.user_details["project_id"]
         self.trace_name = self.user_details["trace_name"]
+        self.base_url = self.user_details.get("base_url", RagaAICatalyst.BASE_URL)  # Get base_url from user_details or fallback to default
         self.visited_metrics = []
         self.trace_metrics = []
 
@@ -86,6 +84,14 @@ class BaseTracer:
         self.tracking = False
         self.system_monitor = None
         self.gt = None
+
+        # For upload tracking
+        self.upload_task_id = None
+        
+        # For backward compatibility
+        self._upload_tasks = []
+        self._is_uploading = False
+        self._upload_completed_callback = None
 
     def _get_system_info(self) -> SystemInfo:
         return self.system_monitor.get_system_info()
@@ -178,135 +184,221 @@ class BaseTracer:
             metrics=[]  # Initialize empty metrics list
         )
 
+    def on_upload_completed(self, callback_fn):
+        """
+        Register a callback function to be called when all uploads are completed.
+        For backward compatibility - simulates the old callback mechanism.
+        
+        Args:
+            callback_fn: A function that takes a single argument (the tracer instance)
+        """
+        self._upload_completed_callback = callback_fn
+        
+        # Check for status periodically and call callback when complete
+        def check_status_and_callback():
+            if self.upload_task_id:
+                status = self.get_upload_status()
+                if status.get("status") in ["completed", "failed"]:
+                    self._is_uploading = False
+                    # Execute callback
+                    try:
+                        if self._upload_completed_callback:
+                            self._upload_completed_callback(self)
+                    except Exception as e:
+                        logger.error(f"Error in upload completion callback: {e}")
+                    return
+                
+                # Schedule next check
+                threading.Timer(5.0, check_status_and_callback).start()
+        
+        # Start status checking if we already have a task
+        if self.upload_task_id:
+            threading.Timer(5.0, check_status_and_callback).start()
+            
+        return self
+        
+    def wait_for_uploads(self, timeout=None):
+        """
+        Wait for all async uploads to complete.
+        This provides backward compatibility with the old API.
+        
+        Args:
+            timeout: Maximum time to wait in seconds (None means wait indefinitely)
+            
+        Returns:
+            True if all uploads completed successfully, False otherwise
+        """
+        if not self.upload_task_id:
+            return True
+            
+        start_time = time.time()
+        while True:
+            # Check if timeout expired
+            if timeout is not None and time.time() - start_time > timeout:
+                logger.warning(f"Upload wait timed out after {timeout} seconds")
+                return False
+                
+            # Get current status
+            status = self.get_upload_status()
+            if status.get("status") == "completed":
+                return True
+            elif status.get("status") == "failed":
+                logger.error(f"Upload failed: {status.get('error')}")
+                return False
+            elif status.get("status") == "unknown":
+                logger.warning("Upload task not found, assuming completed")
+                return True
+                
+            # Sleep before checking again
+            time.sleep(1.0)
+
     def stop(self):
-        """Stop the trace and save to JSON file"""
+        """Stop the trace and save to JSON file, then submit to background uploader"""
         if hasattr(self, "trace"):
+            # Set end times
             self.trace.data[0]["end_time"] = datetime.now().astimezone().isoformat()
             self.trace.end_time = datetime.now().astimezone().isoformat()
 
-            # track memory usage
+            # Stop tracking metrics
             self.tracking = False
-            self.trace.metadata.resources.memory.values = self.memory_usage_list
-
-            # track cpu usage
-            self.trace.metadata.resources.cpu.values = self.cpu_usage_list
-
-            # track network and disk usage
-            network_uploads, network_downloads = 0, 0
-            disk_read, disk_write = 0, 0
-
-            # Handle cases where lists might have different lengths
-            min_len = min(len(self.network_usage_list), len(self.disk_usage_list))
-            for i in range(min_len):
-                network_usage = self.network_usage_list[i]
-                disk_usage = self.disk_usage_list[i]
-
-                # Safely get network usage values with defaults of 0
-                network_uploads += network_usage.get('uploads', 0) or 0
-                network_downloads += network_usage.get('downloads', 0) or 0
-
-                # Safely get disk usage values with defaults of 0
-                disk_read += disk_usage.get('disk_read', 0) or 0
-                disk_write += disk_usage.get('disk_write', 0) or 0
-
-            # track disk usage
-            disk_list_len = len(self.disk_usage_list)
-            self.trace.metadata.resources.disk.read = [disk_read / disk_list_len if disk_list_len > 0 else 0]
-            self.trace.metadata.resources.disk.write = [disk_write / disk_list_len if disk_list_len > 0 else 0]
-
-            # track network usage
-            network_list_len = len(self.network_usage_list)
-            self.trace.metadata.resources.network.uploads = [
-                network_uploads / network_list_len if network_list_len > 0 else 0]
-            self.trace.metadata.resources.network.downloads = [
-                network_downloads / network_list_len if network_list_len > 0 else 0]
-
-            # update interval time
-            self.trace.metadata.resources.cpu.interval = float(self.interval_time)
-            self.trace.metadata.resources.memory.interval = float(self.interval_time)
-            self.trace.metadata.resources.disk.interval = float(self.interval_time)
-            self.trace.metadata.resources.network.interval = float(self.interval_time)
-
-            # Change span ids to int
+            
+            # Process and aggregate metrics
+            self._process_resource_metrics()
+            
+            # Process trace spans
             self.trace = self._change_span_ids_to_int(self.trace)
             self.trace = self._change_agent_input_output(self.trace)
             self.trace = self._extract_cost_tokens(self.trace)
 
-            # Create traces directory if it doesn't exist
+            # Create traces directory and prepare file paths
             self.traces_dir = tempfile.gettempdir()
             filename = self.trace.id + ".json"
             filepath = f"{self.traces_dir}/{filename}"
 
-            # get unique files and zip it. Generate a unique hash ID for the contents of the files
+            # Process source files
             list_of_unique_files = self.file_tracker.get_unique_files()
             hash_id, zip_path = zip_list_of_unique_files(
                 list_of_unique_files, output_dir=self.traces_dir
             )
-
-            # replace source code with zip_path
             self.trace.metadata.system_info.source_code = hash_id
 
-            # Add metrics to trace before saving
+            # Prepare trace data for saving
             trace_data = self.trace.to_dict()
             trace_data["metrics"] = self.trace_metrics
-
-            # Clean up trace_data before saving
             cleaned_trace_data = self._clean_trace(trace_data)
-
-            # Format interactions and add to trace
+            
+            # Add interactions
             interactions = self.format_interactions()
-            # trace_data["workflow"] = interactions["workflow"]
             cleaned_trace_data["workflow"] = interactions["workflow"]
 
+            # Save trace data to file
             with open(filepath, "w") as f:
                 json.dump(cleaned_trace_data, f, cls=TracerJSONEncoder, indent=2)
 
-            logger.info(" Traces saved successfully.")
+            logger.info("Traces saved successfully.")
             logger.debug(f"Trace saved to {filepath}")
-            # Upload traces
+            
+            # Make sure uploader process is available
+            ensure_uploader_running()
 
-            json_file_path = str(filepath)
-            project_name = self.project_name
-            project_id = self.project_id
-            dataset_name = self.dataset_name
-            user_detail = self.user_details
-            base_url = RagaAICatalyst.BASE_URL
-
-            ## create dataset schema
-            response = create_dataset_schema_with_trace(
-                dataset_name=dataset_name, project_name=project_name
-            )
-
-            ##Upload trace metrics
-            response = upload_trace_metric(
-                json_file_path=json_file_path,
-                dataset_name=self.dataset_name,
-                project_name=self.project_name,
-            )
-
-            upload_traces = UploadAgenticTraces(
-                json_file_path=json_file_path,
-                project_name=project_name,
-                project_id=project_id,
-                dataset_name=dataset_name,
-                user_detail=user_detail,
-                base_url=base_url,
-            )
-            upload_traces.upload_agentic_traces()
-
-            # Upload Codehash
-            response = upload_code(
+            logger.debug("Base URL used for uploading: {}".format(self.base_url))
+            
+            # Submit to background process for uploading
+            self.upload_task_id = submit_upload_task(
+                filepath=filepath,
                 hash_id=hash_id,
                 zip_path=zip_path,
-                project_name=project_name,
-                dataset_name=dataset_name,
+                project_name=self.project_name,
+                project_id=self.project_id,
+                dataset_name=self.dataset_name,
+                user_details=self.user_details,
+                base_url=self.base_url
             )
-            print(response)
+            
+            # # For backward compatibility
+            # self._is_uploading = True
+            
+            # # Start checking for completion if a callback is registered
+            # if self._upload_completed_callback:
+            #     # Start a thread to check status and call callback when complete
+            #     def check_status_and_callback():
+            #         status = self.get_upload_status()
+            #         if status.get("status") in ["completed", "failed"]:
+            #             self._is_uploading = False
+            #             # Execute callback
+            #             try:
+            #                 self._upload_completed_callback(self)
+            #             except Exception as e:
+            #                 logger.error(f"Error in upload completion callback: {e}")
+            #             return
+                    
+            #         # Check again after a delay
+            #         threading.Timer(5.0, check_status_and_callback).start()
+                
+            #     # Start checking
+            #     threading.Timer(5.0, check_status_and_callback).start()
+            
+            logger.info(f"Submitted upload task with ID: {self.upload_task_id}")
 
-        # Cleanup
+        # Cleanup local resources
         self.components = []
         self.file_tracker.reset()
+        
+    def get_upload_status(self):
+        """
+        Get the status of the upload task.
+        
+        Returns:
+            dict: Status information
+        """
+        if not self.upload_task_id:
+            return {"status": "not_started", "message": "No upload has been initiated"}
+            
+        return get_task_status(self.upload_task_id)
 
+    def _process_resource_metrics(self):
+        """Process and aggregate all resource metrics"""
+        # Process memory metrics
+        self.trace.metadata.resources.memory.values = self.memory_usage_list
+        
+        # Process CPU metrics
+        self.trace.metadata.resources.cpu.values = self.cpu_usage_list
+        
+        # Process network and disk metrics
+        network_uploads, network_downloads = 0, 0
+        disk_read, disk_write = 0, 0
+
+        # Handle cases where lists might have different lengths
+        min_len = min(len(self.network_usage_list), len(self.disk_usage_list)) if self.network_usage_list and self.disk_usage_list else 0
+        for i in range(min_len):
+            network_usage = self.network_usage_list[i]
+            disk_usage = self.disk_usage_list[i]
+
+            # Safely get network usage values with defaults of 0
+            network_uploads += network_usage.get('uploads', 0) or 0
+            network_downloads += network_usage.get('downloads', 0) or 0
+
+            # Safely get disk usage values with defaults of 0
+            disk_read += disk_usage.get('disk_read', 0) or 0
+            disk_write += disk_usage.get('disk_write', 0) or 0
+
+        # Set aggregate values
+        disk_list_len = len(self.disk_usage_list)
+        self.trace.metadata.resources.disk.read = [disk_read / disk_list_len if disk_list_len > 0 else 0]
+        self.trace.metadata.resources.disk.write = [disk_write / disk_list_len if disk_list_len > 0 else 0]
+
+        network_list_len = len(self.network_usage_list)
+        self.trace.metadata.resources.network.uploads = [
+            network_uploads / network_list_len if network_list_len > 0 else 0]
+        self.trace.metadata.resources.network.downloads = [
+            network_downloads / network_list_len if network_list_len > 0 else 0]
+
+        # Set interval times
+        self.trace.metadata.resources.cpu.interval = float(self.interval_time)
+        self.trace.metadata.resources.memory.interval = float(self.interval_time)
+        self.trace.metadata.resources.disk.interval = float(self.interval_time)
+        self.trace.metadata.resources.network.interval = float(self.interval_time)
+    
     def add_component(self, component: Component):
         """Add a component to the trace"""
         self.components.append(component)
@@ -1107,3 +1199,99 @@ class BaseTracer:
 
             return local_metrics_results
 
+
+    def upload_directly(self):
+        """Upload trace directly without using the background process"""
+        # Check if we have necessary details
+        if not hasattr(self, 'trace') or not self.trace_id:
+            print("No trace to upload")
+            return False
+            
+        # Get the filepath from the last trace
+        trace_dir = tempfile.gettempdir()
+        trace_file = os.path.join(trace_dir, f"{self.trace_id}.json")
+        
+        # If filepath wasn't saved from previous stop() call, try to find it
+        if not os.path.exists(trace_file):
+            print(f"Looking for trace file for {self.trace_id}")
+            # Try to find the trace file by pattern
+            for file in os.listdir(trace_dir):
+                if file.endswith(".json") and self.trace_id in file:
+                    trace_file = os.path.join(trace_dir, file)
+                    print(f"Found trace file: {trace_file}")
+                    break
+        
+        if not os.path.exists(trace_file):
+            print(f"Trace file not found for ID {self.trace_id}")
+            return False
+            
+        print(f"Starting direct upload of {trace_file}")
+        
+        try:
+            # 1. Create the dataset schema
+            print("Creating dataset schema...")
+            from ragaai_catalyst.tracers.agentic_tracing.utils.create_dataset_schema import create_dataset_schema_with_trace
+            response = create_dataset_schema_with_trace(
+                dataset_name=self.dataset_name,
+                project_name=self.project_name
+            )
+            print(f"Schema created: {response}")
+            
+            # 2. Upload trace metrics
+            print("Uploading trace metrics...")
+            from ragaai_catalyst.tracers.agentic_tracing.upload.upload_trace_metric import upload_trace_metric
+            response = upload_trace_metric(
+                json_file_path=trace_file,
+                dataset_name=self.dataset_name,
+                project_name=self.project_name,
+            )
+            print(f"Metrics uploaded: {response}")
+            
+            # 3. Get code hash and zip path if available
+            code_hash = None
+            zip_path = None
+            try:
+                with open(trace_file, 'r') as f:
+                    data = json.load(f)
+                    code_hash = data.get("metadata", {}).get("system_info", {}).get("source_code")
+                    if code_hash:
+                        zip_path = os.path.join(trace_dir, f"{code_hash}.zip")
+                        print(f"Found code hash: {code_hash}")
+                        print(f"Zip path: {zip_path}")
+            except Exception as e:
+                print(f"Error getting code hash: {e}")
+            
+            # 4. Upload agentic traces
+            print("Uploading agentic traces...")
+            from ragaai_catalyst.tracers.agentic_tracing.upload.upload_agentic_traces import UploadAgenticTraces
+            from ragaai_catalyst import RagaAICatalyst
+            upload_traces = UploadAgenticTraces(
+                json_file_path=trace_file,
+                project_name=self.project_name,
+                project_id=self.project_id,
+                dataset_name=self.dataset_name,
+                user_detail=self.user_details,
+                base_url=RagaAICatalyst.BASE_URL,
+            )
+            upload_traces.upload_agentic_traces()
+            print("Agentic traces uploaded successfully")
+            
+            # 5. Upload code hash if available
+            if code_hash and zip_path and os.path.exists(zip_path):
+                print(f"Uploading code hash: {code_hash}")
+                from ragaai_catalyst.tracers.agentic_tracing.upload.upload_code import upload_code
+                response = upload_code(
+                    hash_id=code_hash,
+                    zip_path=zip_path,
+                    project_name=self.project_name,
+                    dataset_name=self.dataset_name,
+                )
+                print(f"Code uploaded: {response}")
+            
+            print("Upload completed successfully - check UI now")
+            return True
+        except Exception as e:
+            print(f"Error during direct upload: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
