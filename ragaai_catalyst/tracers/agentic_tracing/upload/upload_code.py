@@ -94,7 +94,7 @@ def _fetch_presigned_url(project_name, dataset_name, base_url=None):
 
         if response.status_code == 200:
             presigned_url = response.json()["data"]["presignedUrls"][0]
-            presigned_url = update_presigned_url(presigned_url,RagaAICatalyst.BASE_URL)
+            presigned_url = update_presigned_url(presigned_url,url_base)
             return presigned_url
         else:
             raise Exception(f"Failed to fetch code hashes: {response.json()['message']}")
