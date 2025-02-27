@@ -15,6 +15,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 def get_model_cost():
+    """Load model costs from a JSON file. 
+    Note: This file should be updated periodically or whenever a new package is created to ensure accurate cost calculations.
+    To Do: Implement to do this automatically.
+    """
     file="model_prices_and_context_window_backup.json"
     d={}
     with resources.open_text("ragaai_catalyst.tracers.utils", file) as f:

@@ -52,6 +52,8 @@ def _fetch_dataset_code_hashes(project_name, dataset_name, base_url=None):
 
 def update_presigned_url(presigned_url, base_url):
     """Replaces the domain (and port, if applicable) of the presigned URL with that of the base URL."""
+    #To Do: If Proxy URL has domain name how do we handle such cases? Engineering Dependency.
+    
     presigned_parts = urlparse(presigned_url)
     base_parts = urlparse(base_url)
     # Check if base_url contains localhost or an IP address

@@ -5,7 +5,9 @@ import time
 from typing import Dict, Optional, Union
 import re
 logger = logging.getLogger("RagaAICatalyst")
-
+logging_level = (
+    logger.setLevel(logging.DEBUG) if os.getenv("DEBUG") == "1" else logging.INFO
+)
 
 class RagaAICatalyst:
     BASE_URL = None

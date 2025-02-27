@@ -62,6 +62,8 @@ class UploadAgenticTraces:
     def update_presigned_url(self, presigned_url, base_url):
         """Replaces the domain (and port, if applicable) of the presigned URL 
         with that of the base URL only if the base URL contains 'localhost' or an IP address."""
+        #To Do: If Proxy URL has domain name how do we handle such cases
+        
         presigned_parts = urlparse(presigned_url)
         base_parts = urlparse(base_url)
         # Check if base_url contains localhost or an IP address
