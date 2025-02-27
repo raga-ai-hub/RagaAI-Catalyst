@@ -338,10 +338,12 @@ class LangchainTracer(BaseCallbackHandler):
         try:
             from langchain.chains import create_retrieval_chain, RetrievalQA
             from langchain_core.runnables import RunnableBinding
+            from langchain_core.runnables import RunnableSequence
             components_to_patch["RetrievalQA"] = (RetrievalQA, "from_chain_type")
             components_to_patch["create_retrieval_chain"] = (create_retrieval_chain, None)
             components_to_patch['RetrievalQA.invoke'] = (RetrievalQA, 'invoke')
             components_to_patch["RunnableBinding"] = (RunnableBinding, "invoke")
+            components_to_patch["RunnableSequence"] = (RunnableSequence, "invoke")
         except ImportError:
             logger.debug("Langchain chains not available for patching")
 
@@ -412,9 +414,11 @@ class LangchainTracer(BaseCallbackHandler):
                     elif name in ["RetrievalQA", "create_retrieval_chain", 'RetrievalQA.invoke']:
                         from langchain.chains import create_retrieval_chain, RetrievalQA
                         from langchain_core.runnables import RunnableBinding
+                        from langchain_core.runnables import RunnableSequence
                         imported_components["RetrievalQA"] = RetrievalQA
                         imported_components["create_retrieval_chain"] = create_retrieval_chain
                         imported_components["RunnableBinding"] = RunnableBinding
+                        imported_components["RunnableSequence"] = RunnableSequence
                 except ImportError:
                     logger.debug(f"{name} not available for restoration")
 
