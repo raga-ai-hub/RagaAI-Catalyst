@@ -337,9 +337,11 @@ class LangchainTracer(BaseCallbackHandler):
             
         try:
             from langchain.chains import create_retrieval_chain, RetrievalQA
+            from langchain_core.runnables import RunnableBinding
             components_to_patch["RetrievalQA"] = (RetrievalQA, "from_chain_type")
             components_to_patch["create_retrieval_chain"] = (create_retrieval_chain, None)
             components_to_patch['RetrievalQA.invoke'] = (RetrievalQA, 'invoke')
+            components_to_patch["RunnableBinding"] = (RunnableBinding, "invoke")
         except ImportError:
             logger.debug("Langchain chains not available for patching")
 
@@ -409,8 +411,10 @@ class LangchainTracer(BaseCallbackHandler):
                         imported_components[name] = ChatOpenAI_ChatModels
                     elif name in ["RetrievalQA", "create_retrieval_chain", 'RetrievalQA.invoke']:
                         from langchain.chains import create_retrieval_chain, RetrievalQA
+                        from langchain_core.runnables import RunnableBinding
                         imported_components["RetrievalQA"] = RetrievalQA
                         imported_components["create_retrieval_chain"] = create_retrieval_chain
+                        imported_components["RunnableBinding"] = RunnableBinding
                 except ImportError:
                     logger.debug(f"{name} not available for restoration")
 
