@@ -339,11 +339,13 @@ class LangchainTracer(BaseCallbackHandler):
             from langchain.chains import create_retrieval_chain, RetrievalQA
             from langchain_core.runnables import RunnableBinding
             from langchain_core.runnables import RunnableSequence
+            from langchain.chains import ConversationalRetrievalChain
             components_to_patch["RetrievalQA"] = (RetrievalQA, "from_chain_type")
             components_to_patch["create_retrieval_chain"] = (create_retrieval_chain, None)
             components_to_patch['RetrievalQA.invoke'] = (RetrievalQA, 'invoke')
             components_to_patch["RunnableBinding"] = (RunnableBinding, "invoke")
             components_to_patch["RunnableSequence"] = (RunnableSequence, "invoke")
+            components_to_patch["ConversationalRetrievalChain"] = (ConversationalRetrievalChain, "invoke")
         except ImportError:
             logger.debug("Langchain chains not available for patching")
 
@@ -411,14 +413,16 @@ class LangchainTracer(BaseCallbackHandler):
                     elif name == "ChatOpenAI_ChatModels":
                         from langchain.chat_models import ChatOpenAI as ChatOpenAI_ChatModels
                         imported_components[name] = ChatOpenAI_ChatModels
-                    elif name in ["RetrievalQA", "create_retrieval_chain", 'RetrievalQA.invoke']:
+                    elif name in ["RetrievalQA", "create_retrieval_chain", 'RetrievalQA.invoke', "RunnableBinding", "RunnableSequence","ConversationalRetrievalChain"]:
                         from langchain.chains import create_retrieval_chain, RetrievalQA
                         from langchain_core.runnables import RunnableBinding
                         from langchain_core.runnables import RunnableSequence
+                        from langchain.chains import ConversationalRetrievalChain
                         imported_components["RetrievalQA"] = RetrievalQA
                         imported_components["create_retrieval_chain"] = create_retrieval_chain
                         imported_components["RunnableBinding"] = RunnableBinding
                         imported_components["RunnableSequence"] = RunnableSequence
+                        imported_components["ConversationalRetrievalChain"] = ConversationalRetrievalChain
                 except ImportError:
                     logger.debug(f"{name} not available for restoration")
 
