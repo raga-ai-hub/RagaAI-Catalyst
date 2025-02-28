@@ -16,17 +16,26 @@ import queue
 from datetime import datetime
 import atexit
 import glob
+from logging.handlers import RotatingFileHandler
 
 # Set up logging
 log_dir = os.path.join(tempfile.gettempdir(), "ragaai_logs")
 os.makedirs(log_dir, exist_ok=True)
+
+# Define maximum file size (e.g., 5 MB) and backup count
+max_file_size = 5 * 1024 * 1024  # 5 MB
+backup_count = 1  # Number of backup files to keep
 
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(os.path.join(log_dir, "trace_uploader.log"))
+        RotatingFileHandler(
+            os.path.join(log_dir, "trace_uploader.log"),
+            maxBytes=max_file_size,
+            backupCount=backup_count
+        )
     ]
 )
 logger = logging.getLogger("trace_uploader")
@@ -170,7 +179,7 @@ class UploadTask:
     def list_pending_tasks():
         """List all pending tasks"""
         tasks = []
-        logger.info("Listing pending tasks from queue directory: {}".format(QUEUE_DIR))
+        #logger.info("Listing pending tasks from queue directory: {}".format(QUEUE_DIR))
         for filename in os.listdir(QUEUE_DIR):
             if filename.endswith(".json"):
                 try:
@@ -245,8 +254,8 @@ class TraceUploader:
 
         if not IMPORTS_AVAILABLE:
             logger.warning(f"Test mode: Simulating processing of task {task.task_id}")
-            time.sleep(2)  # Simulate work
-            task.update_status(STATUS_COMPLETED)
+            #time.sleep(2)  # Simulate work
+            #task.update_status(STATUS_COMPLETED)
             return
             
         logger.info(f"Processing task {task.task_id} (attempt {task.attempts+1}/{task.max_attempts})")
