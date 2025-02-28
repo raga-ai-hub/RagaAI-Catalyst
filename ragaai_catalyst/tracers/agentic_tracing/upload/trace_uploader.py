@@ -245,8 +245,8 @@ class TraceUploader:
 
         if not IMPORTS_AVAILABLE:
             logger.warning(f"Test mode: Simulating processing of task {task.task_id}")
-            time.sleep(2)  # Simulate work
-            task.update_status(STATUS_COMPLETED)
+            #time.sleep(2)  # Simulate work
+            #task.update_status(STATUS_COMPLETED)
             return
             
         logger.info(f"Processing task {task.task_id} (attempt {task.attempts+1}/{task.max_attempts})")
