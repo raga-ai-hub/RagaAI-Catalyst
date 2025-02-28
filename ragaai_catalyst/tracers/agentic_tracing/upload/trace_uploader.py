@@ -16,17 +16,26 @@ import queue
 from datetime import datetime
 import atexit
 import glob
+from logging.handlers import RotatingFileHandler
 
 # Set up logging
 log_dir = os.path.join(tempfile.gettempdir(), "ragaai_logs")
 os.makedirs(log_dir, exist_ok=True)
+
+# Define maximum file size (e.g., 5 MB) and backup count
+max_file_size = 5 * 1024 * 1024  # 5 MB
+backup_count = 1  # Number of backup files to keep
 
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(os.path.join(log_dir, "trace_uploader.log"))
+        RotatingFileHandler(
+            os.path.join(log_dir, "trace_uploader.log"),
+            maxBytes=max_file_size,
+            backupCount=backup_count
+        )
     ]
 )
 logger = logging.getLogger("trace_uploader")
