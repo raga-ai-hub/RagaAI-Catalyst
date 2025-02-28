@@ -305,7 +305,7 @@ class BaseTracer:
 
             logger.debug("Base URL used for uploading: {}".format(self.base_url))
             
-            # Submit to background process for uploading
+            # Submit to background process for uploading using futures
             self.upload_task_id = submit_upload_task(
                 filepath=filepath,
                 hash_id=hash_id,
@@ -317,28 +317,28 @@ class BaseTracer:
                 base_url=self.base_url
             )
             
-            # # For backward compatibility
-            # self._is_uploading = True
+            # For backward compatibility
+            self._is_uploading = True
             
-            # # Start checking for completion if a callback is registered
-            # if self._upload_completed_callback:
-            #     # Start a thread to check status and call callback when complete
-            #     def check_status_and_callback():
-            #         status = self.get_upload_status()
-            #         if status.get("status") in ["completed", "failed"]:
-            #             self._is_uploading = False
-            #             # Execute callback
-            #             try:
-            #                 self._upload_completed_callback(self)
-            #             except Exception as e:
-            #                 logger.error(f"Error in upload completion callback: {e}")
-            #             return
+            # Start checking for completion if a callback is registered
+            if self._upload_completed_callback:
+                # Start a thread to check status and call callback when complete
+                def check_status_and_callback():
+                    status = self.get_upload_status()
+                    if status.get("status") in ["completed", "failed"]:
+                        self._is_uploading = False
+                        # Execute callback
+                        try:
+                            self._upload_completed_callback(self)
+                        except Exception as e:
+                            logger.error(f"Error in upload completion callback: {e}")
+                        return
                     
-            #         # Check again after a delay
-            #         threading.Timer(5.0, check_status_and_callback).start()
+                    # Check again after a delay
+                    threading.Timer(5.0, check_status_and_callback).start()
                 
-            #     # Start checking
-            #     threading.Timer(5.0, check_status_and_callback).start()
+                # Start checking
+                threading.Timer(5.0, check_status_and_callback).start()
             
             logger.info(f"Submitted upload task with ID: {self.upload_task_id}")
 
