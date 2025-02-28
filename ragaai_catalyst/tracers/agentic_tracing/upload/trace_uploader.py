@@ -170,7 +170,7 @@ class UploadTask:
     def list_pending_tasks():
         """List all pending tasks"""
         tasks = []
-        logger.info("Listing pending tasks from queue directory: {}".format(QUEUE_DIR))
+        #logger.info("Listing pending tasks from queue directory: {}".format(QUEUE_DIR))
         for filename in os.listdir(QUEUE_DIR):
             if filename.endswith(".json"):
                 try:
