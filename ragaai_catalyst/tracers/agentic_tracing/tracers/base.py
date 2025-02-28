@@ -92,6 +92,8 @@ class BaseTracer:
         self._upload_tasks = []
         self._is_uploading = False
         self._upload_completed_callback = None
+        
+        ensure_uploader_running()
 
     def _get_system_info(self) -> SystemInfo:
         return self.system_monitor.get_system_info()
