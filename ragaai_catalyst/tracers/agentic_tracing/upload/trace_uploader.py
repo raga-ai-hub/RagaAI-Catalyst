@@ -72,7 +72,7 @@ def get_executor():
     """Get or create the thread pool executor"""
     global _executor
     if _executor is None:
-        _executor = concurrent.futures.ThreadPoolExecutor(max_workers=3, thread_name_prefix="trace_uploader")
+        _executor = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="trace_uploader")
     return _executor
 
 def process_upload(task_id: str, filepath: str, hash_id: str, zip_path: str, 
