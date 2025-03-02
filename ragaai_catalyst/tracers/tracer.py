@@ -31,8 +31,10 @@ from ragaai_catalyst.tracers.utils import get_unique_key
 # from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
 from ragaai_catalyst.tracers.llamaindex_instrumentation import LlamaIndexInstrumentationTracer
 from ragaai_catalyst import RagaAICatalyst
-from ragaai_catalyst.tracers.agentic_tracing import AgenticTracing, TrackName
+from ragaai_catalyst.tracers.agentic_tracing import AgenticTracing
 from ragaai_catalyst.tracers.agentic_tracing.tracers.llm_tracer import LLMTracerMixin
+from ragaai_catalyst.tracers.exporters.ragaai_trace_exporter import RAGATraceExporter
+from ragaai_catalyst.tracers.agentic_tracing.utils.file_name_tracker import TrackName
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +90,17 @@ class Tracer(AgenticTracing):
 
         # take care of auto_instrumentation
         if isinstance(auto_instrumentation, bool):
-            if auto_instrumentation:
+            if tracer_type == "agentic/llamaindex":
+                auto_instrumentation = {
+                    "llm": False,
+                    "tool": False,
+                    "agent": False,
+                    "user_interaction": False,
+                    "file_io": False,
+                    "network": False,
+                    "custom": False
+                }
+            elif auto_instrumentation:
                 auto_instrumentation = {
                     "llm": True,
                     "tool": True,
@@ -131,6 +143,7 @@ class Tracer(AgenticTracing):
         self.start_time = datetime.datetime.now().astimezone().isoformat()
         self.model_cost_dict = model_cost
         self.user_context = ""  # Initialize user_context to store context from add_context
+        self.file_tracker = TrackName()
         
         try:
             response = requests.get(
@@ -171,7 +184,29 @@ class Tracer(AgenticTracing):
         elif tracer_type == "llamaindex":
             self._upload_task = None
             self.llamaindex_tracer = None
+        elif tracer_type == "agentic/llamaindex":
+            from opentelemetry.sdk import trace as trace_sdk
+            from opentelemetry.sdk.trace.export import SimpleSpanProcessor 
+            from openinference.instrumentation.llama_index import LlamaIndexInstrumentor 
+            from ragaai_catalyst.tracers.exporters.dynamic_trace_exporter import DynamicTraceExporter
 
+            # Get the code_files
+            self.file_tracker.trace_main_file()
+            list_of_unique_files = self.file_tracker.get_unique_files()
+
+            # Create a dynamic exporter that allows property updates
+            self.dynamic_exporter = DynamicTraceExporter(
+                files_to_zip=list_of_unique_files,
+                project_name=self.project_name,
+                project_id=self.project_id,
+                dataset_name=self.dataset_name,
+                user_details=self.user_details,
+                base_url=self.base_url
+            )
+            
+            tracer_provider = trace_sdk.TracerProvider()
+            tracer_provider.add_span_processor(SimpleSpanProcessor(self.dynamic_exporter))
+            LlamaIndexInstrumentor().instrument(tracer_provider=tracer_provider)
         else:
             self._upload_task = None
             # raise ValueError (f"Currently supported tracer types are 'langchain' and 'llamaindex'.")
@@ -206,30 +241,44 @@ class Tracer(AgenticTracing):
             "output_cost_per_token": float(cost_config["output_cost_per_million_token"]) /1000000
         }
 
-
-
     def set_dataset_name(self, dataset_name):
         """
         Reinitialize the Tracer with a new dataset name while keeping all other parameters the same.
+        If using agentic/llamaindex tracer with dynamic exporter, update the exporter's dataset_name property.
         
         Args:
             dataset_name (str): The new dataset name to set
         """
-        # Store current parameters
-        current_params = {
-            'project_name': self.project_name,
-            'tracer_type': self.tracer_type,
-            'pipeline': self.pipeline,
-            'metadata': self.metadata,
-            'description': self.description,
-            'upload_timeout': self.upload_timeout
-        }
-        
-        # Reinitialize self with new dataset_name and stored parameters
-        self.__init__(
-            dataset_name=dataset_name,
-            **current_params
-        )
+        # If we have a dynamic exporter, update its dataset_name property
+        if self.tracer_type == "agentic/llamaindex" and hasattr(self, "dynamic_exporter"):
+            # Update the dataset name in the dynamic exporter
+            self.dynamic_exporter.dataset_name = dataset_name
+            logger.debug(f"Updated dynamic exporter's dataset_name to {dataset_name}")
+            
+            # Update the instance variable
+            self.dataset_name = dataset_name
+            
+            # Update user_details with new dataset_name
+            self.user_details = self._pass_user_data()
+            
+            # Also update the user_details in the dynamic exporter
+            self.dynamic_exporter.user_details = self.user_details
+        else:
+            # Store current parameters
+            current_params = {
+                'project_name': self.project_name,
+                'tracer_type': self.tracer_type,
+                'pipeline': self.pipeline,
+                'metadata': self.metadata,
+                'description': self.description,
+                'upload_timeout': self.upload_timeout
+            }
+            
+            # Reinitialize self with new dataset_name and stored parameters
+            self.__init__(
+                dataset_name=dataset_name,
+                **current_params
+            )
 
     def _improve_metadata(self, metadata, tracer_type):
         if metadata is None:
@@ -375,7 +424,7 @@ class Tracer(AgenticTracing):
                          project_name=self.project_name,
                          project_id=self.project_id,
                          dataset_name=self.dataset_name,
-                         user_detail=user_detail,
+                         user_detail=self._pass_user_data(),
                          base_url=self.base_url
                          ).upload_traces(additional_metadata_keys=additional_metadata_dict)
             
@@ -514,6 +563,50 @@ class Tracer(AgenticTracing):
             }
         return user_detail
 
+    def update_dynamic_exporter(self, **kwargs):
+        """
+        Update the dynamic exporter's properties.
+        
+        Args:
+            **kwargs: Keyword arguments to update. Can include any of the following:
+                - files_to_zip: List of files to zip
+                - project_name: Project name
+                - project_id: Project ID
+                - dataset_name: Dataset name
+                - user_details: User details
+                - base_url: Base URL for API
+                
+        Raises:
+            AttributeError: If the tracer_type is not 'agentic/llamaindex' or if the dynamic_exporter is not initialized.
+        """
+        if self.tracer_type != "agentic/llamaindex" or not hasattr(self, "dynamic_exporter"):
+            raise AttributeError("Dynamic exporter is only available for 'agentic/llamaindex' tracer type")
+            
+        for key, value in kwargs.items():
+            if hasattr(self.dynamic_exporter, key):
+                setattr(self.dynamic_exporter, key, value)
+                logger.debug(f"Updated dynamic exporter's {key} to {value}")
+            else:
+                logger.warning(f"Dynamic exporter has no attribute '{key}'")
+                
+    def update_file_list(self):
+        """
+        Update the file list in the dynamic exporter with the latest tracked files.
+        This is useful when new files are added to the project during execution.
+        
+        Raises:
+            AttributeError: If the tracer_type is not 'agentic/llamaindex' or if the dynamic_exporter is not initialized.
+        """
+        if self.tracer_type != "agentic/llamaindex" or not hasattr(self, "dynamic_exporter"):
+            raise AttributeError("Dynamic exporter is only available for 'agentic/llamaindex' tracer type")
+            
+        # Get the latest list of unique files
+        list_of_unique_files = self.file_tracker.get_unique_files()
+        
+        # Update the dynamic exporter's files_to_zip property
+        self.dynamic_exporter.files_to_zip = list_of_unique_files
+        logger.debug(f"Updated dynamic exporter's files_to_zip with {len(list_of_unique_files)} files")
+    
     def add_context(self, context):
         """
         Add context information to the trace. This method is only supported for 'langchain' and 'llamaindex' tracer types.
