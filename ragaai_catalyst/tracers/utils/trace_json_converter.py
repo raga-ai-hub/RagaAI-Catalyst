@@ -64,6 +64,7 @@ def get_spans(input_trace):
         final_span["data"]={}
         final_span["info"]={}
         final_span["metrics"] =[]
+        final_span["extra_info"]={}
         if span_type=="agent":
             if "input.value" in span["attributes"]:
                 try:
@@ -121,7 +122,7 @@ def get_spans(input_trace):
                     try:
                         output_data[key] = json.loads(span['attributes'][key])
                     except json.JSONDecodeError as e:
-                        input_data[key] = span['attributes'].get(key, None)
+                        output_data[key] = span['attributes'].get(key, None)
             final_span["data"]["output"] = output_data
 
             if "llm.model_name" in span["attributes"]:
@@ -129,9 +130,14 @@ def get_spans(input_trace):
             else:
                 final_span["info"]["model_name"] = None
             if "llm.invocation_parameters" in span["attributes"]:
-                final_span["info"]["llm_parameters"] = span["attributes"]["llm.invocation_parameters"]
+                try:
+                    final_span["info"].update(**json.loads(span["attributes"]["llm.invocation_parameters"]))
+                except json.JSONDecodeError as e:
+                    print(f"Error in parsing: {e}")
+                    
+                final_span["extra_info"]["llm_parameters"] = span["attributes"]["llm.invocation_parameters"]
             else:
-                final_span["info"]["llm_parameters"] = None
+                final_span["extra_info"]["llm_parameters"] = None
 
         else:
             if "input.value" in span["attributes"]:
@@ -166,11 +172,11 @@ def convert_json_format(input_trace):
         final_trace: The converted JSON, or None if an error occurs.
     """
     final_trace = {
-    "id": input_trace[0]["context"]["trace_id"],
-    "trace_name": "",  
-    "project_name": "",  
-    "start_time": convert_time_format(min(item["start_time"] for item in input_trace)),  # Find the minimum start_time of all spans
-    "end_time": convert_time_format(max(item["end_time"] for item in input_trace))  # Find the maximum end_time of all spans
+        "id": input_trace[0]["context"]["trace_id"],
+        "trace_name": "",  
+        "project_name": "",  
+        "start_time": convert_time_format(min(item["start_time"] for item in input_trace)),  # Find the minimum start_time of all spans
+        "end_time": convert_time_format(max(item["end_time"] for item in input_trace))  # Find the maximum end_time of all spans
     }
     final_trace["metadata"] ={"tokens": {
       "prompt_tokens": 0,
@@ -183,12 +189,13 @@ def convert_json_format(input_trace):
     final_trace["network_calls"] =[]
     final_trace["interactions"] = []
     for itr in final_trace["data"][0]["spans"]:
-        if "prompt_tokens" in itr["info"]:
-            final_trace["metadata"]["prompt_tokens"]+=itr["info"]['prompt_tokens']
-        if "completion_tokens" in itr["info"]:
-            final_trace["metadata"]["completion_tokens"]+=itr["info"]['completion_tokens']
-        if "total_tokens" in itr["info"]:
-            final_trace["metadata"]["total_tokens"]+=itr["info"]['total_tokens']
+        if itr["type"]=="llm":
+            if "prompt_tokens" in itr["info"]:
+                final_trace["metadata"]["tokens"]["prompt_tokens"]+=itr["info"]['prompt_tokens']
+            if "completion_tokens" in itr["info"]:
+                final_trace["metadata"]["tokens"]["completion_tokens"]+=itr["info"]['completion_tokens']
+            if "total_tokens" in itr["info"]:
+                final_trace["metadata"]["tokens"]["total_tokens"]+=itr["info"]['total_tokens']
     return final_trace
     
 if __name__ == "__main__":

@@ -54,15 +54,7 @@ class RAGATraceExporter(SpanExporter):
         self.trace_spans.clear()
 
     def process_complete_trace(self, spans, trace_id):
-        # # Save trace to temp file with trace_id.jsonl name
-        # trace_file_path = os.path.join(self.tmp_dir, f"{trace_id}.jsonl")
-        
-        # with open(trace_file_path, "w") as file:
-        #     for record in spans:
-        #         file.write(json.dumps(record) + "\n")
-        
         # Convert the trace to ragaai trace format
-        ragaai_trace = None
         try:
             ragaai_trace_details = self.prepare_trace(spans, trace_id)
         except Exception as e:
@@ -70,10 +62,8 @@ class RAGATraceExporter(SpanExporter):
         
         # Upload the trace if upload_trace function is provided
         try:
-            # Upload either the cleaned trace or the original file path
             self.upload_trace(ragaai_trace_details, trace_id)
         except Exception as e:
-            # Handle or log the error
             print(f"Error uploading trace {trace_id}: {e}")
 
     def prepare_trace(self, spans, trace_id):
@@ -85,9 +75,15 @@ class RAGATraceExporter(SpanExporter):
             hash_id, zip_path = zip_list_of_unique_files(
                 self.files_to_zip, output_dir=self.tmp_dir
             )
+
             ragaai_trace["metadata"]["system_info"] = asdict(self.system_monitor.get_system_info())
             ragaai_trace["metadata"]["resources"] = asdict(self.system_monitor.get_resources())
             ragaai_trace["metadata"]["system_info"]["source_code"] = hash_id
+
+            ragaai_trace["data"][0]["start_time"] = ragaai_trace["start_time"]
+            ragaai_trace["data"][0]["end_time"] = ragaai_trace["end_time"]
+
+            ragaai_trace["project_name"] = self.project_name
             
             # Save the trace_json 
             trace_file_path = os.path.join(self.tmp_dir, f"{trace_id}.json")
