@@ -185,7 +185,7 @@ def get_spans(input_trace, custom_model_cost):
                 if "prompt_tokens" in final_span["info"]["token"]:
                     token_usage = {
                         "prompt_tokens": final_span["info"]["token"]["prompt_tokens"],
-                        "completion_tokens": final_span["info"]["token"]["prompt_tokens"],
+                        "completion_tokens": final_span["info"]["token"]["completion_tokens"],
                         "total_tokens": final_span["info"]["token"]["total_tokens"]
                     }
                     final_span["info"]["cost"] = calculate_llm_cost(token_usage=token_usage, model_name=model_name, model_costs=model_costs, model_custom_cost=custom_model_cost) 

@@ -202,7 +202,7 @@ class Tracer(AgenticTracing):
                 dataset_name=self.dataset_name,
                 user_details=self.user_details,
                 base_url=self.base_url,
-                custom_model_cost=self.model_cost_dict
+                custom_model_cost=self.model_custom_cost
             )
             
             tracer_provider = trace_sdk.TracerProvider()
