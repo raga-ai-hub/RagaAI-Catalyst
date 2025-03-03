@@ -19,7 +19,7 @@ logging_level = (
 
 
 class RAGATraceExporter(SpanExporter):
-    def __init__(self, files_to_zip, project_name, project_id, dataset_name, user_details, base_url):
+    def __init__(self, files_to_zip, project_name, project_id, dataset_name, user_details, base_url, custom_model_cost):
         self.trace_spans = dict()
         self.tmp_dir = tempfile.gettempdir()
         self.files_to_zip = files_to_zip
@@ -28,6 +28,7 @@ class RAGATraceExporter(SpanExporter):
         self.dataset_name = dataset_name
         self.user_details = user_details
         self.base_url = base_url
+        self.custom_model_cost = custom_model_cost
         self.system_monitor = SystemMonitor(dataset_name)
 
     def export(self, spans):
@@ -68,7 +69,7 @@ class RAGATraceExporter(SpanExporter):
 
     def prepare_trace(self, spans, trace_id):
         try:
-            ragaai_trace = convert_json_format(spans)            
+            ragaai_trace = convert_json_format(spans, self.custom_model_cost)            
             ragaai_trace["workflow"] = []
 
             # Add source code hash
@@ -103,6 +104,8 @@ class RAGATraceExporter(SpanExporter):
         filepath = ragaai_trace_details['trace_file_path']
         hash_id = ragaai_trace_details['hash_id']
         zip_path = ragaai_trace_details['code_zip_path']
+
+        
 
         self.upload_task_id = submit_upload_task(
                 filepath=filepath,

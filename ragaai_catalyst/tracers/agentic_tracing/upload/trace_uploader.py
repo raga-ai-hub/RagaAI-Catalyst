@@ -95,6 +95,9 @@ def process_upload(task_id: str, filepath: str, hash_id: str, zip_path: str,
     Returns:
         Dict containing status and any error information
     """
+    # Correct base_url
+    base_url = base_url[0] if isinstance(base_url, tuple) else base_url
+
     logger.info(f"Processing upload task {task_id}")
     result = {
         "task_id": task_id,

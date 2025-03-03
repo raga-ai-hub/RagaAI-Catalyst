@@ -1,8 +1,10 @@
 import json
 import sys
 from datetime import datetime
+from typing import final
 import pytz
 import uuid
+from ragaai_catalyst.tracers.agentic_tracing.utils.llm_utils import calculate_llm_cost, get_model_cost
 
 def convert_time_format(original_time_str, target_timezone_str="Asia/Kolkata"):
     """
@@ -33,7 +35,7 @@ def get_uuid(name):
     """Generate a random UUID (not based on name)."""
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
 
-def get_spans(input_trace):
+def get_spans(input_trace, custom_model_cost):
     data=[]
     span_type_mapping={"AGENT":"agent","LLM":"llm","TOOL":"tool"}
     span_name_occurrence = {}
@@ -117,25 +119,29 @@ def get_spans(input_trace):
             
             output_fields = [key for key in available_fields if 'output' in key]
             output_data = {}
+            output_data['content'] = {}
             for key in output_fields:
                 if 'mime_type' not in key:
                     try:
-                        output_data[key] = json.loads(span['attributes'][key])
+                        output_data['content'][key] = json.loads(span['attributes'][key])
                     except json.JSONDecodeError as e:
-                        output_data[key] = span['attributes'].get(key, None)
-            final_span["data"]["output"] = output_data
+                        output_data['content'][key] = span['attributes'].get(key, None)
+            final_span["data"]["output"] = [output_data]
 
             if "llm.model_name" in span["attributes"]:
-                final_span["info"]["model_name"] = span["attributes"]["llm.model_name"]
+                final_span["info"]["model"] = span["attributes"]["llm.model_name"]
             else:
-                final_span["info"]["model_name"] = None
+                final_span["info"]["model"] = None
             if "llm.invocation_parameters" in span["attributes"]:
                 try:
                     final_span["info"].update(**json.loads(span["attributes"]["llm.invocation_parameters"]))
                 except json.JSONDecodeError as e:
                     print(f"Error in parsing: {e}")
                     
-                final_span["extra_info"]["llm_parameters"] = span["attributes"]["llm.invocation_parameters"]
+                try:
+                    final_span["extra_info"]["llm_parameters"] = json.loads(span["attributes"]["llm.invocation_parameters"])
+                except json.JSONDecodeError as e:
+                    final_span["extra_info"]["llm_parameters"] = span["attributes"]["llm.invocation_parameters"]
             else:
                 final_span["extra_info"]["llm_parameters"] = None
 
@@ -150,18 +156,43 @@ def get_spans(input_trace):
                     final_span["data"]["output"] = json.loads(span["attributes"]["output.value"])
                 except Exception as e:
                     final_span["data"]["output"] = span["attributes"]["output.value"]
+
+        final_span["info"]["cost"] = {}
+        final_span["info"]["token"] = {}
+
+        if "model" in final_span["info"]:
+            model_name = final_span["info"]["model"] 
+        
+        model_costs = {
+                "default": {"input_cost_per_token": 0.0, "output_cost_per_token": 0.0}
+            }
+        try:
+            model_costs = get_model_cost()
+        except Exception as e:
+           pass 
+       
         if "resource" in span:
             final_span["info"].update(span["resource"])
-        if "llm.token_count.completion" in span['attributes']:
-            final_span["info"]["completion_tokens"] = span['attributes']['llm.token_count.completion']
         if "llm.token_count.prompt" in span['attributes']:
-            final_span["info"]["prompt_tokens"] = span['attributes']['llm.token_count.prompt']
+            final_span["info"]["token"]["prompt_tokens"] = span['attributes']['llm.token_count.prompt']
+        if "llm.token_count.completion" in span['attributes']:
+            final_span["info"]["token"]["completion_tokens"] = span['attributes']['llm.token_count.completion']
         if "llm.token_count.total" in span['attributes']:
-            final_span["info"]["total_tokens"] = span['attributes']['llm.token_count.total']
+            final_span["info"]["token"]["total_tokens"] = span['attributes']['llm.token_count.total']
+        
+        if "info" in final_span:
+            if "token" in final_span["info"]:
+                if "prompt_tokens" in final_span["info"]["token"]:
+                    token_usage = {
+                        "prompt_tokens": final_span["info"]["token"]["prompt_tokens"],
+                        "completion_tokens": final_span["info"]["token"]["prompt_tokens"],
+                        "total_tokens": final_span["info"]["token"]["total_tokens"]
+                    }
+                    final_span["info"]["cost"] = calculate_llm_cost(token_usage=token_usage, model_name=model_name, model_costs=model_costs, model_custom_cost=custom_model_cost) 
         data.append(final_span)
     return data
 
-def convert_json_format(input_trace):
+def convert_json_format(input_trace, custom_model_cost):
     """
     Converts a JSON from one format to UI format.
 
@@ -178,24 +209,40 @@ def convert_json_format(input_trace):
         "start_time": convert_time_format(min(item["start_time"] for item in input_trace)),  # Find the minimum start_time of all spans
         "end_time": convert_time_format(max(item["end_time"] for item in input_trace))  # Find the maximum end_time of all spans
     }
-    final_trace["metadata"] ={"tokens": {
-      "prompt_tokens": 0,
-      "completion_tokens": 0,
-      "total_tokens": 0
-    }}
+    final_trace["metadata"] = {
+        "tokens": {
+            "prompt_tokens": 0.0,
+            "completion_tokens": 0.0,
+            "total_tokens": 0.0
+        },
+        "cost": {
+            "input_cost": 0.0,
+            "output_cost": 0.0,
+            "total_cost": 0.0
+        }    
+    }
     final_trace["replays"]={"source":None}
     final_trace["data"]=[{}]
-    final_trace["data"][0]["spans"] = get_spans(input_trace)
+    final_trace["data"][0]["spans"] = get_spans(input_trace, custom_model_cost)
     final_trace["network_calls"] =[]
     final_trace["interactions"] = []
+
     for itr in final_trace["data"][0]["spans"]:
         if itr["type"]=="llm":
-            if "prompt_tokens" in itr["info"]:
-                final_trace["metadata"]["tokens"]["prompt_tokens"]+=itr["info"]['prompt_tokens']
-            if "completion_tokens" in itr["info"]:
-                final_trace["metadata"]["tokens"]["completion_tokens"]+=itr["info"]['completion_tokens']
-            if "total_tokens" in itr["info"]:
-                final_trace["metadata"]["tokens"]["total_tokens"]+=itr["info"]['total_tokens']
+            if "token" in itr["info"]:
+                final_trace["metadata"]["tokens"]["prompt_tokens"] += itr["info"]["token"]['prompt_tokens']
+                final_trace["metadata"]["cost"]["input_cost"] += itr["info"]["cost"]['input_cost'] 
+            if "token" in itr["info"]:
+                final_trace["metadata"]["tokens"]["completion_tokens"] += itr["info"]["token"]['completion_tokens']
+                final_trace["metadata"]["cost"]["output_cost"] += itr["info"]["cost"]['output_cost'] 
+            if "token" in itr["info"]:
+                final_trace["metadata"]["tokens"]["total_tokens"] += itr["info"]["token"]['total_tokens']
+                final_trace["metadata"]["cost"]["total_cost"] += itr["info"]["cost"]['total_cost'] 
+
+    # get the total tokens, cost
+    final_trace["metadata"]["total_cost"] = final_trace["metadata"]["cost"]["total_cost"] 
+    final_trace["metadata"]["total_tokens"] = final_trace["metadata"]["tokens"]["total_tokens"]
+
     return final_trace
     
 if __name__ == "__main__":
