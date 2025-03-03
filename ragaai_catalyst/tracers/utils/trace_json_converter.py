@@ -48,7 +48,7 @@ def get_spans(input_trace, custom_model_cost):
         else:
             span_name_occurrence[span['name']]+=1
         final_span["name"] = span["name"]+"."+str(span_name_occurrence[span['name']])
-        final_span["hash_id"] = get_uuid(span["name"])
+        final_span["hash_id"] = get_uuid(final_span["name"])
         final_span["source_hash_id"] = None
         final_span["type"] = span_type
         final_span["start_time"] = convert_time_format(span['start_time'])
