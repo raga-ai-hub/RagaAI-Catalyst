@@ -59,14 +59,10 @@ def get_spans(input_trace):
         else:
             final_span["error"] = None
         # ToDo: Find final trace format for sending error description
-        final_span["metadata"] = {}
         final_span["metrics"] = []
         final_span["feedback"] = None
-        final_span["network_calls"] =[]
-        final_span["interactions"] = []
         final_span["data"]={}
         final_span["info"]={}
-        final_span["replays"]={"source":None}
         final_span["metrics"] =[]
         if span_type=="agent":
             if "input.value" in span["attributes"]:
@@ -83,24 +79,60 @@ def get_spans(input_trace):
                     final_span["data"]["output"] = span["attributes"]["output.value"]
             else:
                 final_span["data"]["output"] = ""
+        
+        elif span_type=="tool":
+            available_fields = list(span['attributes'].keys())
+            tool_fields = [key for key in available_fields if 'tool' in key]
+            if "input.value" in span["attributes"]:
+                try:
+                    final_span["data"]["input"] = json.loads(span["attributes"]["input.value"])
+                except Exception as e:
+                    final_span["data"]["input"] = span["attributes"]["input.value"]
+            else:
+                final_span["data"]["input"] = ""
+            if "output.value" in span["attributes"]:
+                try:
+                    final_span["data"]["output"] = json.loads(span["attributes"]["output.value"])
+                except Exception as e:
+                    final_span["data"]["output"] = span["attributes"]["output.value"]
+            else:
+                final_span["data"]["output"] = ""
+            input_data={}
+            for key in tool_fields:
+                input_data[key] = span['attributes'].get(key, None)
+            final_span["info"].update(input_data)
 
         elif span_type=="llm":
-            try:
-                span_input_value = json.loads(span["attributes"]["input.value"])
-            except json.JSONDecodeError:
-                span_input_value = span["attributes"]["input.value"]
-            role = span["attributes"]["llm.input_messages.0.message.role"]
-            content = span["attributes"]["llm.input_messages.0.message.content"]
-            final_span["data"]["input"] = {"value":span_input_value,"role":role,"content":content}
-            try:
-                span_output_value = json.loads(span["attributes"]["output.value"])
-            except json.JSONDecodeError:
-                span_output_value = span["attributes"]["output.value"]
-            role = span["attributes"]["llm.output_messages.0.message.role"]
-            content = span["attributes"]["llm.output_messages.0.message.content"]
-            final_span["data"]["output"] = {"value":span_output_value,"role":role,"content":content}
-            final_span["info"]["model_name"] = span["attributes"]["llm.model_name"]
-            final_span["info"]["llm_parameters"] = span["attributes"]["llm.invocation_parameters"]
+            available_fields = list(span['attributes'].keys())
+            input_fields = [key for key in available_fields if 'input' in key]
+            input_data = {}
+            for key in input_fields:
+                if 'mime_type' not in key:
+                    try:
+                        input_data[key] = json.loads(span['attributes'][key])
+                    except json.JSONDecodeError as e:
+                        input_data[key] = span['attributes'].get(key, None)
+            final_span["data"]["input"] = input_data
+            
+            output_fields = [key for key in available_fields if 'output' in key]
+            output_data = {}
+            for key in output_fields:
+                if 'mime_type' not in key:
+                    try:
+                        output_data[key] = json.loads(span['attributes'][key])
+                    except json.JSONDecodeError as e:
+                        input_data[key] = span['attributes'].get(key, None)
+            final_span["data"]["output"] = output_data
+
+            if "llm.model_name" in span["attributes"]:
+                final_span["info"]["model_name"] = span["attributes"]["llm.model_name"]
+            else:
+                final_span["info"]["model_name"] = None
+            if "llm.invocation_parameters" in span["attributes"]:
+                final_span["info"]["llm_parameters"] = span["attributes"]["llm.invocation_parameters"]
+            else:
+                final_span["info"]["llm_parameters"] = None
+
         else:
             if "input.value" in span["attributes"]:
                 try:
@@ -114,11 +146,12 @@ def get_spans(input_trace):
                     final_span["data"]["output"] = span["attributes"]["output.value"]
         if "resource" in span:
             final_span["info"].update(span["resource"])
-        #ToDo: Add tool span specific information
-        #ToDo: Add prompt usage information
-        #ToDo: Add available Trace metadata information 
-        #ToDo Code for Workflow goes here
-        final_span["workflow"]=[]
+        if "llm.token_count.completion" in span['attributes']:
+            final_span["info"]["completion_tokens"] = span['attributes']['llm.token_count.completion']
+        if "llm.token_count.prompt" in span['attributes']:
+            final_span["info"]["prompt_tokens"] = span['attributes']['llm.token_count.prompt']
+        if "llm.token_count.total" in span['attributes']:
+            final_span["info"]["total_tokens"] = span['attributes']['llm.token_count.total']
         data.append(final_span)
     return data
 
@@ -139,9 +172,23 @@ def convert_json_format(input_trace):
     "start_time": convert_time_format(min(item["start_time"] for item in input_trace)),  # Find the minimum start_time of all spans
     "end_time": convert_time_format(max(item["end_time"] for item in input_trace))  # Find the maximum end_time of all spans
     }
-    final_trace["metadata"] ={}
+    final_trace["metadata"] ={"tokens": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    }}
+    final_trace["replays"]={"source":None}
     final_trace["data"]=[{}]
     final_trace["data"][0]["spans"] = get_spans(input_trace)
+    final_trace["network_calls"] =[]
+    final_trace["interactions"] = []
+    for itr in final_trace["data"][0]["spans"]:
+        if "prompt_tokens" in itr["info"]:
+            final_trace["metadata"]["prompt_tokens"]+=itr["info"]['prompt_tokens']
+        if "completion_tokens" in itr["info"]:
+            final_trace["metadata"]["completion_tokens"]+=itr["info"]['completion_tokens']
+        if "total_tokens" in itr["info"]:
+            final_trace["metadata"]["total_tokens"]+=itr["info"]['total_tokens']
     return final_trace
     
 if __name__ == "__main__":
