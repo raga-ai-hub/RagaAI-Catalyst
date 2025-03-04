@@ -95,6 +95,9 @@ def process_upload(task_id: str, filepath: str, hash_id: str, zip_path: str,
     Returns:
         Dict containing status and any error information
     """
+    # Correct base_url
+    base_url = base_url[0] if isinstance(base_url, tuple) else base_url
+
     logger.info(f"Processing upload task {task_id}")
     result = {
         "task_id": task_id,
@@ -118,7 +121,7 @@ def process_upload(task_id: str, filepath: str, hash_id: str, zip_path: str,
 
         if not IMPORTS_AVAILABLE:
             logger.warning(f"Test mode: Simulating processing of task {task_id}")
-            time.sleep(2)  # Simulate work
+            # time.sleep(2)  # Simulate work
             result["status"] = STATUS_COMPLETED
             save_task_status(result)
             return result

@@ -51,7 +51,11 @@ dependencies = [
     "ipynbname",
     "tiktoken>=0.7.0",
     "tomli>=2.0.0",
-    "rich>=13.9.4"
+    "rich>=13.9.4",
+    "openinference-instrumentation-llama-index",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp",
+    "opentelemetry-proto>=1.12.0"
 ]
 
 [project.optional-dependencies]
