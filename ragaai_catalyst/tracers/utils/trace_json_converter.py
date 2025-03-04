@@ -230,14 +230,16 @@ def convert_json_format(input_trace, custom_model_cost):
     for itr in final_trace["data"][0]["spans"]:
         if itr["type"]=="llm":
             if "token" in itr["info"]:
-                final_trace["metadata"]["tokens"]["prompt_tokens"] += itr["info"]["token"]['prompt_tokens']
-                final_trace["metadata"]["cost"]["input_cost"] += itr["info"]["cost"]['input_cost'] 
+                if "prompt_tokens" in itr["info"]["token"]:
+                    final_trace["metadata"]["tokens"]["prompt_tokens"] += itr["info"]["token"]['prompt_tokens']
+                    final_trace["metadata"]["cost"]["input_cost"] += itr["info"]["cost"]['input_cost'] 
+                if "completion_tokens" in itr["info"]["token"]:
+                    final_trace["metadata"]["tokens"]["completion_tokens"] += itr["info"]["token"]['completion_tokens']
+                    final_trace["metadata"]["cost"]["output_cost"] += itr["info"]["cost"]['output_cost'] 
             if "token" in itr["info"]:
-                final_trace["metadata"]["tokens"]["completion_tokens"] += itr["info"]["token"]['completion_tokens']
-                final_trace["metadata"]["cost"]["output_cost"] += itr["info"]["cost"]['output_cost'] 
-            if "token" in itr["info"]:
-                final_trace["metadata"]["tokens"]["total_tokens"] += itr["info"]["token"]['total_tokens']
-                final_trace["metadata"]["cost"]["total_cost"] += itr["info"]["cost"]['total_cost'] 
+                if "total_tokens" in itr["info"]["token"]:
+                    final_trace["metadata"]["tokens"]["total_tokens"] += itr["info"]["token"]['total_tokens']
+                    final_trace["metadata"]["cost"]["total_cost"] += itr["info"]["cost"]['total_cost'] 
 
     # get the total tokens, cost
     final_trace["metadata"]["total_cost"] = final_trace["metadata"]["cost"]["total_cost"] 
