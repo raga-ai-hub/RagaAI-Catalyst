@@ -139,7 +139,7 @@ class Tracer(AgenticTracing):
         self.upload_timeout = upload_timeout
         self.base_url = f"{RagaAICatalyst.BASE_URL}"
         self.timeout = 30
-        self.num_projects = 100
+        self.num_projects = 99999
         self.start_time = datetime.datetime.now().astimezone().isoformat()
         self.model_cost_dict = model_cost
         self.user_context = ""  # Initialize user_context to store context from add_context
