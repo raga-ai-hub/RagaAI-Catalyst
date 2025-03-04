@@ -57,7 +57,7 @@ def get_spans(input_trace, custom_model_cost):
         final_span["extra_info"] = None
         '''Handle Error if any'''
         if span["status"]["status_code"].lower() == "error":
-            final_span["error"] = span["status"]["status_code"]
+            final_span["error"] = span["status"]
         else:
             final_span["error"] = None
         # ToDo: Find final trace format for sending error description
