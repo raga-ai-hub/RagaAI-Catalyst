@@ -39,7 +39,7 @@ from ragaai_catalyst.tracers.agentic_tracing.utils.file_name_tracker import Trac
 logger = logging.getLogger(__name__)
 
 class Tracer(AgenticTracing):
-    NUM_PROJECTS = 100
+    NUM_PROJECTS = 99999
     TIMEOUT = 10
     def __init__(
         self,
