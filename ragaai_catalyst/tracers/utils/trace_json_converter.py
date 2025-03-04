@@ -158,7 +158,7 @@ def get_spans(input_trace, custom_model_cost):
                     final_span["data"]["output"] = span["attributes"]["output.value"]
 
         final_span["info"]["cost"] = {}
-        final_span["info"]["token"] = {}
+        final_span["info"]["tokens"] = {}
 
         if "model" in final_span["info"]:
             model_name = final_span["info"]["model"] 
@@ -174,19 +174,19 @@ def get_spans(input_trace, custom_model_cost):
         if "resource" in span:
             final_span["info"].update(span["resource"])
         if "llm.token_count.prompt" in span['attributes']:
-            final_span["info"]["token"]["prompt_tokens"] = span['attributes']['llm.token_count.prompt']
+            final_span["info"]["tokens"]["prompt_tokens"] = span['attributes']['llm.token_count.prompt']
         if "llm.token_count.completion" in span['attributes']:
-            final_span["info"]["token"]["completion_tokens"] = span['attributes']['llm.token_count.completion']
+            final_span["info"]["tokens"]["completion_tokens"] = span['attributes']['llm.token_count.completion']
         if "llm.token_count.total" in span['attributes']:
-            final_span["info"]["token"]["total_tokens"] = span['attributes']['llm.token_count.total']
+            final_span["info"]["tokens"]["total_tokens"] = span['attributes']['llm.token_count.total']
         
         if "info" in final_span:
-            if "token" in final_span["info"]:
-                if "prompt_tokens" in final_span["info"]["token"]:
+            if "tokens" in final_span["info"]:
+                if "prompt_tokens" in final_span["info"]["tokens"]:
                     token_usage = {
-                        "prompt_tokens": final_span["info"]["token"]["prompt_tokens"],
-                        "completion_tokens": final_span["info"]["token"]["completion_tokens"],
-                        "total_tokens": final_span["info"]["token"]["total_tokens"]
+                        "prompt_tokens": final_span["info"]["tokens"]["prompt_tokens"],
+                        "completion_tokens": final_span["info"]["tokens"]["completion_tokens"],
+                        "total_tokens": final_span["info"]["tokens"]["total_tokens"]
                     }
                     final_span["info"]["cost"] = calculate_llm_cost(token_usage=token_usage, model_name=model_name, model_costs=model_costs, model_custom_cost=custom_model_cost) 
         data.append(final_span)
@@ -229,16 +229,16 @@ def convert_json_format(input_trace, custom_model_cost):
 
     for itr in final_trace["data"][0]["spans"]:
         if itr["type"]=="llm":
-            if "token" in itr["info"]:
-                if "prompt_tokens" in itr["info"]["token"]:
-                    final_trace["metadata"]["tokens"]["prompt_tokens"] += itr["info"]["token"]['prompt_tokens']
+            if "tokens" in itr["info"]:
+                if "prompt_tokens" in itr["info"]["tokens"]:
+                    final_trace["metadata"]["tokens"]["prompt_tokens"] += itr["info"]["tokens"]['prompt_tokens']
                     final_trace["metadata"]["cost"]["input_cost"] += itr["info"]["cost"]['input_cost'] 
-                if "completion_tokens" in itr["info"]["token"]:
-                    final_trace["metadata"]["tokens"]["completion_tokens"] += itr["info"]["token"]['completion_tokens']
+                if "completion_tokens" in itr["info"]["tokens"]:
+                    final_trace["metadata"]["tokens"]["completion_tokens"] += itr["info"]["tokens"]['completion_tokens']
                     final_trace["metadata"]["cost"]["output_cost"] += itr["info"]["cost"]['output_cost'] 
-            if "token" in itr["info"]:
-                if "total_tokens" in itr["info"]["token"]:
-                    final_trace["metadata"]["tokens"]["total_tokens"] += itr["info"]["token"]['total_tokens']
+            if "tokens" in itr["info"]:
+                if "total_tokens" in itr["info"]["tokens"]:
+                    final_trace["metadata"]["tokens"]["total_tokens"] += itr["info"]["tokens"]['total_tokens']
                     final_trace["metadata"]["cost"]["total_cost"] += itr["info"]["cost"]['total_cost'] 
 
     # get the total tokens, cost
