@@ -223,7 +223,10 @@ def convert_json_format(input_trace, custom_model_cost):
     }
     final_trace["replays"]={"source":None}
     final_trace["data"]=[{}]
-    final_trace["data"][0]["spans"] = get_spans(input_trace, custom_model_cost)
+    try:
+        final_trace["data"][0]["spans"] = get_spans(input_trace, custom_model_cost)
+    except Exception as e:
+        raise Exception(f"Error in get_spans function: {e}")
     final_trace["network_calls"] =[]
     final_trace["interactions"] = []
 
@@ -231,15 +234,15 @@ def convert_json_format(input_trace, custom_model_cost):
         if itr["type"]=="llm":
             if "tokens" in itr["info"]:
                 if "prompt_tokens" in itr["info"]["tokens"]:
-                    final_trace["metadata"]["tokens"]["prompt_tokens"] += itr["info"]["tokens"]['prompt_tokens']
-                    final_trace["metadata"]["cost"]["input_cost"] += itr["info"]["cost"]['input_cost'] 
+                    final_trace["metadata"]["tokens"]["prompt_tokens"] += itr["info"]["tokens"].get('prompt_tokens', 0.0)
+                    final_trace["metadata"]["cost"]["input_cost"] += itr["info"]["cost"].get('input_cost', 0.0) 
                 if "completion_tokens" in itr["info"]["tokens"]:
-                    final_trace["metadata"]["tokens"]["completion_tokens"] += itr["info"]["tokens"]['completion_tokens']
-                    final_trace["metadata"]["cost"]["output_cost"] += itr["info"]["cost"]['output_cost'] 
+                    final_trace["metadata"]["tokens"]["completion_tokens"] += itr["info"]["tokens"].get('completion_tokens', 0.0)
+                    final_trace["metadata"]["cost"]["output_cost"] += itr["info"]["cost"].get('output_cost', 0.0) 
             if "tokens" in itr["info"]:
                 if "total_tokens" in itr["info"]["tokens"]:
-                    final_trace["metadata"]["tokens"]["total_tokens"] += itr["info"]["tokens"]['total_tokens']
-                    final_trace["metadata"]["cost"]["total_cost"] += itr["info"]["cost"]['total_cost'] 
+                    final_trace["metadata"]["tokens"]["total_tokens"] += itr["info"]["tokens"].get('total_tokens', 0.0)
+                    final_trace["metadata"]["cost"]["total_cost"] += itr["info"]["cost"].get('total_cost', 0.0) 
 
     # get the total tokens, cost
     final_trace["metadata"]["total_cost"] = final_trace["metadata"]["cost"]["total_cost"] 
