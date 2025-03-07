@@ -42,7 +42,7 @@ class DynamicTraceExporter(SpanExporter):
         self._project_id = project_id
         self._dataset_name = dataset_name
         self._user_details = user_details
-        self._base_url = base_url,
+        self._base_url = base_url
         self._custom_model_cost = custom_model_cost
 
     
@@ -57,22 +57,37 @@ class DynamicTraceExporter(SpanExporter):
         Returns:
             SpanExportResult: Result of the export operation
         """
-        # Update the exporter's properties
-        self._update_exporter_properties()
-        
-        # Forward the call to the underlying exporter
-        return self._exporter.export(spans)
-    
+        try:
+            # Update the exporter's properties
+            self._update_exporter_properties()
+        except Exception as e:
+            raise Exception(f"Error updating exporter properties: {e}")
+
+        try:
+            # Forward the call to the underlying exporter
+            result = self._exporter.export(spans)
+            return result
+        except Exception as e:
+            raise Exception(f"Error exporting trace: {e}")
+            
+
+
     def shutdown(self):
         """
         Shutdown the exporter by forwarding to the underlying exporter.
         Before shutting down, update the exporter's properties with the current values.
         """
-        # Update the exporter's properties
-        self._update_exporter_properties()
-        
-        # Forward the call to the underlying exporter
-        return self._exporter.shutdown()
+        try:
+            # Update the exporter's properties
+            self._update_exporter_properties()
+        except Exception as e:
+            raise Exception(f"Error updating exporter properties: {e}")
+
+        try:
+            # Forward the call to the underlying exporter
+            return self._exporter.shutdown()
+        except Exception as e:
+            raise Exception(f"Error shutting down exporter: {e}")
     
     def _update_exporter_properties(self):
         """

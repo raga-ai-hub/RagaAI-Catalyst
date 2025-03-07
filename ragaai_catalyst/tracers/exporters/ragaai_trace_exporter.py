@@ -35,6 +35,8 @@ class RAGATraceExporter(SpanExporter):
         for span in spans:
             span_json = json.loads(span.to_json())
             trace_id = span_json.get("context").get("trace_id")
+            if trace_id is None:
+                raise Exception("Trace ID is None")
 
             if trace_id not in self.trace_spans:
                 self.trace_spans[trace_id] = list()
@@ -43,8 +45,14 @@ class RAGATraceExporter(SpanExporter):
 
             if span_json["parent_id"] is None:
                 trace = self.trace_spans[trace_id]
-                self.process_complete_trace(trace, trace_id)
-                del self.trace_spans[trace_id]
+                try:
+                    self.process_complete_trace(trace, trace_id)
+                except Exception as e:
+                    raise Exception(f"Error processing complete trace: {e}")
+                try:
+                    del self.trace_spans[trace_id]
+                except Exception as e:
+                    raise Exception(f"Error deleting trace: {e}")
 
         return SpanExportResult.SUCCESS
 
