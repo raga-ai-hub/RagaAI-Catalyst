@@ -2,7 +2,7 @@ import litellm
 import json
 import requests
 import os
-from google import genai
+from google import generativeai as genai
 from typing import Optional, List, Dict, Any
 import logging
 logger = logging.getLogger('LiteLLM')
@@ -61,7 +61,7 @@ class GuardExecutor:
         else:
             print(f"{llm_caller} not supported currently, use litellm as llm caller")
 
-    
+    # seperate input guardrail an output
     def __call__(self,messages,prompt_params,model_params,llm_caller='litellm'):
         for key in self.field_map:
             if key not in ['prompt','response']:
@@ -102,19 +102,21 @@ class GuardExecutor:
         else:
             return None,llm_response,response
 
-    def execute_input_guardrails(self, messages, prompt_params):
+    def execute_input_guardrails(self, prompt_params,messages: Optional[List[dict]] = None, prompt: Optional[str] = None):
         for key in self.field_map:
             if key not in ['prompt', 'response']:
                 if self.field_map[key] not in prompt_params:
                     raise ValueError(f'{key} added as field map but not passed as prompt parameter')
         context_var = self.field_map.get('context', None)
-        prompt = None
-        for msg in messages:
-            if 'role' in msg:
-                if msg['role'] == 'user':
-                    prompt = msg['content']
-                    if not context_var:
-                        msg['content'] += '\n' + prompt_params[context_var]
+        # Use provided prompt if available, otherwise extract from messages
+        if prompt is None:
+            for msg in messages:
+                if 'role' in msg:
+                    if msg['role'] == 'user':
+                        prompt = msg['content']
+                        if not context_var:
+                            msg['content'] += '\n' + prompt_params[context_var]
+        
         doc = dict()
         doc['prompt'] = prompt
         doc['context'] = prompt_params[context_var]
@@ -122,7 +124,11 @@ class GuardExecutor:
             instruction = prompt_params[self.field_map['instruction']]
             doc['instruction'] = instruction
         deployment_response = self.execute_deployment(doc)
-        pass
+        if deployment_response and deployment_response['data']['status'] == 'FAIL':
+            print('Guardrail deployment run retured failed status, replacing with alternate response')
+            return deployment_response['data']['alternateResponse'],deployment_response
+        else:
+            return deployment_response
 
     def some_method_2(
             self, 
