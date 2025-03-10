@@ -1,6 +1,5 @@
 # pip install haystack-ai trafilatura
 
-
 import os
 import urllib.request
 
@@ -68,6 +67,8 @@ rag_pipeline.add_component("llm", llm)
 rag_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 rag_pipeline.connect("retriever.documents", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder", "llm")
+
+
 
 query = "How old was Leonardo when he died?"
 result = rag_pipeline.run(data={"prompt_builder": {"query":query}, "text_embedder": {"text": query}})
