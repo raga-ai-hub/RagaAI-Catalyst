@@ -184,30 +184,110 @@ class Tracer(AgenticTracing):
         elif tracer_type == "llamaindex":
             self._upload_task = None
             self.llamaindex_tracer = None
-        elif tracer_type == "agentic/llamaindex":
-            from opentelemetry.sdk import trace as trace_sdk
-            from opentelemetry.sdk.trace.export import SimpleSpanProcessor 
-            from openinference.instrumentation.llama_index import LlamaIndexInstrumentor 
-            from ragaai_catalyst.tracers.exporters.dynamic_trace_exporter import DynamicTraceExporter
-
-            # Get the code_files
-            self.file_tracker.trace_main_file()
-            list_of_unique_files = self.file_tracker.get_unique_files()
-
-            # Create a dynamic exporter that allows property updates
-            self.dynamic_exporter = DynamicTraceExporter(
-                files_to_zip=list_of_unique_files,
-                project_name=self.project_name,
-                project_id=self.project_id,
-                dataset_name=self.dataset_name,
-                user_details=self.user_details,
-                base_url=self.base_url,
-                custom_model_cost=self.model_custom_cost
-            )
+        # Handle agentic tracers
+        elif tracer_type == "agentic" or tracer_type.startswith("agentic/"):
             
-            tracer_provider = trace_sdk.TracerProvider()
-            tracer_provider.add_span_processor(SimpleSpanProcessor(self.dynamic_exporter))
-            LlamaIndexInstrumentor().instrument(tracer_provider=tracer_provider)
+            # Setup instrumentors based on tracer type
+            instrumentors = []
+            
+            # If tracer_type is just "agentic", try to instrument all available packages
+            if tracer_type == "agentic":
+                logger.info("Attempting to instrument all available agentic packages")
+                
+                # Try to import and add all known instrumentors
+                try:
+                    # LlamaIndex
+                    try:
+                        from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
+                        instrumentors.append((LlamaIndexInstrumentor, []))
+                        logger.info("Instrumenting LlamaIndex...")
+                    except (ImportError, ModuleNotFoundError):
+                        logger.debug("LlamaIndex not available in environment")
+                    
+                    # LangChain
+                    try:
+                        from openinference.instrumentation.langchain import LangChainInstrumentor
+                        instrumentors.append((LangChainInstrumentor, []))
+                        logger.info("Instrumenting LangChain...")
+                    except (ImportError, ModuleNotFoundError):
+                        logger.debug("LangChain not available in environment")
+                    
+                    # CrewAI
+                    try:
+                        from openinference.instrumentation.crewai import CrewAIInstrumentor
+                        instrumentors.append((CrewAIInstrumentor, []))
+                        logger.info("Instrumenting CrewAI...")
+                    except (ImportError, ModuleNotFoundError):
+                        logger.debug("CrewAI not available in environment")
+                    
+                    # Haystack
+                    try:
+                        from openinference.instrumentation.haystack import HaystackInstrumentor
+                        instrumentors.append((HaystackInstrumentor, []))
+                        logger.info("Instrumenting Haystack...")
+                    except (ImportError, ModuleNotFoundError):
+                        logger.debug("Haystack not available in environment")
+                    
+                    # AutoGen
+                    try:
+                        from openinference.instrumentation.autogen import AutogenInstrumentor
+                        instrumentors.append((AutogenInstrumentor, []))
+                        logger.info("Instrumenting AutoGen...")
+                    except (ImportError, ModuleNotFoundError):
+                        logger.debug("AutoGen not available in environment")
+                    
+                    # Smolagents
+                    try:
+                        from openinference.instrumentation.smolagents import SmolagentsInstrumentor
+                        instrumentors.append((SmolagentsInstrumentor, []))
+                        logger.info("Instrumenting Smolagents...")
+                    except (ImportError, ModuleNotFoundError):
+                        logger.debug("Smolagents not available in environment")
+                    
+                    if not instrumentors:
+                        logger.warning("No agentic packages found in environment to instrument")
+                        self._upload_task = None
+                        return
+                    
+                except Exception as e:
+                    logger.error(f"Error during auto-instrumentation: {str(e)}")
+                    self._upload_task = None
+                    return
+            
+            # Handle specific framework instrumentation
+            elif tracer_type == "agentic/llamaindex":
+                from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
+                instrumentors = [(LlamaIndexInstrumentor, [])] 
+            
+            elif tracer_type == "agentic/langchain" or tracer_type == "agentic/langgraph":
+                from openinference.instrumentation.langchain import LangChainInstrumentor
+                instrumentors = [(LangChainInstrumentor, [])]
+            
+            elif tracer_type == "agentic/crewai":
+                from openinference.instrumentation.crewai import CrewAIInstrumentor
+                from openinference.instrumentation.langchain import LangChainInstrumentor
+                instrumentors = [(CrewAIInstrumentor, []), (LangChainInstrumentor, [])]
+            
+            elif tracer_type == "agentic/haystack":
+                from openinference.instrumentation.haystack import HaystackInstrumentor
+                instrumentors = [(HaystackInstrumentor, [])]
+            
+            elif tracer_type == "agentic/autogen":
+                from openinference.instrumentation.autogen import AutogenInstrumentor
+                instrumentors = [(AutogenInstrumentor, [])]
+            
+            elif tracer_type == "agentic/smolagents":
+                from openinference.instrumentation.smolagents import SmolagentsInstrumentor
+                instrumentors = [(SmolagentsInstrumentor, [])]
+            
+            else:
+                # Unknown agentic tracer type
+                logger.warning(f"Unknown agentic tracer type: {tracer_type}")
+                self._upload_task = None
+                return
+                
+            # Common setup for all agentic tracers
+            self._setup_agentic_tracer(instrumentors)
         else:
             self._upload_task = None
             # raise ValueError (f"Currently supported tracer types are 'langchain' and 'llamaindex'.")
@@ -576,12 +656,13 @@ class Tracer(AgenticTracing):
                 - dataset_name: Dataset name
                 - user_details: User details
                 - base_url: Base URL for API
+                - custom_model_cost: Dictionary of custom model costs
                 
         Raises:
-            AttributeError: If the tracer_type is not 'agentic/llamaindex' or if the dynamic_exporter is not initialized.
+            AttributeError: If the tracer_type is not an agentic tracer or if the dynamic_exporter is not initialized.
         """
-        if self.tracer_type != "agentic/llamaindex" or not hasattr(self, "dynamic_exporter"):
-            raise AttributeError("Dynamic exporter is only available for 'agentic/llamaindex' tracer type")
+        if not self.tracer_type.startswith("agentic/") or not hasattr(self, "dynamic_exporter"):
+            raise AttributeError("This method is only available for agentic tracers with a dynamic exporter.")
             
         for key, value in kwargs.items():
             if hasattr(self.dynamic_exporter, key):
@@ -590,6 +671,40 @@ class Tracer(AgenticTracing):
             else:
                 logger.warning(f"Dynamic exporter has no attribute '{key}'")
                 
+    def _setup_agentic_tracer(self, instrumentors):
+        """
+        Common setup for all agentic tracers.
+        
+        Args:
+            instrumentors (list): List of tuples (instrumentor_class, args) to be instrumented
+        """
+        from opentelemetry.sdk import trace as trace_sdk
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from ragaai_catalyst.tracers.exporters.dynamic_trace_exporter import DynamicTraceExporter
+        
+        # Get the code_files
+        self.file_tracker.trace_main_file()
+        list_of_unique_files = self.file_tracker.get_unique_files()
+
+        # Create a dynamic exporter that allows property updates
+        self.dynamic_exporter = DynamicTraceExporter(
+            files_to_zip=list_of_unique_files,
+            project_name=self.project_name,
+            project_id=self.project_id,
+            dataset_name=self.dataset_name,
+            user_details=self.user_details,
+            base_url=self.base_url,
+            custom_model_cost=self.model_custom_cost
+        )
+        
+        # Set up tracer provider
+        tracer_provider = trace_sdk.TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(self.dynamic_exporter))
+        
+        # Instrument all specified instrumentors
+        for instrumentor_class, args in instrumentors:
+            instrumentor_class().instrument(tracer_provider=tracer_provider, *args)
+            
     def update_file_list(self):
         """
         Update the file list in the dynamic exporter with the latest tracked files.
@@ -598,8 +713,8 @@ class Tracer(AgenticTracing):
         Raises:
             AttributeError: If the tracer_type is not 'agentic/llamaindex' or if the dynamic_exporter is not initialized.
         """
-        if self.tracer_type != "agentic/llamaindex" or not hasattr(self, "dynamic_exporter"):
-            raise AttributeError("Dynamic exporter is only available for 'agentic/llamaindex' tracer type")
+        if not self.tracer_type.startswith("agentic/") or not hasattr(self, "dynamic_exporter"):
+            raise AttributeError("This method is only available for agentic tracers with a dynamic exporter.")
             
         # Get the latest list of unique files
         list_of_unique_files = self.file_tracker.get_unique_files()
