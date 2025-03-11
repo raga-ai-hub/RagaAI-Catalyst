@@ -32,7 +32,7 @@ httpx==0.28.1
 huggingface-hub==0.27.0
 idna==3.10
 importlib_metadata==7.1.0
-Jinja2==3.1.5
+Jinja2==3.1.6
 jsonpatch==1.33
 jsonpointer==3.0.0
 jsonschema==4.23.0
