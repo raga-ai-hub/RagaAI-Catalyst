@@ -1,0 +1,13 @@
+[detectors]
+detector_names = [
+    "stereotypes",
+    "harmful_content",
+    "sycophancy",
+    "chars_injection",
+    "faithfulness",
+    "implausible_output",
+    "information_disclosure",
+    "output_formatting",
+    "prompt_injection",
+    "custom"  # It must have this structure: {'custom': 'description'}
+]

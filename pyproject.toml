@@ -8,7 +8,7 @@ description = "RAGA AI CATALYST"
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 # license = {file = "LICENSE"}
-version = "2.1.5.b28"
+version = "2.1.5.b36"
 authors = [
     {name = "Kiran Scaria", email = "kiran.scaria@raga.ai"},
     {name = "Kedar Gaikwad", email = "kedar.gaikwad@raga.ai"},
@@ -50,7 +50,12 @@ dependencies = [
     "GPUtil~=1.4.0",
     "ipynbname",
     "tiktoken>=0.7.0",
-    "giskard~=2.16.0"
+    "tomli>=2.0.0",
+    "rich>=13.9.4",
+    "openinference-instrumentation-llama-index",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp",
+    "opentelemetry-proto>=1.12.0"
 ]
 
 [project.optional-dependencies]

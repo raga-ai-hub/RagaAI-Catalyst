@@ -378,7 +378,7 @@ class AgenticTracing(
             super().add_component(component)
 
         # Handle error case
-        if is_error:
+        if is_error and not self.current_agent_id.get():
             self.stop()
 
     def __enter__(self):
