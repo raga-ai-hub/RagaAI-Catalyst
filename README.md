@@ -4,8 +4,6 @@ RagaAI Catalyst is a comprehensive platform designed to enhance the management a
 
 ![RagaAI Catalyst](docs/img/main.png)
 
-![RagaAI Catalyst](docs/img/main.png)
-
 ## Table of Contents
 
 - [RagaAI Catalyst](#ragaai-catalyst)

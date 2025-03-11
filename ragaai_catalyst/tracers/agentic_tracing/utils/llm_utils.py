@@ -74,6 +74,10 @@ def extract_model_name(args, kwargs, result):
             return "gemini-1.5-pro"
         if "gemini-pro" in model:
             return "gemini-pro"
+
+    if 'response_metadata' in dir(result):
+        if 'model_name' in result.response_metadata:
+            model = result.response_metadata['model_name']
     
     return model or "default"
 
@@ -116,8 +120,8 @@ def extract_token_usage(result):
         # Run the coroutine in the current event loop
         result = loop.run_until_complete(result)
 
-    # Handle text attribute responses (JSON string or Vertex AI)
-    if hasattr(result, "text"):
+    # Handle text attribute responses (JSON string for Vertex AI)
+    if hasattr(result, "text") and isinstance(result.text, (str, bytes, bytearray)):
         # First try parsing as JSON for OpenAI responses
         try:
             import json
@@ -162,11 +166,26 @@ def extract_token_usage(result):
     # Handle Google GenerativeAI format with usage_metadata
     if hasattr(result, "usage_metadata"):
         metadata = result.usage_metadata
-        return {
-            "prompt_tokens": getattr(metadata, "prompt_token_count", 0),
-            "completion_tokens": getattr(metadata, "candidates_token_count", 0),
-            "total_tokens": getattr(metadata, "total_token_count", 0)
-        }
+        if hasattr(metadata, "prompt_token_count"):
+            return {
+                "prompt_tokens": getattr(metadata, "prompt_token_count", 0),
+                "completion_tokens": getattr(metadata, "candidates_token_count", 0),
+                "total_tokens": getattr(metadata, "total_token_count", 0)
+            }
+        elif hasattr(metadata, "input_tokens"):
+            return {
+                "prompt_tokens": getattr(metadata, "input_tokens", 0),
+                "completion_tokens": getattr(metadata, "output_tokens", 0),
+                "total_tokens": getattr(metadata, "total_tokens", 0)
+            }
+        elif "input_tokens" in metadata:
+            return {
+                "prompt_tokens": metadata["input_tokens"],
+                "completion_tokens": metadata["output_tokens"],
+                "total_tokens": metadata["total_tokens"]
+            }
+
+
     
     # Handle ChatResponse format with raw usuage
     if hasattr(result, "raw") and hasattr(result.raw, "usage"):
