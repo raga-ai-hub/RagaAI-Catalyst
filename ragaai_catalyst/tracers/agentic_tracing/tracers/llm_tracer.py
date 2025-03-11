@@ -12,7 +12,6 @@ import contextvars
 import traceback
 import importlib
 import sys
-from litellm import model_cost
 import logging
 
 try:
@@ -29,7 +28,8 @@ from ..utils.llm_utils import (
     sanitize_api_keys,
     sanitize_input,
     extract_llm_output,
-    num_tokens_from_messages
+    num_tokens_from_messages,
+    get_model_cost
 )
 from ..utils.unique_decorator import generate_unique_hash
 from ..utils.file_name_tracker import TrackName
@@ -49,7 +49,7 @@ class LLMTracerMixin:
         self.file_tracker = TrackName()
         self.patches = []
         try:
-            self.model_costs = model_cost
+            self.model_costs = get_model_cost()
         except Exception as e:
             self.model_costs = {
                 "default": {"input_cost_per_token": 0.0, "output_cost_per_token": 0.0}
@@ -626,12 +626,8 @@ class LLMTracerMixin:
             # TODO TO check i/p and o/p is according or not
             input = input_data["args"] if hasattr(input_data, "args") else input_data
             output = output_data.output_response if output_data else None
-            #print("Prompt input:",input)
             prompt = self.convert_to_content(input)
-            #print("Prompt Output: ",prompt)
-            #print("Response input: ",output)
             response = self.convert_to_content(output)
-            #print("Response output: ",response)
 
             # TODO: Execute & Add the User requested metrics here
             formatted_metrics = BaseTracer.get_formatted_metric(self.span_attributes_dict, self.project_id, name)
@@ -778,7 +774,7 @@ class LLMTracerMixin:
                     token_usage = extract_token_usage(result)
             else:
                 token_usage = extract_token_usage(result)
-            cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
+            cost = calculate_llm_cost(token_usage, model_name, self.model_costs, self.model_custom_cost)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
 
@@ -887,7 +883,7 @@ class LLMTracerMixin:
                     token_usage = extract_token_usage(result)
             else:
                 token_usage = extract_token_usage(result)
-            cost = calculate_llm_cost(token_usage, model_name, self.model_costs)
+            cost = calculate_llm_cost(token_usage, model_name, self.model_costs, self.model_custom_cost)
             parameters = extract_parameters(kwargs)
             input_data = extract_input_data(args, kwargs, result)
 

@@ -93,4 +93,5 @@ wheel==0.44.0
 wrapt==1.17.0
 yarl==1.18.3
 zipp==3.21.0
-giskard~=2.16.0
+tomli>=2.0.0
+rich>=13.9.4

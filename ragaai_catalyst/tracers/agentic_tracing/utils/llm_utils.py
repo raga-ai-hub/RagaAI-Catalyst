@@ -4,7 +4,7 @@ from .trace_utils import (
     convert_usage_to_dict,
 )
 from importlib import resources
-from litellm import model_cost
+#from litellm import model_cost
 import json
 import os
 import asyncio
@@ -13,6 +13,19 @@ import tiktoken
 import logging
 
 logger = logging.getLogger(__name__)
+
+def get_model_cost():
+    """Load model costs from a JSON file. 
+    Note: This file should be updated periodically or whenever a new package is created to ensure accurate cost calculations.
+    To Do: Implement to do this automatically.
+    """
+    file="model_prices_and_context_window_backup.json"
+    d={}
+    with resources.open_text("ragaai_catalyst.tracers.utils", file) as f:
+        d= json.load(f)
+    return d 
+
+model_cost = get_model_cost()
 
 def extract_model_name(args, kwargs, result):
     """Extract model name from kwargs or result"""
@@ -45,6 +58,11 @@ def extract_model_name(args, kwargs, result):
             result = result.to_dict()
             if 'model_version' in result:
                 model = result['model_version']  
+    try:
+        if not model:
+            model = result.raw.model
+    except Exception as e:
+        pass
     
     
     # Normalize Google model names
@@ -56,6 +74,10 @@ def extract_model_name(args, kwargs, result):
             return "gemini-1.5-pro"
         if "gemini-pro" in model:
             return "gemini-pro"
+
+    if 'response_metadata' in dir(result):
+        if 'model_name' in result.response_metadata:
+            model = result.response_metadata['model_name']
     
     return model or "default"
 
@@ -98,8 +120,8 @@ def extract_token_usage(result):
         # Run the coroutine in the current event loop
         result = loop.run_until_complete(result)
 
-    # Handle text attribute responses (JSON string or Vertex AI)
-    if hasattr(result, "text"):
+    # Handle text attribute responses (JSON string for Vertex AI)
+    if hasattr(result, "text") and isinstance(result.text, (str, bytes, bytearray)):
         # First try parsing as JSON for OpenAI responses
         try:
             import json
@@ -144,10 +166,34 @@ def extract_token_usage(result):
     # Handle Google GenerativeAI format with usage_metadata
     if hasattr(result, "usage_metadata"):
         metadata = result.usage_metadata
+        if hasattr(metadata, "prompt_token_count"):
+            return {
+                "prompt_tokens": getattr(metadata, "prompt_token_count", 0),
+                "completion_tokens": getattr(metadata, "candidates_token_count", 0),
+                "total_tokens": getattr(metadata, "total_token_count", 0)
+            }
+        elif hasattr(metadata, "input_tokens"):
+            return {
+                "prompt_tokens": getattr(metadata, "input_tokens", 0),
+                "completion_tokens": getattr(metadata, "output_tokens", 0),
+                "total_tokens": getattr(metadata, "total_tokens", 0)
+            }
+        elif "input_tokens" in metadata:
+            return {
+                "prompt_tokens": metadata["input_tokens"],
+                "completion_tokens": metadata["output_tokens"],
+                "total_tokens": metadata["total_tokens"]
+            }
+
+
+    
+    # Handle ChatResponse format with raw usuage
+    if hasattr(result, "raw") and hasattr(result.raw, "usage"):
+        usage = result.raw.usage
         return {
-            "prompt_tokens": getattr(metadata, "prompt_token_count", 0),
-            "completion_tokens": getattr(metadata, "candidates_token_count", 0),
-            "total_tokens": getattr(metadata, "total_token_count", 0)
+            "prompt_tokens": getattr(usage, "prompt_tokens", 0),
+            "completion_tokens": getattr(usage, "completion_tokens", 0),
+            "total_tokens": getattr(usage, "total_tokens", 0)
         }
     
     # Handle ChatResult format with generations
@@ -195,6 +241,7 @@ def num_tokens_from_messages(model="gpt-4o-mini-2024-07-18", prompt_messages=Non
             - completion_tokens: Number of tokens in the completion
             - total_tokens: Total number of tokens
     """
+    #import pdb; pdb.set_trace()
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -207,8 +254,8 @@ def num_tokens_from_messages(model="gpt-4o-mini-2024-07-18", prompt_messages=Non
         "gpt-4-32k-0314",
         "gpt-4-0613",
         "gpt-4-32k-0613",
-        "gpt-4o-mini-2024-07-18",
-        "gpt-4o-2024-08-06"
+        "gpt-4o-2024-08-06",
+        "gpt-4o-mini-2024-07-18"
         }:
         tokens_per_message = 3
         tokens_per_name = 1
@@ -290,15 +337,18 @@ def extract_input_data(args, kwargs, result):
     }
 
 
-def calculate_llm_cost(token_usage, model_name, model_costs):
+def calculate_llm_cost(token_usage, model_name, model_costs, model_custom_cost=None):
     """Calculate cost based on token usage and model"""
+    if model_custom_cost is None:
+        model_custom_cost = {}
+    model_costs.update(model_custom_cost)
     if not isinstance(token_usage, dict):
         token_usage = {
             "prompt_tokens": 0,
             "completion_tokens": 0,
             "total_tokens": token_usage if isinstance(token_usage, (int, float)) else 0
         }
-
+    
     # Get model costs, defaulting to default costs if unknown
     model_cost = model_cost = model_costs.get(model_name, {
         "input_cost_per_token": 0.0,   
