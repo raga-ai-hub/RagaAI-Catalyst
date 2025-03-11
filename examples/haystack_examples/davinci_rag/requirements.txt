@@ -1,3 +1,0 @@
-haystack-ai
-trafilatura
-openai
