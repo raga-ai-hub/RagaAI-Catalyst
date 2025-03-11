@@ -1,3 +1,4 @@
+import os
 from langgraph.graph import StateGraph, END
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
@@ -9,19 +10,36 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from ragaai_catalyst import RagaAICatalyst, init_tracing
+from ragaai_catalyst.tracers import Tracer
+
+
+catalyst = RagaAICatalyst(
+    access_key=os.getenv['RAGAAICATALYST_ACCESS_KEY'], 
+    secret_key=os.getenv('RAGAAICATALYST_SECRET_KEY'), 
+    base_url=os.getenv('RAGAAICATALYST_BASE_URL')
+)
+# Initialize tracer
+tracer = Tracer(
+    project_name="example_testing",
+    dataset_name="langgraph_research_assistant_trial_00",
+    tracer_type="agentic/langchain",
+)
+
+init_tracing(catalyst=catalyst, tracer=tracer)
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)  
 tavily_tool = TavilySearchResults(max_results=5)  
 
 # State structure
 class ResearchState(TypedDict):
-    topic: str  # User-provided research topic
-    sub_questions: List[str]  # Generated sub-questions
-    answers: List[dict]  # List of {question, answer, sources}
-    synthesis: str  # Synthesized report
-    critique: str  # Critique of the synthesis
-    iteration: Annotated[int, operator.add]  # Tracks refinement iterations
-    status: str  # Tracks workflow progress
+    topic: str  
+    sub_questions: List[str]  
+    answers: List[dict] 
+    synthesis: str 
+    criticism: str 
+    iteration: Annotated[int, operator.add]  
+    status: str
 
 # Nodes
 def generate_sub_questions(state: ResearchState) -> ResearchState:
@@ -77,7 +95,7 @@ def critique_synthesis(state: ResearchState) -> ResearchState:
         synthesis=state["synthesis"],
         answers="\n".join([f"Q: {a['question']}\nA: {a['answer']}" for a in state["answers"]])
     ))
-    return {"critique": critique.content}
+    return {"criticism": critique.content}
 
 def refine_synthesis(state: ResearchState) -> ResearchState:
     """Refine the synthesis based on critique."""
@@ -95,7 +113,7 @@ def refine_synthesis(state: ResearchState) -> ResearchState:
 
 # Conditional logic
 def should_refine(state: ResearchState) -> str:
-    if "pass" in state["critique"].lower() or state["iteration"] >= 2:
+    if "pass" in state["criticism"].lower() or state["iteration"] >= 2:
         return "end"
     return "refine"
 
@@ -127,7 +145,8 @@ initial_state = {
     "status": "start"
 }
 print("Starting the Personal Research Assistant...")
-result = app.invoke(initial_state)
+with tracer:
+    result = app.invoke(initial_state)
 
 # Print results
 print("\nFinal Research Report:")
@@ -138,5 +157,5 @@ for ans in result["answers"]:
     print(f"  A: {ans['answer']}")
     print(f"  Sources: {ans['sources']}")
 print(f"\nSynthesis:\n{result['synthesis']}")
-print(f"\nCritique: {result['critique']}")
+print(f"\nCritique: {result['criticism']}")
 print(f"Iterations: {result['iteration']}")
