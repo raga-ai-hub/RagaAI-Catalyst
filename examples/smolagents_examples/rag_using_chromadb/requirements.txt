@@ -1,0 +1,9 @@
+smolagents
+langchain
+langchain-chroma
+langchain-huggingface
+datasets
+tqdm
+transformers
+sentence-transformers
+chromadb

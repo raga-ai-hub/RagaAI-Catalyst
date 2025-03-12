@@ -1,0 +1,3 @@
+langgraph
+langchain-openai
+langchain-community
