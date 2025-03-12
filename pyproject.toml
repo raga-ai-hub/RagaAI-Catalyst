@@ -38,7 +38,7 @@ dependencies = [
     "groq>=0.11.0",
     "PyPDF2>=3.0.1",
     "google-generativeai>=0.8.2",
-    "google-genai>=1.3.0"
+    "google-genai>=1.3.0",
     "Markdown>=3.7",  
     "litellm==1.51.1",  
     "tenacity==8.3.0",
