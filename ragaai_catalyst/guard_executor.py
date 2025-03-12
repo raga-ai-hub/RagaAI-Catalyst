@@ -60,15 +60,21 @@ class GuardExecutor:
             print(response.json()['message'])
             return None
 
-    def llm_executor(self,messages,model_params,llm_caller):
+    def llm_executor(self,prompt,model_params,llm_caller):
+        messages = [{
+                    'role':'user',
+                    'content':prompt
+                    }]
+        if self.current_trace_id:
+            doc = self.id_2_doc[self.current_trace_id]
+            messages[0]['content'] = messages[0]['content'] + '\n' + doc.get('context','')
         if llm_caller == 'litellm':
             model_params['messages'] = messages
             response = litellm.completion(**model_params)
             return response['choices'][0].message.content
         elif llm_caller == 'genai':
             genai_client = genai.Client(api_key=os.getenv('GENAI_API_KEY'))
-            temperature = model_params.get('temperature', 0.0)
-            model_params[messages] = messages
+            model_params['messages'] = messages
             response = genai_client.models.generate(**model_params)
             return response.text
         else:
@@ -104,7 +110,7 @@ class GuardExecutor:
             self.id_2_doc['latest']['instruction'] = instruction
 
     
-    def __call__(self,messages,prompt_params,model_params,llm_caller='litellm'):
+    def __call__(self,prompt,prompt_params,model_params,llm_caller='litellm'):
         '''for key in self.field_map:
             if key not in ['prompt','response']:
                 if self.field_map[key] not in prompt_params:
@@ -122,13 +128,13 @@ class GuardExecutor:
         doc['context'] = prompt_params[context_var]'''
         
         # Run the input guardrails
-        alternate_response,input_deployment_response = self.execute_input_guardrails(messages,prompt_params)
+        alternate_response,input_deployment_response = self.execute_input_guardrails(prompt,prompt_params)
         if input_deployment_response and input_deployment_response['data']['status'].lower() == 'fail':
             return alternate_response, None, input_deployment_response
         
         # activate only guardrails that require response
         try:
-            llm_response = self.llm_executor(messages,model_params,llm_caller)
+            llm_response = self.llm_executor(prompt,model_params,llm_caller)
         except Exception as e:
             print('Error in running llm:',str(e))
             return None, None, input_deployment_response
@@ -140,21 +146,12 @@ class GuardExecutor:
         else:
             return None,llm_response,output_deployment_response
 
-    def set_variables(self,messages,prompt_params):
+    def set_variables(self,prompt,prompt_params):
         for key in self.field_map:
             if key not in ['prompt', 'response']:
                 if self.field_map[key] not in prompt_params:
                     raise ValueError(f'{key} added as field map but not passed as prompt parameter')
         context_var = self.field_map.get('context', None)
-        # Use provided prompt if available, otherwise extract from messages
-        prompt = None
-        if prompt is None:
-            for msg in messages:
-                if 'role' in msg:
-                    if msg['role'] == 'user':
-                        prompt = msg['content']
-                        if not context_var:
-                            msg['content'] += '\n' + prompt_params[context_var]
         
         doc = dict()
         doc['prompt'] = prompt
@@ -164,8 +161,8 @@ class GuardExecutor:
             doc['instruction'] = instruction
         return doc
 
-    def execute_input_guardrails(self, messages, prompt_params):
-        doc = self.set_variables(messages,prompt_params)
+    def execute_input_guardrails(self, prompt, prompt_params):
+        doc = self.set_variables(prompt,prompt_params)
         deployment_response = self.execute_deployment(self.input_deployment_id,doc)
         self.current_trace_id = deployment_response['data']['results'][0]['executionId']
         self.id_2_doc[self.current_trace_id] = doc
@@ -174,15 +171,15 @@ class GuardExecutor:
         elif deployment_response:
             return None, deployment_response
 
-    def execute_output_guardrails(self, llm_response: str, messages=None, prompt_params=None) -> None:
-        if not messages: # user has not passed input
+    def execute_output_guardrails(self, llm_response: str, prompt=None, prompt_params=None) -> None:
+        if not prompt: # user has not passed input
             if self.current_trace_id not in self.id_2_doc:
                 raise Exception(f'No input doc found for trace_id: {self.current_trace_id}')
             else:
                 doc = self.id_2_doc[self.current_trace_id]
                 doc['response'] = llm_response
         else:
-            doc = self.set_variables(messages,prompt_params)
+            doc = self.set_variables(prompt,prompt_params)
         deployment_response = self.execute_deployment(self.output_deployment_id,doc)
         del self.id_2_doc[self.current_trace_id]
         if deployment_response and deployment_response['data']['status'].lower() == 'fail':
