@@ -36,13 +36,16 @@ def get_uuid(name):
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
 
 def get_spans(input_trace, custom_model_cost):
-    data=[]
+    span_map = {}
+    parent_children_mapping = {}
     span_type_mapping={"AGENT":"agent","LLM":"llm","TOOL":"tool"}
     span_name_occurrence = {}
     for span in input_trace:
         final_span = {}
         span_type=span_type_mapping.get(span["attributes"]["openinference.span.kind"],"custom")
-        final_span["id"] = span["context"]["span_id"]
+        span_id = span["context"]["span_id"]
+        parent_id = span["parent_id"]
+        final_span["id"] = span_id
         if span["name"] not in span_name_occurrence:
             span_name_occurrence[span['name']]=0
         else:
@@ -53,7 +56,7 @@ def get_spans(input_trace, custom_model_cost):
         final_span["type"] = span_type
         final_span["start_time"] = convert_time_format(span['start_time'])
         final_span["end_time"] = convert_time_format(span['end_time'])
-        final_span["parent_id"] = span["parent_id"]
+        final_span["parent_id"] = parent_id
         final_span["extra_info"] = None
         '''Handle Error if any'''
         if span["status"]["status_code"].lower() == "error":
@@ -82,6 +85,7 @@ def get_spans(input_trace, custom_model_cost):
                     final_span["data"]["output"] = span["attributes"]["output.value"]
             else:
                 final_span["data"]["output"] = ""
+            final_span["data"]['children'] = []
         
         elif span_type=="tool":
             available_fields = list(span['attributes'].keys())
@@ -189,7 +193,21 @@ def get_spans(input_trace, custom_model_cost):
                         "total_tokens": final_span["info"]["tokens"]["total_tokens"]
                     }
                     final_span["info"]["cost"] = calculate_llm_cost(token_usage=token_usage, model_name=model_name, model_costs=model_costs, model_custom_cost=custom_model_cost) 
-        data.append(final_span)
+        span_map[span_id] = final_span
+        if parent_id not in parent_children_mapping:
+            parent_children_mapping[parent_id] = []
+        parent_children_mapping[parent_id].append(final_span)
+    data = []
+    for parent_id, children in parent_children_mapping.items():
+        if parent_id in span_map:
+            parent_type = span_map[parent_id]["type"]
+            if parent_type == 'agent':
+                span_map[parent_id]['data']["children"] = children
+            else:
+                grand_parent_id = span_map[parent_id]["parent_id"]
+                parent_children_mapping[grand_parent_id].extend(children)
+        else:
+            data = children
     return data
 
 def convert_json_format(input_trace, custom_model_cost):
