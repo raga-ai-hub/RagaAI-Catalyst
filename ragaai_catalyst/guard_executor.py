@@ -25,7 +25,7 @@ class GuardExecutor:
                 # check if 2 deployments are mapped to same dataset
                 pass
             for guardrail in self.input_deployment_details['data']['guardrailsResponse']:
-                maps = g['metricSpec']['config']['mappings']
+                maps = guardrail['metricSpec']['config']['mappings']
                 for _map in maps:
                     if _map['schemaName']=='Response':
                         raise ValueError('Response field mapping found in input guardrails')
