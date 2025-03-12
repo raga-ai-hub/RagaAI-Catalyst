@@ -165,7 +165,7 @@ class GuardExecutor:
         print(deployment_response)
         self.current_trace_id = deployment_response['data']['results'][0]['executionId']
         self.id_2_doc[self.current_trace_id] = doc
-        if deployment_response and deployment_response['data']['status'] == 'FAIL':
+        if deployment_response and deployment_response['data']['status'].lower() == 'fail':
             print('Guardrail deployment run retured failed status, replacing with alternate response')
             return deployment_response['data']['alternateResponse'], deployment_response
         elif deployment_response:
@@ -183,7 +183,7 @@ class GuardExecutor:
         deployment_response = self.execute_deployment(self.output_deployment_id,doc)
         del self.id_2_doc[self.current_trace_id]
         print('Output deployment ',deployment_response)
-        if deployment_response and deployment_response['data']['status'] == 'FAIL':
+        if deployment_response and deployment_response['data']['status'].lower() == 'fail':
             print('Guardrail deployment run retured failed status, replacing with alternate response')
             return deployment_response['data']['alternateResponse'], deployment_response
         elif deployment_response:
