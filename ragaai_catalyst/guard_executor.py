@@ -21,6 +21,14 @@ class GuardExecutor:
             if output_deployment_id:
                 self.output_deployment_id = output_deployment_id
                 self.output_deployment_details = self.guard_manager.get_deployment(output_deployment_id)
+            if input_deployment_id and output_deployment_id:
+                # check if 2 deployments are mapped to same dataset
+                pass
+            for guardrail in self.input_deployment_details['data']['guardrailsResponse']:
+                maps = g['metricSpec']['config']['mappings']
+                for _map in maps:
+                    if _map['schemaName']=='Response':
+                        raise ValueError('Response field mapping found in input guardrails')
         except Exception as e:
             raise ValueError('Error in fetching deployment details')
         self.base_url = guard_manager.base_url
@@ -40,7 +48,6 @@ class GuardExecutor:
             'Authorization': f'Bearer {os.getenv("RAGAAI_CATALYST_TOKEN")}'
         }
         try:
-            print(payload)
             response = requests.request("POST", api, headers=headers, data=payload,timeout=self.guard_manager.timeout)
         except Exception as e:
             print('Failed running guardrail: ',str(e))
@@ -116,8 +123,7 @@ class GuardExecutor:
         
         # Run the input guardrails
         alternate_response,input_deployment_response = self.execute_input_guardrails(messages,prompt_params)
-        if input_deployment_response and input_deployment_response['data']['status'] == 'FAIL':
-            print('Guardrail deployment run returned failed status on inputs, replacing with alternate response')
+        if input_deployment_response and input_deployment_response['data']['status'].lower() == 'fail':
             return alternate_response, None, input_deployment_response
         
         # activate only guardrails that require response
@@ -125,12 +131,11 @@ class GuardExecutor:
             llm_response = self.llm_executor(messages,model_params,llm_caller)
         except Exception as e:
             print('Error in running llm:',str(e))
-            return None, None, deployment_response
+            return None, None, input_deployment_response
         if 'instruction' in self.field_map:
             instruction = prompt_params[self.field_map['instruction']]
         alternate_op_response,output_deployment_response = self.execute_output_guardrails(llm_response)
-        if output_deployment_response and output_deployment_response['data']['status'] == 'FAIL':
-            print('Guardrail deployment run retured failed status, replacing with alternate response')
+        if output_deployment_response and output_deployment_response['data']['status'].lower() == 'fail':
             return alternate_op_response,llm_response,output_deployment_response
         else:
             return None,llm_response,output_deployment_response
@@ -162,11 +167,9 @@ class GuardExecutor:
     def execute_input_guardrails(self, messages, prompt_params):
         doc = self.set_variables(messages,prompt_params)
         deployment_response = self.execute_deployment(self.input_deployment_id,doc)
-        print(deployment_response)
         self.current_trace_id = deployment_response['data']['results'][0]['executionId']
         self.id_2_doc[self.current_trace_id] = doc
         if deployment_response and deployment_response['data']['status'].lower() == 'fail':
-            print('Guardrail deployment run retured failed status, replacing with alternate response')
             return deployment_response['data']['alternateResponse'], deployment_response
         elif deployment_response:
             return None, deployment_response
@@ -182,9 +185,7 @@ class GuardExecutor:
             doc = self.set_variables(messages,prompt_params)
         deployment_response = self.execute_deployment(self.output_deployment_id,doc)
         del self.id_2_doc[self.current_trace_id]
-        print('Output deployment ',deployment_response)
         if deployment_response and deployment_response['data']['status'].lower() == 'fail':
-            print('Guardrail deployment run retured failed status, replacing with alternate response')
             return deployment_response['data']['alternateResponse'], deployment_response
         elif deployment_response:
             return None, deployment_response
