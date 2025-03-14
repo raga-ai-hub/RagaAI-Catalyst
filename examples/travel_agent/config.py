@@ -15,8 +15,8 @@ def initialize_tracing():
     )
 
     tracer = Tracer(
-        project_name="swarnendu-4",
-        dataset_name="travel_agent_dataset",
+        project_name=os.getenv("RAGAAI_CATALYST_PROD_PROJECT_NAME"),
+        dataset_name=os.getenv("RAGAAI_CATALYST_PROD_DATASET_NAME"),
         tracer_type="Agentic",
     )
 

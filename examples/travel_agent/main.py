@@ -9,15 +9,12 @@ from agents import ItineraryAgent
 from config import initialize_tracing
 from ragaai_catalyst import trace_agent, current_span
 
-# Load environment variables
 load_dotenv()
 
-# Initialize distributed tracing
 tracer = initialize_tracing()
 
-@trace_agent(name="travel_agent", agent_type="main", version="1.0.0")
+@trace_agent(name="travel_agent")
 def travel_agent():
-    # Add metrics for the main session
     current_span().add_metrics(
         name="travel_planning_session",
         score=0.9,
@@ -83,7 +80,6 @@ def travel_agent():
     print("\nPlanned Itinerary:")
     print(itinerary)
 
-    # Currency conversion
     budget_amount = float(preferences["Budget"].replace("$", "").replace(",", ""))
     converted_budget = currency_converter_tool(budget_amount, "USD", "INR")
     if converted_budget:
@@ -91,7 +87,6 @@ def travel_agent():
     else:
         print("\nCurrency conversion not available.")
 
-    # Generate travel summary
     summary_prompt = f"""
     Summarize the following travel plan:
 
