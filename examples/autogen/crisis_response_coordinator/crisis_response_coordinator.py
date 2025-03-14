@@ -11,7 +11,7 @@ from ragaai_catalyst.tracers import Tracer
 
 
 catalyst = RagaAICatalyst(
-    access_key=os.getenv['RAGAAICATALYST_ACCESS_KEY'], 
+    access_key=os.getenv('RAGAAICATALYST_ACCESS_KEY'), 
     secret_key=os.getenv('RAGAAICATALYST_SECRET_KEY'), 
     base_url=os.getenv('RAGAAICATALYST_BASE_URL')
 )

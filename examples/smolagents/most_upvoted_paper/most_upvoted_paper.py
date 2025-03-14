@@ -7,10 +7,8 @@ This script uses SmoLAgents to create a pipeline that:
 4. Reads and summarizes its content
 """
 
-# Standard library imports
-import json
 
-# Third-party imports
+import json
 import arxiv
 import requests
 from bs4 import BeautifulSoup
@@ -126,7 +124,6 @@ def read_pdf_file(file_path: str = "paper.pdf") -> str:
 
 def main():
     """Initialize and run the paper summarization agent."""
-    # Initialize the model and agent
     model_id = "Qwen/Qwen2.5-Coder-32B-Instruct"
     model = HfApiModel(model_id=model_id, token='HF_API_TOKEN')
     
@@ -141,7 +138,6 @@ def main():
         add_base_tools=True
     )
 
-    # Run the summarization task
     agent.run(
         "Summarize today's top paper on Hugging Face daily papers by reading it."
     )
