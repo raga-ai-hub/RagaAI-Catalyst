@@ -11,29 +11,25 @@ from langchain_community.llms import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.output_parsers import StrOutputParser
 
-from dotenv import load_dotenv
 from ragaai_catalyst import RagaAICatalyst, init_tracing
 from ragaai_catalyst.tracers import Tracer
 
+from dotenv import load_dotenv
+load_dotenv()
 
 catalyst = RagaAICatalyst(
     access_key=s.getenv['RAGAAICATALYST_ACCESS_KEY'], 
     secret_key=os.getenv('RAGAAICATALYST_SECRET_KEY'), 
     base_url=os.getenv('RAGAAICATALYST_BASE_URL')
 )
-# Initialize tracer
 tracer = Tracer(
-    project_name="example_testing",
-    dataset_name="langchain_medical_diagnosis_trial_00",
+    project_name=os.environ['RAGAAI_CATALYST_PROD_PROJECT_NAME'],
+    dataset_name=os.environ['RAGAAI_CATALYST_PROD_DATASET_NAME'],
     tracer_type="agentic/langchain",
 )
-load_dotenv()
-
-warnings.filterwarnings("ignore")
 
 init_tracing(catalyst=catalyst, tracer=tracer)
 
-# Configuration
 MEDICAL_TEXTS_DIR = "data/medical_texts"
 SYMPTOM_MAP_CSV = "data/symptom_disease_map.csv"
 EMBEDDINGS_MODEL = "all-MiniLM-L6-v2"
@@ -139,10 +135,8 @@ def main():
     system = DiagnosisSystem()
     
     print("Medical Diagnosis Assistant\n")
-    # symptoms = input("Enter symptoms (comma-separated): ").lower().split(",")
     symptoms = ["fever", "headache", "fatigue"]
-    # history = input("Brief patient history: ")
-    history = '32 years old male, no prior medical history'
+    history = '70 years old female, no prior medical history'
     
     print("\nAnalyzing...")
     diagnoses = system.generate_diagnosis(symptoms, history)

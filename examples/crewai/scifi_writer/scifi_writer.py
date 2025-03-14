@@ -1,3 +1,5 @@
+import sys
+sys.path.append('.')
 
 from ragaai_catalyst import RagaAICatalyst, init_tracing
 from ragaai_catalyst.tracers import Tracer
@@ -12,19 +14,18 @@ from typing import Any
 load_dotenv()
 
 catalyst = RagaAICatalyst(
-    access_key=os.getenv['RAGAAICATALYST_ACCESS_KEY'], 
-    secret_key=os.getenv('RAGAAICATALYST_SECRET_KEY'), 
-    base_url=os.getenv('RAGAAICATALYST_BASE_URL')
+    access_key=os.environ['RAGAAI_CATALYST_PROD_ACCESS_KEY'], 
+    secret_key=os.environ['RAGAAI_CATALYST_PROD_SECRET_KEY'], 
+    base_url=os.environ['RAGAAI_CATALYST_PROD_BASE_URL']
 )
-# Initialize tracer
+
 tracer = Tracer(
-    project_name="example_testing",
-    dataset_name="crewai_scifi_writer_trial_00",
+    project_name=os.environ['RAGAAI_CATALYST_PROD_PROJECT_NAME'],
+    dataset_name=os.environ['RAGAAI_CATALYST_PROD_DATASET_NAME'],
     tracer_type="agentic/crewai",
 )
 init_tracing(catalyst=catalyst, tracer=tracer)
 
-# Define the custom file writing tool properly for latest CrewAI version
 @tool
 def write_to_file(filename: str, content: str) -> str:
     """Write content to a file with the specified filename."""
@@ -32,7 +33,6 @@ def write_to_file(filename: str, content: str) -> str:
         f.write(content)
     return f"Content successfully written to {filename}"
 
-# Updated agent definitions with the latest CrewAI syntax
 brainstormer = Agent(
     role="Idea Generator",
     goal="Come up with a creative premise for a sci-fi story set in 2050",
@@ -58,7 +58,6 @@ writer = Agent(
     allow_delegation=False
 )
 
-# Updated task definitions
 brainstorm_task = Task(
     description="Generate a unique sci-fi story premise set in 2050. Include a setting, main character, and conflict.",
     expected_output="A one-paragraph premise (e.g., 'In 2050, on a floating city above Venus, a rogue AI engineer battles a sentient cloud threatening humanity').",
@@ -69,7 +68,7 @@ outline_task = Task(
     description="Take the premise and create a simple story outline with 3 sections: Beginning, Middle, End.",
     expected_output="A bullet-point outline (e.g., '- Beginning: Engineer discovers the sentient cloud...').",
     agent=outliner,
-    context=[brainstorm_task]  # Pass the result from previous task as context
+    context=[brainstorm_task]  
 )
 
 writing_task = Task(
@@ -77,10 +76,9 @@ writing_task = Task(
                   Then use the FileWriteTool to save it as 'sci_fi_story.md'.""",
     expected_output="A markdown file containing the full story.",
     agent=writer,
-    context=[outline_task]  # Pass the result from previous task as context
+    context=[outline_task]  
 )
 
-# Create and run the crew
 crew = Crew(
     agents=[brainstormer, outliner, writer],
     tasks=[brainstorm_task, outline_task, writing_task],
@@ -89,8 +87,8 @@ crew = Crew(
 )
 
 print("Starting the CrewAI Story Generation process...")
-with tracer:
-    result = crew.kickoff()
+
+result = crew.kickoff()
 
 print("\nProcess completed! Final output:")
 print(result)

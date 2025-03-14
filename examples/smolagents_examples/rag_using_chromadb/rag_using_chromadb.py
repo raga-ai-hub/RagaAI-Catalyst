@@ -1,9 +1,4 @@
-import sys
-sys.path.append('.')
-
 import os
-from dotenv import load_dotenv
-load_dotenv()
 
 import datasets
 from langchain.docstore.document import Document
@@ -17,15 +12,18 @@ from transformers import AutoTokenizer
 
 from ragaai_catalyst import RagaAICatalyst, Tracer, init_tracing
 
+from dotenv import load_dotenv
+load_dotenv()
+
 catalyst = RagaAICatalyst(
-    access_key='1q2igAYCIlpSBufkdB6f',
-    secret_key='yG6TJOgES8D9jAi9OI0X6SgvZNtkcFvkOruukJay',
-    base_url="https://llm-dev5.ragaai.ai/api",
+    access_key=os.environ['RAGAAICATALYST_ACCESS_KEY'],
+    secret_key=os.environ['RAGAAICATALYST_SECRET_KEY'],
+    base_url=os.environ['RAGAAICATALYST_BASE_URL'],
 )
 
 tracer = Tracer(
-    project_name="integration_exp",
-    dataset_name="smolagents_rag_using_chromadb",
+    project_name=os.environ['RAGAAI_CATALYST_PROD_PROJECT_NAME'],
+    dataset_name=os.environ['RAGAAI_CATALYST_PROD_DATASET_NAME'],
     tracer_type="agentic/smolagents",
 )
 

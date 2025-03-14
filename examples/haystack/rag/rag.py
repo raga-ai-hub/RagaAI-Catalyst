@@ -1,14 +1,5 @@
-# pip install haystack-ai trafilatura
-import sys
-sys.path.append('/Users/vijay/Desktop/victoria/RagaAI-Catalyst')
-
 import os
-from dotenv import load_dotenv
-load_dotenv()
-
-
 import urllib.request
-
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
@@ -21,24 +12,25 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.components.builders import ChatPromptBuilder
 
-
 from ragaai_catalyst import RagaAICatalyst, Tracer, init_tracing
 
+from dotenv import load_dotenv
+load_dotenv()
+
 catalyst = RagaAICatalyst(
-    access_key='1q2igAYCIlpSBufkdB6f',
-    secret_key='yG6TJOgES8D9jAi9OI0X6SgvZNtkcFvkOruukJay',
-    base_url="https://llm-dev5.ragaai.ai/api",
+    access_key=os.environ['RAGAAI_CATALYST_PROD_ACCESS_KEY'], 
+    secret_key=os.environ['RAGAAI_CATALYST_PROD_SECRET_KEY'], 
+    base_url=os.environ['RAGAAI_CATALYST_PROD_BASE_URL']
 )
 
 tracer = Tracer(
-    project_name="testing_v",
-    dataset_name="haystack_leo",
+    project_name=os.environ['RAGAAI_CATALYST_PROD_PROJECT_NAME'],
+    dataset_name=os.environ['RAGAAI_CATALYST_PROD_DATASET_NAME'],
     tracer_type="agentic/haystack",
 )
 
 init_tracing(catalyst=catalyst, tracer=tracer)
 
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 urllib.request.urlretrieve("https://archive.org/stream/leonardodavinci00brocrich/leonardodavinci00brocrich_djvu.txt",
                            "davinci.txt")    
 

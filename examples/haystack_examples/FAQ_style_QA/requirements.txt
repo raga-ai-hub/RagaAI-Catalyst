@@ -1,5 +1,0 @@
-farm-haystack
-pandas
-sentence-transformers
-torch
-numpy

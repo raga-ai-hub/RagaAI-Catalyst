@@ -6,24 +6,22 @@ from langchain_community.tools.tavily_search import TavilySearchResults
 from typing import TypedDict, Annotated, List
 import operator
 import os
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 load_dotenv()
 
 from ragaai_catalyst import RagaAICatalyst, init_tracing
 from ragaai_catalyst.tracers import Tracer
-
 
 catalyst = RagaAICatalyst(
     access_key=os.getenv['RAGAAICATALYST_ACCESS_KEY'], 
     secret_key=os.getenv('RAGAAICATALYST_SECRET_KEY'), 
     base_url=os.getenv('RAGAAICATALYST_BASE_URL')
 )
-# Initialize tracer
 tracer = Tracer(
-    project_name="example_testing",
-    dataset_name="langgraph_research_assistant_trial_00",
-    tracer_type="agentic/langchain",
+    project_name=os.environ['RAGAAI_CATALYST_PROD_PROJECT_NAME'],
+    dataset_name=os.environ['RAGAAI_CATALYST_PROD_DATASET_NAME'],
+    tracer_type="agentic/langgraph",
 )
 
 init_tracing(catalyst=catalyst, tracer=tracer)
