@@ -1,0 +1,7 @@
+arxiv
+requests
+beautifulsoup4
+huggingface-hub
+pypdf
+smolagents
+python-dotenv
