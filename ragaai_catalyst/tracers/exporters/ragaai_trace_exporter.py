@@ -3,13 +3,13 @@ import json
 import tempfile
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 import logging
-from datetime import datetime
 from dataclasses import asdict
 from ragaai_catalyst.tracers.utils.trace_json_converter import convert_json_format
 from ragaai_catalyst.tracers.agentic_tracing.tracers.base import TracerJSONEncoder
 from ragaai_catalyst.tracers.agentic_tracing.utils.system_monitor import SystemMonitor
 from ragaai_catalyst.tracers.agentic_tracing.upload.trace_uploader import submit_upload_task
 from ragaai_catalyst.tracers.agentic_tracing.utils.zip_list_of_unique_files import zip_list_of_unique_files
+from ragaai_catalyst.tracers.agentic_tracing.utils.trace_utils import format_interactions
 
 
 logger = logging.getLogger("RagaAICatalyst")
@@ -77,8 +77,9 @@ class RAGATraceExporter(SpanExporter):
 
     def prepare_trace(self, spans, trace_id):
         try:
-            ragaai_trace = convert_json_format(spans, self.custom_model_cost)            
-            ragaai_trace["workflow"] = []
+            ragaai_trace = convert_json_format(spans, self.custom_model_cost)   
+            interactions = format_interactions(ragaai_trace)         
+            ragaai_trace["workflow"] = interactions['workflow']
 
             # Add source code hash
             hash_id, zip_path = zip_list_of_unique_files(

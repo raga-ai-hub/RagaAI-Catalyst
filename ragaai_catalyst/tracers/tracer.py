@@ -1,4 +1,3 @@
-from audioop import add
 import os
 import uuid
 import datetime
@@ -90,7 +89,7 @@ class Tracer(AgenticTracing):
 
         # take care of auto_instrumentation
         if isinstance(auto_instrumentation, bool):
-            if tracer_type == "agentic/llamaindex":
+            if tracer_type.startswith("agentic/"):
                 auto_instrumentation = {
                     "llm": False,
                     "tool": False,

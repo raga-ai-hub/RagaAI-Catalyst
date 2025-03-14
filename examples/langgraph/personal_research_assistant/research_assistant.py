@@ -36,14 +36,13 @@ def initialize_catalyst() -> tuple:
     return catalyst, tracer
 
 # Initialize language models and tools
-def initialize_models(model_name: str = "gpt-4o-mini", temperature: float = 0.5, max_results: int = 5):
+def initialize_models(model_name: str = "gpt-4o-mini", temperature: float = 0.5, max_results: int = 2):
     """Initialize the language model and search tool."""
     llm = ChatOpenAI(model=model_name, temperature=temperature)
     tavily_tool = TavilySearchResults(max_results=max_results)
     return llm, tavily_tool
 
 # Initialize default instances
-catalyst, tracer = initialize_catalyst()
 llm, tavily_tool = initialize_models()
 
 # State structure
@@ -121,7 +120,7 @@ def refine_synthesis(state: ResearchState) -> ResearchState:
     refined = llm.invoke(prompt.format(
         topic=state["topic"],
         synthesis=state["synthesis"],
-        critique=state["critique"],
+        critique=state["criticism"],
         answers="\n".join([f"Q: {a['question']}\nA: {a['answer']}" for a in state["answers"]])
     ))
     return {"synthesis": refined.content, "iteration": state["iteration"] + 1, "status": "refined"}
@@ -155,14 +154,11 @@ workflow.add_edge("refine", "critique")
 # Compile the workflow
 app = workflow.compile()
 
-def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030", 
-                         custom_tracer = None,
-                         print_results: bool = True) -> Dict[str, Any]:
+def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030", print_results: bool = True) -> Dict[str, Any]:
     """Run the research assistant workflow with the given topic.
     
     Args:
         topic: The research topic to investigate
-        custom_tracer: Optional custom tracer to use (defaults to global tracer)
         print_results: Whether to print the results to the console
         
     Returns:
@@ -179,9 +175,6 @@ def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030",
         "status": "start"
     }
     
-    # Use the provided tracer or the default one
-    active_tracer = custom_tracer or tracer
-    
     # Start timing
     start_time = time.time()
     
@@ -189,8 +182,7 @@ def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030",
     if print_results:
         print(f"Starting the Personal Research Assistant for topic: '{topic}'...")
     
-    with active_tracer:
-        result = app.invoke(initial_state)
+    result = app.invoke(initial_state)
     
     # Calculate duration
     duration = time.time() - start_time
@@ -217,4 +209,5 @@ def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030",
     return result
 
 if __name__ == "__main__":
+    catalyst, tracer = initialize_catalyst()
     run_research_assistant()

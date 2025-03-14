@@ -6,6 +6,8 @@ import pytest
 from dotenv import load_dotenv
 load_dotenv()
 
+sys.path.append('.')
+
 # Import RagaAI Catalyst for project creation
 from ragaai_catalyst import RagaAICatalyst
 
