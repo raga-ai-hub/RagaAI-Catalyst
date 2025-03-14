@@ -68,7 +68,7 @@ pyasn1_modules==0.4.1
 pydantic==2.10.4
 pydantic_core==2.27.2
 pyparsing==3.2.0
-PyPDF2==3.0.1
+pypdf==5.3.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2024.2
