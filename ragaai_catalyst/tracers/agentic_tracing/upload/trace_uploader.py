@@ -323,7 +323,7 @@ def shutdown():
     global _executor
     if _executor:
         logger.info("Shutting down executor")
-        _executor.shutdown(wait=False)
+        _executor.shutdown(wait=True)
         _executor = None
 
 # Register shutdown handler

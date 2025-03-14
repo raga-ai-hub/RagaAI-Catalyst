@@ -188,6 +188,43 @@ class Tracer(AgenticTracing):
             
             # Setup instrumentors based on tracer type
             instrumentors = []
+
+            # Add LLM Instrumentors
+            try:
+                from openinference.instrumentation.vertexai import VertexAIInstrumentor
+                instrumentors.append((VertexAIInstrumentor, []))
+            except (ImportError, ModuleNotFoundError):
+                logger.debug("VertexAI not available in environment")
+            try:
+                from openinference.instrumentation.anthropic import AnthropicInstrumentor
+                instrumentors.append((AnthropicInstrumentor, []))
+            except (ImportError, ModuleNotFoundError):
+                logger.debug("Anthropic not available in environment")
+            try:
+                from openinference.instrumentation.groq import GroqInstrumentor
+                instrumentors.append((GroqInstrumentor, []))
+            except (ImportError, ModuleNotFoundError):
+                logger.debug("Groq not available in environment")
+            try:
+                from openinference.instrumentation.litellm import LiteLLMInstrumentor
+                instrumentors.append((LiteLLMInstrumentor, []))
+            except (ImportError, ModuleNotFoundError):
+                logger.debug("LiteLLM not available in environment")
+            try:
+                from openinference.instrumentation.mistralai import MistralAIInstrumentor
+                instrumentors.append((MistralAIInstrumentor, []))
+            except (ImportError, ModuleNotFoundError):
+                logger.debug("MistralAI not available in environment")
+            try:
+                from openinference.instrumentation.openai import OpenAIInstrumentor
+                instrumentors.append((OpenAIInstrumentor, []))
+            except (ImportError, ModuleNotFoundError):
+                logger.debug("OpenAI not available in environment")
+            try:
+                from openinference.instrumentation.bedrock import BedrockInstrumentor
+                instrumentors.append((BedrockInstrumentor, []))
+            except (ImportError, ModuleNotFoundError):
+                logger.debug("Bedrock not available in environment")
             
             # If tracer_type is just "agentic", try to instrument all available packages
             if tracer_type == "agentic":

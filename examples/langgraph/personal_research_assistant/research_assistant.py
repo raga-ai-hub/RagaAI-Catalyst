@@ -17,7 +17,7 @@ from ragaai_catalyst import RagaAICatalyst, init_tracing
 from ragaai_catalyst.tracers import Tracer
 
 # Initialize RagaAI Catalyst
-def initialize_catalyst() -> tuple:
+def initialize_catalyst():
     """Initialize RagaAI Catalyst using environment credentials."""
     catalyst = RagaAICatalyst(
         access_key=os.getenv('CATALYST_ACCESS_KEY'), 
@@ -26,14 +26,13 @@ def initialize_catalyst() -> tuple:
     )
     
     tracer = Tracer(
-        project_name=os.getenv('PROJECT_NAME'),
-        dataset_name=os.getenv('DATASET_NAME'),
+        project_name=os.environ['PROJECT_NAME'],
+        dataset_name=os.environ['DATASET_NAME'],
         tracer_type="agentic/langgraph",
     )
     
     init_tracing(catalyst=catalyst, tracer=tracer)
     
-    return catalyst, tracer
 
 # Initialize language models and tools
 def initialize_models(model_name: str = "gpt-4o-mini", temperature: float = 0.5, max_results: int = 2):
@@ -43,6 +42,7 @@ def initialize_models(model_name: str = "gpt-4o-mini", temperature: float = 0.5,
     return llm, tavily_tool
 
 # Initialize default instances
+initialize_catalyst()
 llm, tavily_tool = initialize_models()
 
 # State structure
@@ -209,5 +209,4 @@ def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030", pr
     return result
 
 if __name__ == "__main__":
-    catalyst, tracer = initialize_catalyst()
     run_research_assistant()

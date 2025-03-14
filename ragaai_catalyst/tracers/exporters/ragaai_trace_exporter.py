@@ -112,9 +112,7 @@ class RAGATraceExporter(SpanExporter):
     def upload_trace(self, ragaai_trace_details, trace_id):
         filepath = ragaai_trace_details['trace_file_path']
         hash_id = ragaai_trace_details['hash_id']
-        zip_path = ragaai_trace_details['code_zip_path']
-
-        
+        zip_path = ragaai_trace_details['code_zip_path']  
 
         self.upload_task_id = submit_upload_task(
                 filepath=filepath,
