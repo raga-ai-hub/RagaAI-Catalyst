@@ -1,4 +1,3 @@
-# # crisis_response_coordinator_autogen.py
 import os
 import requests
 import smtplib
@@ -18,8 +17,8 @@ catalyst = RagaAICatalyst(
 )
 # Initialize tracer
 tracer = Tracer(
-    project_name="example_testing",
-    dataset_name="autogen_crysis_agent_trial_00",
+    project_name=os.getenv("RAGAAI_CATALYST_PROD_PROJECT_NAME"),
+    dataset_name=os.getenv("RAGAAI_CATALYST_PROD_DATASET_NAME"),
     tracer_type="agentic/autogen",
 )
 load_dotenv()
@@ -28,7 +27,7 @@ init_tracing(catalyst=catalyst, tracer=tracer)
 
 config_list = config_list_from_json(
     env_or_file="OAI_CONFIG_LIST.json",
-    file_location="/Users/ragaai_user/work/ragaai-catalyst/examples/autogen/crisis_response_coordinator"
+    file_location="examples/autogen/crisis_response_coordinator"
 )
 
 assistant = AssistantAgent(
