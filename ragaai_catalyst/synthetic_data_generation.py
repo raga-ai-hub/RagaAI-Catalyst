@@ -3,7 +3,7 @@ import ast
 import csv
 import json
 import random
-import PyPDF2
+import pypdf
 import markdown
 import pandas as pd
 from tqdm import tqdm
@@ -105,6 +105,9 @@ class SyntheticDataGeneration:
                     raise Exception(f"{e}")
 
                 else:
+                    if "'utf-8' codec can't encode characters" in str(e):
+                        print('Encountered non utf charactes, retrying with processed text')
+                        text = str(text.encode('utf-8',errors='ignore'))
                     print(f"Retrying...")
                     continue
         
@@ -469,7 +472,7 @@ class SyntheticDataGeneration:
         """
         text = ""
         with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
+            pdf_reader = pypdf.PdfReader(file)
             for page in pdf_reader.pages:
                 text += page.extract_text()
         return text
