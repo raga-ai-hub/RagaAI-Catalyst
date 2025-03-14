@@ -1,33 +1,50 @@
 import os
+import time
 from langgraph.graph import StateGraph, END
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_community.tools.tavily_search import TavilySearchResults
-from typing import TypedDict, Annotated, List
+from typing import TypedDict, Annotated, List, Dict, Any, Optional
 import operator
-import os
 
 from dotenv import load_dotenv
+
+# Load environment variables from .env file
 load_dotenv()
 
+# Import RagaAI Catalyst for tracing
 from ragaai_catalyst import RagaAICatalyst, init_tracing
 from ragaai_catalyst.tracers import Tracer
 
-catalyst = RagaAICatalyst(
-    access_key=os.getenv['RAGAAICATALYST_ACCESS_KEY'], 
-    secret_key=os.getenv('RAGAAICATALYST_SECRET_KEY'), 
-    base_url=os.getenv('RAGAAICATALYST_BASE_URL')
-)
-tracer = Tracer(
-    project_name=os.environ['RAGAAI_CATALYST_PROD_PROJECT_NAME'],
-    dataset_name=os.environ['RAGAAI_CATALYST_PROD_DATASET_NAME'],
-    tracer_type="agentic/langgraph",
-)
+# Initialize RagaAI Catalyst
+def initialize_catalyst() -> tuple:
+    """Initialize RagaAI Catalyst using environment credentials."""
+    catalyst = RagaAICatalyst(
+        access_key=os.getenv('CATALYST_ACCESS_KEY'), 
+        secret_key=os.getenv('CATALYST_SECRET_KEY'), 
+        base_url=os.getenv('CATALYST_BASE_URL')
+    )
+    
+    tracer = Tracer(
+        project_name=os.getenv('PROJECT_NAME'),
+        dataset_name=os.getenv('DATASET_NAME'),
+        tracer_type="agentic/langgraph",
+    )
+    
+    init_tracing(catalyst=catalyst, tracer=tracer)
+    
+    return catalyst, tracer
 
-init_tracing(catalyst=catalyst, tracer=tracer)
+# Initialize language models and tools
+def initialize_models(model_name: str = "gpt-4o-mini", temperature: float = 0.5, max_results: int = 5):
+    """Initialize the language model and search tool."""
+    llm = ChatOpenAI(model=model_name, temperature=temperature)
+    tavily_tool = TavilySearchResults(max_results=max_results)
+    return llm, tavily_tool
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)  
-tavily_tool = TavilySearchResults(max_results=5)  
+# Initialize default instances
+catalyst, tracer = initialize_catalyst()
+llm, tavily_tool = initialize_models()
 
 # State structure
 class ResearchState(TypedDict):
@@ -135,25 +152,69 @@ workflow.add_conditional_edges(
 )
 workflow.add_edge("refine", "critique")
 
-# Compile and run
+# Compile the workflow
 app = workflow.compile()
-initial_state = {
-    "topic": "Impact of AI on healthcare by 2030",
-    "iteration": 0,
-    "status": "start"
-}
-print("Starting the Personal Research Assistant...")
-with tracer:
-    result = app.invoke(initial_state)
 
-# Print results
-print("\nFinal Research Report:")
-print(f"Topic: {result['topic']}")
-print("Sub-Questions and Answers:")
-for ans in result["answers"]:
-    print(f"- Q: {ans['question']}")
-    print(f"  A: {ans['answer']}")
-    print(f"  Sources: {ans['sources']}")
-print(f"\nSynthesis:\n{result['synthesis']}")
-print(f"\nCritique: {result['criticism']}")
-print(f"Iterations: {result['iteration']}")
+def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030", 
+                         custom_tracer = None,
+                         print_results: bool = True) -> Dict[str, Any]:
+    """Run the research assistant workflow with the given topic.
+    
+    Args:
+        topic: The research topic to investigate
+        custom_tracer: Optional custom tracer to use (defaults to global tracer)
+        print_results: Whether to print the results to the console
+        
+    Returns:
+        The final state of the workflow
+    """
+    # Initialize the state
+    initial_state = {
+        "topic": topic,
+        "sub_questions": [],
+        "answers": [],
+        "synthesis": "",
+        "criticism": "",
+        "iteration": 0,
+        "status": "start"
+    }
+    
+    # Use the provided tracer or the default one
+    active_tracer = custom_tracer or tracer
+    
+    # Start timing
+    start_time = time.time()
+    
+    # Run the workflow with tracing
+    if print_results:
+        print(f"Starting the Personal Research Assistant for topic: '{topic}'...")
+    
+    with active_tracer:
+        result = app.invoke(initial_state)
+    
+    # Calculate duration
+    duration = time.time() - start_time
+    
+    # Print results if requested
+    if print_results:
+        print("\nFinal Research Report:")
+        print(f"Topic: {result['topic']}")
+        print("\nSub-Questions:")
+        for i, question in enumerate(result['sub_questions'], 1):
+            print(f"  {i}. {question}")
+        
+        print("\nResearch Findings:")
+        for i, ans in enumerate(result["answers"], 1):
+            print(f"\nQ{i}: {ans['question']}")
+            print(f"A: {ans['answer']}")
+            print(f"Sources: {ans['sources']}")
+        
+        print(f"\nSynthesis:\n{result['synthesis']}")
+        print(f"\nCritique: {result['criticism']}")
+        print(f"Iterations: {result['iteration']}")
+        print(f"Total execution time: {duration:.2f} seconds")
+    
+    return result
+
+if __name__ == "__main__":
+    run_research_assistant()

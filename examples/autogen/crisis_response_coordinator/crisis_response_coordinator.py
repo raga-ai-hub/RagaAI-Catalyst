@@ -11,14 +11,14 @@ from ragaai_catalyst.tracers import Tracer
 
 
 catalyst = RagaAICatalyst(
-    access_key=os.getenv('RAGAAICATALYST_ACCESS_KEY'), 
-    secret_key=os.getenv('RAGAAICATALYST_SECRET_KEY'), 
-    base_url=os.getenv('RAGAAICATALYST_BASE_URL')
+    access_key=os.getenv('CATALYST_ACCESS_KEY'), 
+    secret_key=os.getenv('CATALYST_SECRET_KEY'), 
+    base_url=os.getenv('CATALYST_BASE_URL')
 )
 # Initialize tracer
 tracer = Tracer(
-    project_name=os.getenv("RAGAAI_CATALYST_PROD_PROJECT_NAME"),
-    dataset_name=os.getenv("RAGAAI_CATALYST_PROD_DATASET_NAME"),
+    project_name=os.getenv('PROJECT_NAME'),
+    dataset_name=os.getenv('DATASET_NAME'),
     tracer_type="agentic/autogen",
 )
 load_dotenv()

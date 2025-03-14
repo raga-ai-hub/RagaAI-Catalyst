@@ -18,14 +18,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 catalyst = RagaAICatalyst(
-    access_key=os.environ['RAGAAI_CATALYST_PROD_ACCESS_KEY'], 
-    secret_key=os.environ['RAGAAI_CATALYST_PROD_SECRET_KEY'], 
-    base_url=os.environ['RAGAAI_CATALYST_PROD_BASE_URL']
+    access_key=os.environ['CATALYST_ACCESS_KEY'], 
+    secret_key=os.environ['CATALYST_SECRET_KEY'], 
+    base_url=os.environ['CATALYST_BASE_URL']
 )
 
 tracer = Tracer(
-    project_name=os.environ['RAGAAI_CATALYST_PROD_PROJECT_NAME'],
-    dataset_name=os.environ['RAGAAI_CATALYST_PROD_DATASET_NAME'],
+    project_name=os.environ['PROJECT_NAME'],
+    dataset_name=os.environ['DATASET_NAME'],
     tracer_type="agentic/haystack",
 )
 

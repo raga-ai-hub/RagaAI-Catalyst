@@ -16,14 +16,14 @@ from ragaai_catalyst.tracers import Tracer
 
 
 catalyst = RagaAICatalyst(
-    access_key=os.getenv['RAGAAICATALYST_ACCESS_KEY'], 
-    secret_key=os.getenv('RAGAAICATALYST_SECRET_KEY'), 
-    base_url=os.getenv('RAGAAICATALYST_BASE_URL')
+    access_key=os.getenv('CATALYST_ACCESS_KEY'), 
+    secret_key=os.getenv('CATALYST_SECRET_KEY'), 
+    base_url=os.getenv('CATALYST_BASE_URL')
 )
 # Initialize tracer
 tracer = Tracer(
-    project_name="example_testing",
-    dataset_name="llamaindex_legal_rag_trial_00",
+    project_name=os.getenv('PROJECT_NAME'),
+    dataset_name=os.getenv('DATASET_NAME'),
     tracer_type="agentic/llamaindex",
 )
 load_dotenv()
