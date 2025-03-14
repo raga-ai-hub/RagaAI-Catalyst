@@ -23,14 +23,15 @@ class GuardExecutor:
                 self.output_deployment_details = self.guard_manager.get_deployment(output_deployment_id)
             if input_deployment_id and output_deployment_id:
                 # check if 2 deployments are mapped to same dataset
-                pass
+                if self.input_deployment_details['data']['datasetId'] != self.output_deployment_details['data']['datasetId']:
+                    raise ValueError('Input deployment and output deployment should be mapped to same dataset')
             for guardrail in self.input_deployment_details['data']['guardrailsResponse']:
                 maps = guardrail['metricSpec']['config']['mappings']
                 for _map in maps:
                     if _map['schemaName']=='Response':
-                        raise ValueError('Response field mapping found in input guardrails')
+                        raise ValueError('Response field should be mapped only in output guardrails')
         except Exception as e:
-            raise ValueError('Error in fetching deployment details')
+            raise ValueError(str(e))
         self.base_url = guard_manager.base_url
         for key in field_map.keys():
             if key not in ['prompt','context','response','instruction']:
@@ -40,7 +41,8 @@ class GuardExecutor:
 
     def execute_deployment(self, deployment_id, payload):
         api = self.base_url + f'/guardrail/deployment/{deployment_id}/ingest'
-
+        if self.current_trace_id:
+            payload['traceId'] = self.current_trace_id
         payload = json.dumps(payload)
         headers = {
             'x-project-id': str(self.guard_manager.project_id),
@@ -182,6 +184,7 @@ class GuardExecutor:
             doc = self.set_variables(prompt,prompt_params)
         deployment_response = self.execute_deployment(self.output_deployment_id,doc)
         del self.id_2_doc[self.current_trace_id]
+        self.current_trace_id = None
         if deployment_response and deployment_response['data']['status'].lower() == 'fail':
             return deployment_response['data']['alternateResponse'], deployment_response
         elif deployment_response:
