@@ -36,6 +36,9 @@ from ragaai_catalyst.tracers.exporters.ragaai_trace_exporter import RAGATraceExp
 from ragaai_catalyst.tracers.agentic_tracing.utils.file_name_tracker import TrackName
 
 logger = logging.getLogger(__name__)
+logging_level = (
+    logger.setLevel(logging.DEBUG) if os.getenv("DEBUG") == "1" else logging.INFO
+)
 
 class Tracer(AgenticTracing):
     NUM_PROJECTS = 99999
@@ -293,28 +296,28 @@ class Tracer(AgenticTracing):
             # Handle specific framework instrumentation
             elif tracer_type == "agentic/llamaindex":
                 from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
-                instrumentors = [(LlamaIndexInstrumentor, [])] 
+                instrumentors += [(LlamaIndexInstrumentor, [])] 
             
             elif tracer_type == "agentic/langchain" or tracer_type == "agentic/langgraph":
                 from openinference.instrumentation.langchain import LangChainInstrumentor
-                instrumentors = [(LangChainInstrumentor, [])]
+                instrumentors += [(LangChainInstrumentor, [])]
             
             elif tracer_type == "agentic/crewai":
                 from openinference.instrumentation.crewai import CrewAIInstrumentor
                 from openinference.instrumentation.langchain import LangChainInstrumentor
-                instrumentors = [(CrewAIInstrumentor, []), (LangChainInstrumentor, [])]
+                instrumentors += [(CrewAIInstrumentor, []), (LangChainInstrumentor, [])]
             
             elif tracer_type == "agentic/haystack":
                 from openinference.instrumentation.haystack import HaystackInstrumentor
-                instrumentors = [(HaystackInstrumentor, [])]
+                instrumentors += [(HaystackInstrumentor, [])]
             
             elif tracer_type == "agentic/autogen":
                 from openinference.instrumentation.autogen import AutogenInstrumentor
-                instrumentors = [(AutogenInstrumentor, [])]
+                instrumentors += [(AutogenInstrumentor, [])]
             
             elif tracer_type == "agentic/smolagents":
                 from openinference.instrumentation.smolagents import SmolagentsInstrumentor
-                instrumentors = [(SmolagentsInstrumentor, [])]
+                instrumentors += [(SmolagentsInstrumentor, [])]
             
             else:
                 # Unknown agentic tracer type

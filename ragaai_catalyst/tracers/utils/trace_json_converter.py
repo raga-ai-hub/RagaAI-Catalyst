@@ -1,7 +1,7 @@
 import json
 import sys
 from datetime import datetime
-from typing import final
+from typing import final, List, Dict, Any, Optional
 import pytz
 import uuid
 from ragaai_catalyst.tracers.agentic_tracing.utils.llm_utils import calculate_llm_cost, get_model_cost
@@ -34,6 +34,18 @@ def convert_time_format(original_time_str, target_timezone_str="Asia/Kolkata"):
 def get_uuid(name):
     """Generate a random UUID (not based on name)."""
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, name))
+
+def get_ordered_family(parent_children_mapping: Dict[str, Any]) -> List[str]:
+    def ordering_function(parent_id: str, ordered_family: List[str]):
+        children = parent_children_mapping.get(parent_id, [])
+        parent_child_ids =[child['id'] for child in children if child['id'] in parent_children_mapping]
+        for child_id in parent_child_ids:
+            if child_id not in ordered_family:
+                ordered_family.append(child_id)
+                ordering_function(child_id, ordered_family)
+    ordered_family = [None]
+    ordering_function(None, ordered_family)
+    return reversed(ordered_family)
 
 def get_spans(input_trace, custom_model_cost):
     span_map = {}
@@ -197,8 +209,10 @@ def get_spans(input_trace, custom_model_cost):
         if parent_id not in parent_children_mapping:
             parent_children_mapping[parent_id] = []
         parent_children_mapping[parent_id].append(final_span)
+    ordered_family = get_ordered_family(parent_children_mapping)
     data = []
-    for parent_id, children in parent_children_mapping.items():
+    for parent_id in ordered_family:
+        children = parent_children_mapping[parent_id]
         if parent_id in span_map:
             parent_type = span_map[parent_id]["type"]
             if parent_type == 'agent':
