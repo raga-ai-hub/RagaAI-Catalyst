@@ -21,11 +21,6 @@ from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from ragaai_catalyst.tracers.exporters.file_span_exporter import FileSpanExporter
 from ragaai_catalyst.tracers.exporters.raga_exporter import RagaExporter
-from ragaai_catalyst.tracers.instrumentators import (
-    LangchainInstrumentor,
-    OpenAIInstrumentor,
-    LlamaIndexInstrumentor,
-)
 from ragaai_catalyst.tracers.utils import get_unique_key
 # from ragaai_catalyst.tracers.llamaindex_callback import LlamaIndexTracer
 from ragaai_catalyst.tracers.llamaindex_instrumentation import LlamaIndexInstrumentationTracer
