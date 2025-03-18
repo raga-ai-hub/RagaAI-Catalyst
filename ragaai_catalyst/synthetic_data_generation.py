@@ -11,7 +11,6 @@ from tqdm import tqdm
 import openai
 import tiktoken
 import litellm
-import google.generativeai as genai
 from groq import Groq
 from litellm import completion
 
@@ -166,7 +165,9 @@ class SyntheticDataGeneration:
         elif provider == "gemini":
             if api_key is None and os.getenv("GEMINI_API_KEY") is None and api_base is None and internal_llm_proxy is None:
                 raise ValueError("API key must be provided for Gemini.")
-            genai.configure(api_key=api_key or os.getenv("GEMINI_API_KEY"))
+            if api_key:
+                os.environ["GEMINI_API_KEY"] = api_key
+            # genai.configure(api_key=api_key or os.getenv("GEMINI_API_KEY"))
         
         elif provider == "openai":
             if api_key is None and os.getenv("OPENAI_API_KEY") is None and internal_llm_proxy is None:
