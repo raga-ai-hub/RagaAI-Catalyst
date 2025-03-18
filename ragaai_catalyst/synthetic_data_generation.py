@@ -165,6 +165,8 @@ class SyntheticDataGeneration:
         elif provider == "gemini":
             if api_key is None and os.getenv("GEMINI_API_KEY") is None and api_base is None and internal_llm_proxy is None:
                 raise ValueError("API key must be provided for Gemini.")
+            if api_key:
+                os.environ["GEMINI_API_KEY"] = api_key
             # genai.configure(api_key=api_key or os.getenv("GEMINI_API_KEY"))
         
         elif provider == "openai":
