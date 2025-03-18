@@ -1,0 +1,9 @@
+symptom,disease,confidence
+"headache,fever",influenza,0.82
+"chest pain,heartburn",gerd,0.91
+"throbbing headache,light sensitivity",migraine,0.76
+"cough,fever,shortness of breath",pneumonia,0.68
+"fatigue,loss of appetite",anemia,0.85
+"abdominal pain,nausea,vomiting",appendicitis,0.79
+"joint pain,rash,fever",dengue,0.88
+"stomach pain,diarrhea",gastroenteritis,0.75
