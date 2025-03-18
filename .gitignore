@@ -6,6 +6,7 @@ ragaai_catalyst.egg-info/
 test_files/
 __pycache__/
 */model_costs.json
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

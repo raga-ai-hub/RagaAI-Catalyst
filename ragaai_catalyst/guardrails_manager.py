@@ -1,6 +1,9 @@
 import requests
 import json
 import os
+import logging
+logger = logging.getLogger(__name__)
+from .utils import response_checker
 from .ragaai_catalyst import RagaAICatalyst
 
 
@@ -107,20 +110,82 @@ class GuardrailsManager:
         return response.json()["data"]
 
     
-    def create_deployment(self, deployment_name):
+    def list_datasets(self):
+        """
+        Retrieves a list of datasets for a given project.
+
+        Returns:
+            list: A list of dataset names.
+
+        Raises:
+            None.
+        """
+
+        def make_request():
+            headers = {
+                'Content-Type': 'application/json',
+                "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
+                "X-Project-Id": str(self.project_id),
+            }
+            json_data = {"size": 12, "page": "0", "projectId": str(self.project_id), "search": ""}
+            try:
+                response = requests.post(
+                    f"{self.base_url}/v2/llm/dataset",
+                    headers=headers,
+                    json=json_data,
+                    timeout=30,
+                )
+                response.raise_for_status()
+                return response
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Failed to list datasets: {e}")
+                raise
+
+        try:
+            response = make_request()
+            response_checker(response, "Dataset.list_datasets")
+            if response.status_code == 401:
+                response = make_request()  # Retry the request
+            if response.status_code != 200:
+                return {
+                    "status_code": response.status_code,
+                    "message": response.json(),
+                }
+            datasets = response.json()["data"]["content"]
+            dataset_list = [dataset["name"] for dataset in datasets]
+            return dataset_list
+        except Exception as e:
+            logger.error(f"Error in list_datasets: {e}")
+            raise
+
+
+    def create_deployment(self, deployment_name, deployment_dataset_name):
         """
         Create a new deployment ID with the given name.
         
         :param deployment_name: The name of the new deployment.
+        :param deployment_dataset_name: The name of the tracking dataset.
         :raises ValueError: If a deployment with the given name already exists.
         """
         self.deployment_name = deployment_name
+        self.deployment_dataset_name = deployment_dataset_name
         list_deployment_ids = self.list_deployment_ids()
         list_deployment_names = [_["name"] for _ in list_deployment_ids]
         if deployment_name in list_deployment_names:
             raise ValueError(f"Deployment with '{deployment_name}' already exists, choose a unique name")
         
-        payload = json.dumps({"name": str(deployment_name)})
+        # Check if dataset name exists
+        list_datasets = self.list_datasets()
+        # Assuming this method exists to get list of datasets
+        is_new_dataset = deployment_dataset_name not in list_datasets
+        
+        payload = json.dumps({
+            "name": str(deployment_name),
+            "trackingDataset": {
+                "addNew": is_new_dataset,
+                "name": str(deployment_dataset_name)
+            }
+        })
         headers = {
                 'Authorization': f'Bearer {os.getenv("RAGAAI_CATALYST_TOKEN")}',
                 'Content-Type': 'application/json',
