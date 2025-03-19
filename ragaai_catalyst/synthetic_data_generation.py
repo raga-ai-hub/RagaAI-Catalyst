@@ -3,7 +3,7 @@ import ast
 import csv
 import json
 import random
-import PyPDF2
+import pypdf
 import markdown
 import pandas as pd
 from tqdm import tqdm
@@ -11,7 +11,6 @@ from tqdm import tqdm
 import openai
 import tiktoken
 import litellm
-import google.generativeai as genai
 from groq import Groq
 from litellm import completion
 
@@ -105,6 +104,9 @@ class SyntheticDataGeneration:
                     raise Exception(f"{e}")
 
                 else:
+                    if "'utf-8' codec can't encode characters" in str(e):
+                        print('Encountered non utf charactes, retrying with processed text')
+                        text = str(text.encode('utf-8',errors='ignore'))
                     print(f"Retrying...")
                     continue
         
@@ -163,7 +165,9 @@ class SyntheticDataGeneration:
         elif provider == "gemini":
             if api_key is None and os.getenv("GEMINI_API_KEY") is None and api_base is None and internal_llm_proxy is None:
                 raise ValueError("API key must be provided for Gemini.")
-            genai.configure(api_key=api_key or os.getenv("GEMINI_API_KEY"))
+            if api_key:
+                os.environ["GEMINI_API_KEY"] = api_key
+            # genai.configure(api_key=api_key or os.getenv("GEMINI_API_KEY"))
         
         elif provider == "openai":
             if api_key is None and os.getenv("OPENAI_API_KEY") is None and internal_llm_proxy is None:
@@ -469,7 +473,7 @@ class SyntheticDataGeneration:
         """
         text = ""
         with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
+            pdf_reader = pypdf.PdfReader(file)
             for page in pdf_reader.pages:
                 text += page.extract_text()
         return text
