@@ -278,6 +278,14 @@ class Tracer(AgenticTracing):
                         logger.info("Instrumenting Smolagents...")
                     except (ImportError, ModuleNotFoundError):
                         logger.debug("Smolagents not available in environment")
+
+                    # OpenAI Agents
+                    try:
+                        from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
+                        instrumentors.append((OpenAIAgentsInstrumentor, []))
+                        logger.info("Instrumenting OpenAI Agents...")
+                    except (ImportError, ModuleNotFoundError):
+                        logger.debug("OpenAI Agents not available in environment")
                     
                     if not instrumentors:
                         logger.warning("No agentic packages found in environment to instrument")
@@ -293,7 +301,7 @@ class Tracer(AgenticTracing):
             elif tracer_type == "agentic/llamaindex":
                 from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
                 instrumentors += [(LlamaIndexInstrumentor, [])] 
-            
+
             elif tracer_type == "agentic/langchain" or tracer_type == "agentic/langgraph":
                 from openinference.instrumentation.langchain import LangChainInstrumentor
                 instrumentors += [(LangChainInstrumentor, [])]
@@ -314,6 +322,10 @@ class Tracer(AgenticTracing):
             elif tracer_type == "agentic/smolagents":
                 from openinference.instrumentation.smolagents import SmolagentsInstrumentor
                 instrumentors += [(SmolagentsInstrumentor, [])]
+
+            elif tracer_type == "agentic/openai_agents":
+                from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
+                instrumentors += [(OpenAIAgentsInstrumentor, [])] 
             
             else:
                 # Unknown agentic tracer type

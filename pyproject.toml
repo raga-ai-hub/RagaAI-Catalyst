@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ragaai_catalyst"
 description = "RAGA AI CATALYST"
 readme = "README.md"
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 # license = {file = "LICENSE"}
 version = "2.1.6"
 authors = [
@@ -28,8 +28,8 @@ dependencies = [
     "groq>=0.11.0",
     "pypdf>=5.3.1",
     "google-genai>=1.3.0",
-    "Markdown>=3.7",  
-    "litellm>=1.51.1",  
+    "Markdown>=3.7",
+    "litellm>=1.51.1",
     "tenacity==8.3.0",
     "tqdm>=4.66.5",
     "llama-index>=0.10.0",
@@ -53,11 +53,11 @@ dependencies = [
     "openinference-instrumentation-bedrock",
     "openinference-instrumentation-crewai",
     "openinference-instrumentation-haystack",
-    "openinference-instrumentation-autogen",
+    "openinference-instrumentation-openai-agents",
     "openinference-instrumentation-smolagents",
     "opentelemetry-sdk",
     "opentelemetry-exporter-otlp",
-    "opentelemetry-proto>=1.12.0"
+    "opentelemetry-proto>=1.12.0",
 ]
 
 [project.optional-dependencies]
