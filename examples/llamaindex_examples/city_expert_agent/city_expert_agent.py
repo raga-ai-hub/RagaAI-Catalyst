@@ -1,3 +1,4 @@
+import trace
 from llama_index.core import (
     VectorStoreIndex,
     SimpleKeywordTableIndex,
@@ -23,37 +24,25 @@ from llama_index.core.objects import ObjectIndex
 from ragaai_catalyst import RagaAICatalyst, init_tracing
 from ragaai_catalyst.tracers import Tracer
 
-# Initialize RagaAI Catalyst
-catalyst = RagaAICatalyst(
-    access_key=os.getenv('RAGAAI_ACCESS_KEY'),
-    secret_key=os.getenv('RAGAAI_SECRET_KEY'),
-    base_url="https://llm-dev5.ragaai.ai/api"
-)
-project = catalyst.create_project(
-    project_name="city_expert",
-    usecase="Agentic Application"
-)
-tracer = Tracer(
-    project_name='city_expert',
-    dataset_name='city_dataset',
-    tracer_type="Agentic",
-)
-init_tracing(catalyst=catalyst, tracer=tracer)
-
-tracer.start()
-
-wiki_titles = [
-    "Toronto", "Seattle", "Chicago", "Boston", "Houston", "Tokyo", "Berlin",
-    "Lisbon", "Paris", "London", "Atlanta", "Munich", "Shanghai", "Beijing",
-    "Copenhagen", "Moscow", "Cairo", "Karachi",
-]
-
+from dotenv import load_dotenv
 load_dotenv()
+
+catalyst = RagaAICatalyst(
+    access_key=os.environ['CATALYST_ACCESS_KEY'], 
+    secret_key=os.environ['CATALYST_SECRET_KEY'], 
+    base_url=os.environ['CATALYST_BASE_URL']
+)
+
+tracer = Tracer(
+    project_name=os.environ['PROJECT_NAME'],
+    dataset_name=os.environ['DATASET_NAME'],
+    tracer_type="agentic/haystack",
+)
+
+init_tracing(catalyst=catalyst, tracer=tracer)
 
 Settings.llm = OpenAI(temperature=0, model="gpt-3.5-turbo")
 Settings.embed_model = OpenAIEmbedding(model="text-embedding-ada-002")
-
-node_parser = SentenceSplitter()
 
 # Build agents dictionary
 agents = {}
@@ -63,7 +52,7 @@ query_engines = {}
 all_nodes = []
 
 @tracer.trace_custom("fetch_wiki_data")
-def fetch_wiki_data():
+def fetch_wiki_data(wiki_titles):
     for title in wiki_titles:
         response = requests.get(
             "https://en.wikipedia.org/w/api.php",
@@ -85,16 +74,8 @@ def fetch_wiki_data():
         with open(data_path / f"{title}.txt", "w") as fp:
             fp.write(wiki_text)
 
-fetch_wiki_data()
-
-city_docs = {}
-for wiki_title in wiki_titles:
-    city_docs[wiki_title] = SimpleDirectoryReader(
-        input_files=[f"data/{wiki_title}.txt"]
-    ).load_data()
-
 @tracer.trace_custom("build_indexes_and_agents")
-def build_indexes_and_agents():
+def build_indexes_and_agents(wiki_titles, city_docs, node_parser):
     for idx, wiki_title in enumerate(wiki_titles):
         nodes = node_parser.get_nodes_from_documents(city_docs[wiki_title])
         all_nodes.extend(nodes)
@@ -159,45 +140,66 @@ You must ALWAYS use at least one of the tools provided when answering a question
             similarity_top_k=2
         )
 
-build_indexes_and_agents()
+def main():
+    wiki_titles = [
+        "Toronto", "Seattle", "Chicago", "Boston", "Houston", "Tokyo", "Berlin",
+        "Lisbon", "Paris", "London", "Atlanta", "Munich", "Shanghai", "Beijing",
+        "Copenhagen", "Moscow", "Cairo", "Karachi",
+    ]
+    fetch_wiki_data(wiki_titles)
 
-# define tool for each document agent
-all_tools = []
-for wiki_title in wiki_titles:
-    wiki_summary = (
-        f"This content contains Wikipedia articles about {wiki_title}. Use"
-        f" this tool if you want to answer any questions about {wiki_title}.\n"
+    city_docs = {}
+    for wiki_title in wiki_titles:
+        city_docs[wiki_title] = SimpleDirectoryReader(
+            input_files=[f"data/{wiki_title}.txt"]
+        ).load_data()
+        
+    node_parser = SentenceSplitter()
+    
+    build_indexes_and_agents(wiki_titles, city_docs, node_parser)
+
+    # define tool for each document agent
+    all_tools = []
+    for wiki_title in wiki_titles:
+        wiki_summary = (
+            f"This content contains Wikipedia articles about {wiki_title}. Use"
+            f" this tool if you want to answer any questions about {wiki_title}.\n"
+        )
+        doc_tool = QueryEngineTool(
+            query_engine=agents[wiki_title],
+            metadata=ToolMetadata(
+                name=f"tool_{wiki_title}",
+                description=wiki_summary,
+            ),
+        )
+        all_tools.append(doc_tool)
+
+    # define an "object" index and retriever over these tools
+    obj_index = ObjectIndex.from_objects(
+        all_tools,
+        index_cls=VectorStoreIndex,
     )
-    doc_tool = QueryEngineTool(
-        query_engine=agents[wiki_title],
-        metadata=ToolMetadata(
-            name=f"tool_{wiki_title}",
-            description=wiki_summary,
-        ),
+
+    top_agent = OpenAIAgent.from_tools(
+        tool_retriever=obj_index.as_retriever(similarity_top_k=3),
+        system_prompt=""" \
+    You are an agent designed to answer queries about a set of given cities.
+    Please always use the tools provided to answer a question. Do not rely on prior knowledge.\
+
+    """,
+        verbose=True,
     )
-    all_tools.append(doc_tool)
 
-# define an "object" index and retriever over these tools
-obj_index = ObjectIndex.from_objects(
-    all_tools,
-    index_cls=VectorStoreIndex,
-)
+    base_index = VectorStoreIndex(all_nodes)
+    base_query_engine = base_index.as_query_engine(similarity_top_k=4)
 
-top_agent = OpenAIAgent.from_tools(
-    tool_retriever=obj_index.as_retriever(similarity_top_k=3),
-    system_prompt=""" \
-You are an agent designed to answer queries about a set of given cities.
-Please always use the tools provided to answer a question. Do not rely on prior knowledge.\
+    # should use Boston agent -> vector tool
+    response = top_agent.query("Tell me about the arts and culture in Boston")
+    print(response)
+    
+    return response
 
-""",
-    verbose=True,
-)
-
-base_index = VectorStoreIndex(all_nodes)
-base_query_engine = base_index.as_query_engine(similarity_top_k=4)
-
-# should use Boston agent -> vector tool
-response = top_agent.query("Tell me about the arts and culture in Boston")
-
-tracer.stop()
-tracer.get_upload_status()
+if __name__ == "__main__":
+    with tracer:
+        main()
+    tracer.get_upload_status()

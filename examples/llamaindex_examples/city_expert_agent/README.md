@@ -50,6 +50,6 @@ This project uses the Llama Index and RagaAI Catalyst to create specialized agen
 
 2. The script will fetch Wikipedia data, build indexes, and create agents. It will then use the top agent to answer a sample query about Boston.
 
-## License
+### Monitoring
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+The implementation includes RagaAI Catalyst integration for tracing and monitoring your RAG pipeline. Access the Catalyst dashboard to view metrics and traces.
