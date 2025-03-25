@@ -1,0 +1,6 @@
+python-dotenv
+langchain-core
+langchain-openai
+pydantic
+typing-extensions
+ragaai-catalyst
