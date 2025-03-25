@@ -1,3 +1,0 @@
-ragaai-catalyst
-crewai=0.108.0
-python-dotenv
