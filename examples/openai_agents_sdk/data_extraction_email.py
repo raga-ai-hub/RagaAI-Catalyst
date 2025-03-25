@@ -1,16 +1,16 @@
 import os
 import time
-from typing import List, Optional, Dict, Any, TypedDict, Annotated
-import operator
+from typing import List, Optional, Callable, Any
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from agents import Agent, Runner
+from agents import Agent, Runner, ModelSettings, set_tracing_export_api_key
 
 from ragaai_catalyst import RagaAICatalyst, init_tracing
 from ragaai_catalyst.tracers import Tracer
 
 load_dotenv()
+set_tracing_export_api_key(os.getenv('OPENAI_API_KEY'))
 
 def initialize_catalyst():
     """Initialize RagaAI Catalyst using environment credentials."""
@@ -23,7 +23,7 @@ def initialize_catalyst():
     tracer = Tracer(
         project_name=os.environ.get('PROJECT_NAME', 'email-extraction'),
         dataset_name=os.environ.get('DATASET_NAME', 'email-data'),
-        tracer_type="agentic/openai-agents",
+        tracer_type="agentic/openai_agents",
     )
     
     init_tracing(catalyst=catalyst, tracer=tracer)
@@ -58,17 +58,31 @@ class EmailData(BaseModel):
     tasks: List[Task]
     next_steps: Optional[str] = None
 
-def initialize_agent():
+def initialize_agent(agent_name: str, agent_instructions: str|Callable, handoff_description: Optional[str]=None, handoffs: List[Agent]=list(), model_name: str='gpt-4o', temperature: float=0.3, max_tokens: int=1000, output_type: Optional[type[Any]]=None):
     """Initialize the OpenAI agent for email extraction."""
     # Initialize the agent with appropriate configuration
     # This could include model selection, temperature settings, etc.
-    agent = Agent()
+    model_settings = ModelSettings(
+        temperature=temperature,
+        max_tokens=max_tokens
+    )
+    agent = Agent(
+        name=agent_name,
+        instructions=agent_instructions,
+        handoff_description=handoff_description,
+        handoffs=handoffs,
+        model=model_name,
+        model_settings=model_settings, 
+        output_type=output_type
+    )
     return agent
 
-email_extractor = Agent(
-    model="gpt-4",
+email_extractor = initialize_agent(
+    agent_name="Email Extractor",
+    agent_instructions="You are an expert at extracting structured information from emails.",
+    model_name="gpt-4o",
     temperature=0.2,
-    system_prompt="You are an expert at extracting structured information from emails."
+    output_type=EmailData
 )
 
 async def extract_email_data(email_text: str) -> EmailData:
