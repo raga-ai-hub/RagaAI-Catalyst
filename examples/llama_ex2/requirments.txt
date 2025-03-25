@@ -1,0 +1,5 @@
+requests
+python-dotenv
+llama-index
+openai
+ragaai-catalyst
