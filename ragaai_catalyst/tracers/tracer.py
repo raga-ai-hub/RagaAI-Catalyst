@@ -37,7 +37,6 @@ logging_level = (
 
 class Tracer(AgenticTracing):
     NUM_PROJECTS = 99999
-    TIMEOUT = 10
     def __init__(
         self,
         project_name,
@@ -135,7 +134,6 @@ class Tracer(AgenticTracing):
         self.description = description
         self.upload_timeout = upload_timeout
         self.base_url = f"{RagaAICatalyst.BASE_URL}"
-        self.timeout = 30
         self.num_projects = 99999
         self.start_time = datetime.datetime.now().astimezone().isoformat()
         self.model_cost_dict = model_cost
@@ -148,7 +146,7 @@ class Tracer(AgenticTracing):
                 headers={
                     "Authorization": f'Bearer {os.getenv("RAGAAI_CATALYST_TOKEN")}',
                 },
-                timeout=self.timeout,
+                timeout=self.upload_timeout,
             )
             response.raise_for_status()
             logger.debug("Projects list retrieved successfully")
@@ -749,7 +747,8 @@ class Tracer(AgenticTracing):
             dataset_name=self.dataset_name,
             user_details=self.user_details,
             base_url=self.base_url,
-            custom_model_cost=self.model_custom_cost
+            custom_model_cost=self.model_custom_cost,
+            timeout=self.upload_timeout
         )
         
         # Set up tracer provider

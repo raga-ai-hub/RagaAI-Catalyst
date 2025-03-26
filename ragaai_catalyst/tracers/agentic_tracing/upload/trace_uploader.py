@@ -77,7 +77,7 @@ def get_executor():
 
 def process_upload(task_id: str, filepath: str, hash_id: str, zip_path: str, 
                   project_name: str, project_id: str, dataset_name: str, 
-                  user_details: Dict[str, Any], base_url: str) -> Dict[str, Any]:
+                  user_details: Dict[str, Any], base_url: str, timeout=120) -> Dict[str, Any]:
     """
     Process a single upload task
     
@@ -147,7 +147,8 @@ def process_upload(task_id: str, filepath: str, hash_id: str, zip_path: str,
                     json_file_path=filepath,
                     dataset_name=dataset_name,
                     project_name=project_name,
-                    base_url=base_url
+                    base_url=base_url,
+                    timeout=timeout
                 )
                 logger.info(f"Trace metrics uploaded: {response}")
             except Exception as e:
@@ -167,6 +168,7 @@ def process_upload(task_id: str, filepath: str, hash_id: str, zip_path: str,
                     dataset_name=dataset_name,
                     user_detail=user_details,
                     base_url=base_url,   
+                    timeout=timeout
                 )
                 upload_traces.upload_agentic_traces()
                 logger.info("Agentic traces uploaded successfully")
@@ -185,7 +187,8 @@ def process_upload(task_id: str, filepath: str, hash_id: str, zip_path: str,
                     zip_path=zip_path,
                     project_name=project_name,
                     dataset_name=dataset_name,
-                    base_url=base_url
+                    base_url=base_url,
+                    timeout=timeout
                 )
                 logger.info(f"Code hash uploaded: {response}")
             except Exception as e:
@@ -215,7 +218,7 @@ def save_task_status(task_status: Dict[str, Any]):
     with open(status_path, "w") as f:
         json.dump(task_status, f, indent=2)
 
-def submit_upload_task(filepath, hash_id, zip_path, project_name, project_id, dataset_name, user_details, base_url):
+def submit_upload_task(filepath, hash_id, zip_path, project_name, project_id, dataset_name, user_details, base_url, timeout=120):
     """
     Submit a new upload task using futures.
     
@@ -259,7 +262,8 @@ def submit_upload_task(filepath, hash_id, zip_path, project_name, project_id, da
         project_id=project_id,
         dataset_name=dataset_name,
         user_details=user_details,
-        base_url=base_url
+        base_url=base_url,
+        timeout=timeout
     )
     
     # Store the future for later status checks

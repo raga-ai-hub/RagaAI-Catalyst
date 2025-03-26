@@ -24,7 +24,7 @@ class UploadAgenticTraces:
         self.dataset_name = dataset_name
         self.user_detail = user_detail
         self.base_url = base_url
-        self.timeout = 30
+        self.timeout = 120
 
 
     def _get_presigned_url(self):
