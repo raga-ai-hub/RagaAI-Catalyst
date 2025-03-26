@@ -525,6 +525,14 @@ class Tracer(AgenticTracing):
                 combined_metadata.update(user_detail['trace_user_detail']['metadata'])
             if additional_metadata:
                 combined_metadata.update(additional_metadata)
+                
+            model_cost_latency_metadata = {}
+            if additional_metadata:
+                model_cost_latency_metadata["model"] = additional_metadata["model_name"]
+                model_cost_latency_metadata["total_cost"] = additional_metadata["cost"]
+                model_cost_latency_metadata["total_latency"] = additional_metadata["latency"]
+                model_cost_latency_metadata["recorded_on"] = datetime.datetime.now().astimezone().isoformat()
+                combined_metadata.update(model_cost_latency_metadata)
 
             langchain_traces = langchain_tracer_extraction(data, self.user_context)
             final_result = convert_langchain_callbacks_output(langchain_traces)
