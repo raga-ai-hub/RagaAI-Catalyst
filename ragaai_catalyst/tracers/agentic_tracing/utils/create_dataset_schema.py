@@ -4,7 +4,7 @@ import re
 import requests
 from ragaai_catalyst.tracers.agentic_tracing.tracers.base import RagaAICatalyst
 
-def create_dataset_schema_with_trace(project_name, dataset_name, base_url=None):
+def create_dataset_schema_with_trace(project_name, dataset_name, base_url=None, timeout=120):
     def make_request():
         headers = {
             "Content-Type": "application/json",
@@ -21,7 +21,7 @@ def create_dataset_schema_with_trace(project_name, dataset_name, base_url=None):
             f"{url_base}/v1/llm/dataset/logs",
             headers=headers,
             data=payload,
-            timeout=10
+            timeout=timeout
         )
         return response
     response = make_request()

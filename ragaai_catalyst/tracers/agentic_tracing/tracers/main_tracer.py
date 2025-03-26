@@ -48,7 +48,7 @@ from ragaai_catalyst.tracers.upload_traces import UploadTraces
 class AgenticTracing(
     BaseTracer, LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, CustomTracerMixin
 ):
-    def __init__(self, user_detail, auto_instrumentation=None):
+    def __init__(self, user_detail, auto_instrumentation=None, timeout=120):
         # Initialize all parent classes
         self.user_interaction_tracer = UserInteractionTracer()
         LLMTracerMixin.__init__(self)
@@ -60,7 +60,7 @@ class AgenticTracing(
         self.project_id = user_detail["project_id"]
         self.trace_user_detail = user_detail["trace_user_detail"]
         self.base_url = f"{RagaAICatalyst.BASE_URL}"
-        self.timeout = 10
+        self.timeout = timeout
         
         # Add warning flag
         self._warning_shown = False
