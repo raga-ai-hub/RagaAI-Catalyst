@@ -9,19 +9,19 @@ logger = logging.getLogger(__name__)
 from urllib.parse import urlparse, urlunparse
 import re
 
-def upload_code(hash_id, zip_path, project_name, dataset_name, base_url=None):
-    code_hashes_list = _fetch_dataset_code_hashes(project_name, dataset_name, base_url)
+def upload_code(hash_id, zip_path, project_name, dataset_name, base_url=None, timeout=120):
+    code_hashes_list = _fetch_dataset_code_hashes(project_name, dataset_name, base_url, timeout=timeout)
 
     if hash_id not in code_hashes_list:
-        presigned_url = _fetch_presigned_url(project_name, dataset_name, base_url)
-        _put_zip_presigned_url(project_name, presigned_url, zip_path)
+        presigned_url = _fetch_presigned_url(project_name, dataset_name, base_url, timeout=timeout)
+        _put_zip_presigned_url(project_name, presigned_url, zip_path, timeout=timeout)
 
-        response = _insert_code(dataset_name, hash_id, presigned_url, project_name, base_url)
+        response = _insert_code(dataset_name, hash_id, presigned_url, project_name, base_url, timeout=timeout)
         return response
     else:
         return "Code already exists"
 
-def _fetch_dataset_code_hashes(project_name, dataset_name, base_url=None):
+def _fetch_dataset_code_hashes(project_name, dataset_name, base_url=None, timeout=120):
     payload = {}
     headers = {
         "Authorization": f"Bearer {os.getenv('RAGAAI_CATALYST_TOKEN')}",
@@ -36,7 +36,7 @@ def _fetch_dataset_code_hashes(project_name, dataset_name, base_url=None):
                                     endpoint, 
                                     headers=headers, 
                                     data=payload,
-                                    timeout=99999)
+                                    timeout=timeout)
         elapsed_ms = (time.time() - start_time) * 1000
         logger.debug(
             f"API Call: [GET] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
@@ -66,7 +66,7 @@ def update_presigned_url(presigned_url, base_url):
     return presigned_url
 
 
-def _fetch_presigned_url(project_name, dataset_name, base_url=None):
+def _fetch_presigned_url(project_name, dataset_name, base_url=None, timeout=120):
     payload = json.dumps({
             "datasetName": dataset_name,
             "numFiles": 1,
@@ -87,7 +87,7 @@ def _fetch_presigned_url(project_name, dataset_name, base_url=None):
                                     endpoint, 
                                     headers=headers, 
                                     data=payload,
-                                    timeout=99999)
+                                    timeout=timeout)
         elapsed_ms = (time.time() - start_time) * 1000
         logger.debug(
             f"API Call: [GET] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
@@ -102,7 +102,7 @@ def _fetch_presigned_url(project_name, dataset_name, base_url=None):
         logger.error(f"Failed to list datasets: {e}")
         raise
 
-def _put_zip_presigned_url(project_name, presignedUrl, filename):
+def _put_zip_presigned_url(project_name, presignedUrl, filename, timeout=120):
     headers = {
             "X-Project-Name": project_name,
             "Content-Type": "application/zip",
@@ -119,14 +119,14 @@ def _put_zip_presigned_url(project_name, presignedUrl, filename):
                                 presignedUrl, 
                                 headers=headers, 
                                 data=payload,
-                                timeout=99999)
+                                timeout=timeout)
     elapsed_ms = (time.time() - start_time) * 1000
     logger.debug(
         f"API Call: [PUT] {presignedUrl} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
     if response.status_code != 200 or response.status_code != 201:
         return response, response.status_code
 
-def _insert_code(dataset_name, hash_id, presigned_url, project_name, base_url=None):
+def _insert_code(dataset_name, hash_id, presigned_url, project_name, base_url=None, timeout=120):
     payload = json.dumps({
         "datasetName": dataset_name,
         "codeHash": hash_id,
@@ -147,7 +147,7 @@ def _insert_code(dataset_name, hash_id, presigned_url, project_name, base_url=No
                                     endpoint, 
                                     headers=headers, 
                                     data=payload,
-                                    timeout=99999)
+                                    timeout=timeout)
         elapsed_ms = (time.time() - start_time) * 1000
         logger.debug(
             f"API Call: [POST] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
