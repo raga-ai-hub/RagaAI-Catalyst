@@ -92,6 +92,7 @@ class BaseTracer:
         self._upload_tasks = []
         self._is_uploading = False
         self._upload_completed_callback = None
+        self.timeout = self.user_details.get("timeout", 120)
         
         ensure_uploader_running()
 
@@ -314,7 +315,8 @@ class BaseTracer:
                 project_id=self.project_id,
                 dataset_name=self.dataset_name,
                 user_details=self.user_details,
-                base_url=self.base_url
+                base_url=self.base_url,
+                timeout=self.timeout
             )
             
             # For backward compatibility
