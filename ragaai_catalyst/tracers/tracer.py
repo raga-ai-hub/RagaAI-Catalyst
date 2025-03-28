@@ -487,7 +487,10 @@ class Tracer(AgenticTracing):
             # Add cost if possible
             if additional_metadata.get('model_name'):
                 try:
-                    model_cost_data = self.model_cost_dict[additional_metadata['model_name']]
+                    if self.model_custom_cost.get(additional_metadata['model_name']):
+                        model_cost_data = self.model_custom_cost[additional_metadata['model_name']]
+                    else:
+                        model_cost_data = self.model_cost_dict[additional_metadata['model_name']]
                     if 'tokens' in additional_metadata and all(k in additional_metadata['tokens'] for k in ['prompt', 'completion']):
                         prompt_cost = additional_metadata["tokens"]["prompt"]*model_cost_data["input_cost_per_token"]
                         completion_cost = additional_metadata["tokens"]["completion"]*model_cost_data["output_cost_per_token"]
