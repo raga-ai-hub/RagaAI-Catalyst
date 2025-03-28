@@ -19,7 +19,7 @@ logging_level = (
 
 
 class RAGATraceExporter(SpanExporter):
-    def __init__(self, files_to_zip, project_name, project_id, dataset_name, user_details, base_url, custom_model_cost):
+    def __init__(self, files_to_zip, project_name, project_id, dataset_name, user_details, base_url, custom_model_cost, timeout=120):
         self.trace_spans = dict()
         self.tmp_dir = tempfile.gettempdir()
         self.files_to_zip = files_to_zip
@@ -30,6 +30,7 @@ class RAGATraceExporter(SpanExporter):
         self.base_url = base_url
         self.custom_model_cost = custom_model_cost
         self.system_monitor = SystemMonitor(dataset_name)
+        self.timeout = timeout
 
     def export(self, spans):
         for span in spans:
@@ -122,7 +123,8 @@ class RAGATraceExporter(SpanExporter):
                 project_id=self.project_id,
                 dataset_name=self.dataset_name,
                 user_details=self.user_details,
-                base_url=self.base_url
+                base_url=self.base_url,
+                timeout=self.timeout
             )
 
         logger.info(f"Submitted upload task with ID: {self.upload_task_id}")

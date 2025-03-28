@@ -14,7 +14,7 @@ class DynamicTraceExporter(SpanExporter):
     certain properties to be updated dynamically during execution.
     """
     
-    def __init__(self, files_to_zip, project_name, project_id, dataset_name, user_details, base_url, custom_model_cost):
+    def __init__(self, files_to_zip, project_name, project_id, dataset_name, user_details, base_url, custom_model_cost, timeout=120):
         """
         Initialize the DynamicTraceExporter.
         
@@ -33,7 +33,8 @@ class DynamicTraceExporter(SpanExporter):
             dataset_name=dataset_name,
             user_details=user_details,
             base_url=base_url,
-            custom_model_cost=custom_model_cost
+            custom_model_cost=custom_model_cost,
+            timeout=timeout
         )
         
         # Store the initial values

@@ -15,7 +15,7 @@ logging_level = (
 )
 
 
-def upload_trace_metric(json_file_path, dataset_name, project_name, base_url=None):
+def upload_trace_metric(json_file_path, dataset_name, project_name, base_url=None, timeout=120):
     try:
         with open(json_file_path, "r") as f:
             traces = json.load(f)
@@ -51,7 +51,7 @@ def upload_trace_metric(json_file_path, dataset_name, project_name, base_url=Non
                                     endpoint,
                                     headers=headers,
                                     data=payload,
-                                    timeout=10)
+                                    timeout=timeout)
         elapsed_ms = (time.time() - start_time) * 1000
         logger.debug(
             f"API Call: [POST] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
