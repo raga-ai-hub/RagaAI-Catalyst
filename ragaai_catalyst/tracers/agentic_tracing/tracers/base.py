@@ -511,6 +511,8 @@ class BaseTracer:
         process_spans(trace["data"][0]["spans"])
         trace["metadata"].cost = cost
         trace["metadata"].tokens = tokens
+        trace["metadata"].total_cost = cost.get("total_cost", 0)
+        trace["metadata"].total_tokens = tokens.get("total_tokens", 0)
         return trace
 
     def _clean_trace(self, trace):
