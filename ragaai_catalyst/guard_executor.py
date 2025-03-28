@@ -164,6 +164,7 @@ class GuardExecutor:
         return doc
 
     def execute_input_guardrails(self, prompt, prompt_params):
+        self.current_trace_id =None
         doc = self.set_variables(prompt,prompt_params)
         deployment_response = self.execute_deployment(self.input_deployment_id,doc)
         self.current_trace_id = deployment_response['data']['results'][0]['executionId']

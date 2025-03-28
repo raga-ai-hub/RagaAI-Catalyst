@@ -28,11 +28,14 @@ class UploadTraces:
             "response":{"columnType": "response"},
             "context": {"columnType": "context"},
             "llm_model": {"columnType":"pipeline"},
-            "recorded_on": {"columnType": "metadata"},
+            "recorded_on": {"columnType": "timestamp"},
             "embed_model": {"columnType":"pipeline"},
             "log_source": {"columnType": "metadata"},
             "vector_store":{"columnType":"pipeline"},
-            "feedback": {"columnType":"feedBack"}
+            "feedback": {"columnType":"feedBack"},
+            "model": {"columnType": "metadata"},
+            "total_cost": {"columnType": "metadata", "dataType": "numerical"},
+            "total_latency": {"columnType": "metadata", "dataType": "numerical"},
         }
 
         if additional_metadata_keys:

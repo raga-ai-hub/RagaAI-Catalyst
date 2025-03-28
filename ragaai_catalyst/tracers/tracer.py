@@ -278,6 +278,14 @@ class Tracer(AgenticTracing):
                         logger.info("Instrumenting Smolagents...")
                     except (ImportError, ModuleNotFoundError):
                         logger.debug("Smolagents not available in environment")
+
+                    # OpenAI Agents
+                    try:
+                        from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
+                        instrumentors.append((OpenAIAgentsInstrumentor, []))
+                        logger.info("Instrumenting OpenAI Agents...")
+                    except (ImportError, ModuleNotFoundError):
+                        logger.debug("OpenAI Agents not available in environment")
                     
                     if not instrumentors:
                         logger.warning("No agentic packages found in environment to instrument")
@@ -293,7 +301,7 @@ class Tracer(AgenticTracing):
             elif tracer_type == "agentic/llamaindex":
                 from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
                 instrumentors += [(LlamaIndexInstrumentor, [])] 
-            
+
             elif tracer_type == "agentic/langchain" or tracer_type == "agentic/langgraph":
                 from openinference.instrumentation.langchain import LangChainInstrumentor
                 instrumentors += [(LangChainInstrumentor, [])]
@@ -314,6 +322,10 @@ class Tracer(AgenticTracing):
             elif tracer_type == "agentic/smolagents":
                 from openinference.instrumentation.smolagents import SmolagentsInstrumentor
                 instrumentors += [(SmolagentsInstrumentor, [])]
+
+            elif tracer_type == "agentic/openai_agents":
+                from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
+                instrumentors += [(OpenAIAgentsInstrumentor, [])] 
             
             else:
                 # Unknown agentic tracer type
@@ -513,6 +525,14 @@ class Tracer(AgenticTracing):
                 combined_metadata.update(user_detail['trace_user_detail']['metadata'])
             if additional_metadata:
                 combined_metadata.update(additional_metadata)
+                
+            model_cost_latency_metadata = {}
+            if additional_metadata:
+                model_cost_latency_metadata["model"] = additional_metadata["model_name"]
+                model_cost_latency_metadata["total_cost"] = additional_metadata["cost"]
+                model_cost_latency_metadata["total_latency"] = additional_metadata["latency"]
+                model_cost_latency_metadata["recorded_on"] = datetime.datetime.now().astimezone().isoformat()
+                combined_metadata.update(model_cost_latency_metadata)
 
             langchain_traces = langchain_tracer_extraction(data, self.user_context)
             final_result = convert_langchain_callbacks_output(langchain_traces)

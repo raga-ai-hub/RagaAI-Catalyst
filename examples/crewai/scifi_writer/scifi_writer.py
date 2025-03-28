@@ -1,15 +1,11 @@
-import sys
-sys.path.append('.')
-
-from ragaai_catalyst import RagaAICatalyst, init_tracing
-from ragaai_catalyst.tracers import Tracer
-
 import os
 from dotenv import load_dotenv
 from crewai import Agent, Task, Crew, Process
 from crewai.tools import tool
 from typing import Any
 
+from ragaai_catalyst import RagaAICatalyst, init_tracing
+from ragaai_catalyst.tracers import Tracer
 
 load_dotenv()
 
