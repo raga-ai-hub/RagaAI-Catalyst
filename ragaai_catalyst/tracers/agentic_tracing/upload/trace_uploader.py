@@ -107,6 +107,10 @@ def process_upload(task_id: str, filepath: str, hash_id: str, zip_path: str,
     }
     
     # Save initial status to file
+    # with open(filepath, 'r') as f:
+    #     data = json.load(f)
+    # with open(os.path.join(os.getcwd(), 'agentic_traces.json'), 'w') as f:
+    #     json.dump(data, f, default=str, indent=2)
     save_task_status(result)
     
     try:

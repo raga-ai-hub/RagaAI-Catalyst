@@ -519,6 +519,8 @@ class Tracer(AgenticTracing):
             # Safely remove tokens and cost dictionaries if they exist
             additional_metadata.pop("tokens", None)
             # additional_metadata.pop("cost", None)
+
+            additional_metadata["model"] = additional_metadata.get("model_name", "")
             
             # Safely merge metadata
             combined_metadata = {}
@@ -529,7 +531,7 @@ class Tracer(AgenticTracing):
                 
             model_cost_latency_metadata = {}
             if additional_metadata:
-                model_cost_latency_metadata["model"] = additional_metadata["model_name"]
+                model_cost_latency_metadata["model_name"] = additional_metadata["model_name"]
                 model_cost_latency_metadata["total_cost"] = additional_metadata["cost"]
                 model_cost_latency_metadata["total_latency"] = additional_metadata["latency"]
                 model_cost_latency_metadata["recorded_on"] = datetime.datetime.now().astimezone().isoformat()
