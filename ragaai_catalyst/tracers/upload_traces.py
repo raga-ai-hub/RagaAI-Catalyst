@@ -33,7 +33,7 @@ class UploadTraces:
             "log_source": {"columnType": "metadata"},
             "vector_store":{"columnType":"pipeline"},
             "feedback": {"columnType":"feedBack"},
-            "model": {"columnType": "metadata"},
+            "model_name": {"columnType": "metadata"},
             "total_cost": {"columnType": "metadata", "dataType": "numerical"},
             "total_latency": {"columnType": "metadata", "dataType": "numerical"},
         }
