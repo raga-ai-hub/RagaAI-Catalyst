@@ -625,6 +625,9 @@ class Dataset:
             if response.json()["success"]:
 
                 status_json = [item["status"] for item in response.json()["data"]["content"] if item["id"]==self.jobId]
+                if not status_json:
+                    logger.error(f"Job ID {self.jobId} not found in status response")
+                    return JOB_STATUS_FAILED
                 status_json = status_json[0]
                 if status_json == "Failed":
                     print("Job failed. No results to fetch.")
