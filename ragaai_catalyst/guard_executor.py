@@ -167,6 +167,8 @@ class GuardExecutor:
         self.current_trace_id =None
         doc = self.set_variables(prompt,prompt_params)
         deployment_response = self.execute_deployment(self.input_deployment_id,doc)
+        if not deployment_response:
+            raise ValueError('Failed to execute input guardrails: deployment returned None')
         self.current_trace_id = deployment_response['data']['results'][0]['executionId']
         self.id_2_doc[self.current_trace_id] = doc
         if deployment_response and deployment_response['data']['status'].lower() == 'fail':
