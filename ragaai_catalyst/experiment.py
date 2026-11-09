@@ -197,8 +197,8 @@ class Experiment:
 
         if not isinstance(metrics, list):
             metrics = [metrics]
-        else:
-            metrics_list = metrics
+
+        metrics_list = metrics
         sub_providers = ["openai","azure","gemini","groq"]
         sub_metrics = RagaAICatalyst.list_metrics()  
         for metric in metrics_list:
