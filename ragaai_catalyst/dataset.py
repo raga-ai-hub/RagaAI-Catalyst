@@ -159,11 +159,11 @@ class Dataset:
                 timeout=Dataset.TIMEOUT,
             )
             response.raise_for_status()
+            if not response.json()['success']:
+                raise ValueError('Unable to fetch details of for the CSV')
             dataset_columns = response.json()["data"]["datasetColumnsResponses"]
             dataset_columns = [item["displayName"] for item in dataset_columns]
             dataset_columns = [data for data in dataset_columns if not data.startswith('_')]
-            if not response.json()['success']:
-                raise ValueError('Unable to fetch details of for the CSV')
             return dataset_columns
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to get CSV columns: {e}")
