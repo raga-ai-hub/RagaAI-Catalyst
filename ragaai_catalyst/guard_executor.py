@@ -25,11 +25,12 @@ class GuardExecutor:
                 # check if 2 deployments are mapped to same dataset
                 if self.input_deployment_details['data']['datasetId'] != self.output_deployment_details['data']['datasetId']:
                     raise ValueError('Input deployment and output deployment should be mapped to same dataset')
-            for guardrail in self.input_deployment_details['data']['guardrailsResponse']:
-                maps = guardrail['metricSpec']['config']['mappings']
-                for _map in maps:
-                    if _map['schemaName']=='Response':
-                        raise ValueError('Response field should be mapped only in output guardrails')
+            if input_deployment_id:
+                for guardrail in self.input_deployment_details['data']['guardrailsResponse']:
+                    maps = guardrail['metricSpec']['config']['mappings']
+                    for _map in maps:
+                        if _map['schemaName']=='Response':
+                            raise ValueError('Response field should be mapped only in output guardrails')
         except Exception as e:
             raise ValueError(str(e))
         self.base_url = guard_manager.base_url
