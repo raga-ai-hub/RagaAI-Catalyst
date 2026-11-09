@@ -116,7 +116,9 @@ class SyntheticDataGeneration:
         result_df = result_df.drop_duplicates(subset=['Question'])
         
         # Replenish phase - generate additional questions if needed due to duplicates
-        while (len(result_df) < n) and ((len(result_df) >= 1)):
+        max_replenish_attempts = 3
+        replenish_attempts = 0
+        while (len(result_df) < n) and ((len(result_df) >= 1)) and (replenish_attempts < max_replenish_attempts):
             questions_needed = n - len(result_df)
             try:
                 system_message = self._get_system_message(question_type, questions_needed)
@@ -133,6 +135,8 @@ class SyntheticDataGeneration:
                         result_df = pd.concat([result_df, new_questions], ignore_index=True)
                         result_df = result_df.drop_duplicates(subset=['Question'])
                         pbar.update(len(new_questions))
+                    else:
+                        replenish_attempts += 1
                     
             except Exception as e:
                 print(f"Replenishment generation failed")
@@ -141,7 +145,8 @@ class SyntheticDataGeneration:
                     raise Exception(f"{e}")
                 
                 else:
-                    print("An unexpected error occurred. Retrying...")
+                    replenish_attempts += 1
+                    print(f"An unexpected error occurred. Retrying... ({replenish_attempts}/{max_replenish_attempts})")
                     continue
         
         pbar.close()
