@@ -92,12 +92,16 @@ class Evaluation:
             return metric_names
         except requests.exceptions.HTTPError as http_err:
             logger.error(f"HTTP error occurred: {http_err}")
+            return []
         except requests.exceptions.ConnectionError as conn_err:
             logger.error(f"Connection error occurred: {conn_err}")
+            return []
         except requests.exceptions.Timeout as timeout_err:
             logger.error(f"Timeout error occurred: {timeout_err}")
+            return []
         except requests.exceptions.RequestException as req_err:
             logger.error(f"An error occurred: {req_err}")
+            return []
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
             return []
@@ -155,12 +159,16 @@ class Evaluation:
                 return response.json()["data"]["columns"]
         except requests.exceptions.HTTPError as http_err:
             logger.error(f"HTTP error occurred: {http_err}")
+            return {}
         except requests.exceptions.ConnectionError as conn_err:
             logger.error(f"Connection error occurred: {conn_err}")
+            return {}
         except requests.exceptions.Timeout as timeout_err:
             logger.error(f"Timeout error occurred: {timeout_err}")
+            return {}
         except requests.exceptions.RequestException as req_err:
             logger.error(f"An error occurred: {req_err}")
+            return {}
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
         return {}
@@ -235,12 +243,16 @@ class Evaluation:
             return metrics_schema
         except requests.exceptions.HTTPError as http_err:
             logger.error(f"HTTP error occurred: {http_err}")
+            return []
         except requests.exceptions.ConnectionError as conn_err:
             logger.error(f"Connection error occurred: {conn_err}")
+            return []
         except requests.exceptions.Timeout as timeout_err:
             logger.error(f"Timeout error occurred: {timeout_err}")
+            return []
         except requests.exceptions.RequestException as req_err:
             logger.error(f"An error occurred: {req_err}")
+            return []
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
             return []
@@ -298,12 +310,16 @@ class Evaluation:
             return executed_metric_list
         except requests.exceptions.HTTPError as http_err:
             logger.error(f"HTTP error occurred: {http_err}")
+            return []
         except requests.exceptions.ConnectionError as conn_err:
             logger.error(f"Connection error occurred: {conn_err}")
+            return []
         except requests.exceptions.Timeout as timeout_err:
             logger.error(f"Timeout error occurred: {timeout_err}")
+            return []
         except requests.exceptions.RequestException as req_err:
             logger.error(f"An error occurred: {req_err}")
+            return []
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
             return []
