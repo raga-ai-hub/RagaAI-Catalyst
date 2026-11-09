@@ -37,58 +37,66 @@ def response_checker(response, context=""):
         int: The status code of the response.
     """
     logger.debug(f" Response : {response}")
+
+    def _safe_message(resp):
+        """Safely extract message from response, handling non-JSON bodies."""
+        try:
+            return resp.json().get("message", "No message returned.")
+        except (ValueError, KeyError, TypeError):
+            return resp.text[:200] if resp.text else "No message returned."
+
     if response.status_code == 200:
         logger.debug(
-            f"{context} - Successful Request. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Successful Request. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     elif response.status_code == 400:
         logger.debug(
-            f"{context} - Bad Request. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Bad Request. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     elif response.status_code == 401:
         logger.debug(
-            f"{context} - Unauthorized. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Unauthorized. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     elif response.status_code == 403:
         logger.debug(
-            f"{context} - Forbidden. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Forbidden. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     elif response.status_code == 404:
         logger.debug(
-            f"{context} - Not Found. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Not Found. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     elif response.status_code == 408:
         logger.debug(
-            f"{context} - Request Timeout. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Request Timeout. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     elif response.status_code == 500:
         logger.debug(
-            f"{context} - Internal Server Error. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Internal Server Error. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     elif response.status_code == 502:
         logger.debug(
-            f"{context} - Bad Gateway. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Bad Gateway. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     elif response.status_code == 503:
         logger.debug(
-            f"{context} - Service Unavailable. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Service Unavailable. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     elif response.status_code == 504:
         logger.debug(
-            f"{context} - Gateway Timeout. Response Code: {response.status_code}, Response Text: {(response.json()['message'])}"
+            f"{context} - Gateway Timeout. Response Code: {response.status_code}, Response Text: {_safe_message(response)}"
         )
         return response.status_code
     else:
-        error_message = response.json().get("message", "No message returned.")
+        error_message = _safe_message(response)
         logger.debug(
             f"{context}{response.reason}. Response Code: {response.status_code}, Response Text: {error_message}"
         )
