@@ -45,6 +45,9 @@ def api_completion(messages, model_config, kwargs):
                         attempts += 1  # Increment attempts if JSON parsing fails
                         if attempts == 3:
                             raise Exception("Failed to generate a valid response after multiple attempts.")
+                        continue  # continue to next retry attempt
+
+    raise Exception("Failed to generate a valid response after multiple attempts.")
 
         except Exception as e:
             raise ValueError(f"{e}")
