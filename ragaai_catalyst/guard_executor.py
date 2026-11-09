@@ -55,11 +55,18 @@ class GuardExecutor:
             print('Failed running guardrail: ',str(e))
             return None
         if response.status_code!=200:
-            print('Error in running deployment ',response.json()['message'])
-        if response.json()['success']:
-            return response.json()
-        else:
-            print(response.json()['message'])
+            try:
+                print('Error in running deployment ',response.json().get('message', response.text[:200]))
+            except (ValueError, KeyError):
+                print('Error in running deployment ', response.text[:200] if response.text else 'No response body')
+        try:
+            if response.json()['success']:
+                return response.json()
+            else:
+                print(response.json().get('message', 'Unknown error'))
+                return None
+        except (ValueError, KeyError):
+            print('Error parsing deployment response')
             return None
 
     def llm_executor(self,prompt,model_params,llm_caller):
