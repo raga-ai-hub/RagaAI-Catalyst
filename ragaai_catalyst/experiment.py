@@ -371,9 +371,11 @@ class Experiment:
 
         status_json = self.get_status(job_id_to_use)
         if status_json == "Failed":
-            return print("Job failed. No results to fetch.")
+            print("Job failed. No results to fetch.")
+            return None
         elif status_json == "In Progress":
-            return print(f"Job in progress. Please wait while the job completes.\n Visit Job Status: {base_url_without_api}/home/job-status to track")
+            print(f"Job in progress. Please wait while the job completes.\n Visit Job Status: {base_url_without_api}/home/job-status to track")
+            return None
         elif status_json == "Completed":
             print(f"Job completed. fetching results.\n Visit Job Status: {base_url_without_api}/home/job-status to track")
 
