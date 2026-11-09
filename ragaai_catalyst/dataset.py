@@ -660,7 +660,16 @@ class Dataset:
     def _jsonl_to_csv(self, jsonl_file, csv_file):
         """Convert a JSONL file to a CSV file."""
         with open(jsonl_file, 'r', encoding='utf-8') as infile:
-            data = [json.loads(line) for line in infile]
+            data = []
+            for line_num, line in enumerate(infile, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data.append(json.loads(line))
+                except json.JSONDecodeError as e:
+                    logger.error(f"Skipping malformed JSON on line {line_num} in {jsonl_file}: {e}")
+                    continue
         
         if not data:
             print("Empty JSONL file.")
